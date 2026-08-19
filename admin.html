@@ -493,7 +493,7 @@
       ${avatarHtml(s)}
       <span class="nama">${escapeHtml(s.nama)}</span>
       <select data-id="${s.id}">
-        <option value="" ${!s.sesi ? 'selected' : ''} disabled>Belum dijadwal</option>
+        <option value="" ${!s.sesi ? 'selected' : ''}>Belum dijadwal</option>
         ${options}
         <option value="Batal" ${s.sesi === 'Batal' ? 'selected' : ''}>Batal</option>
       </select>
