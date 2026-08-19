@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Futsal Camp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10131f;
+    --surface:#1b2036;
+    --surface-2:#232a45;
+    --line:#2c3355;
+    --amber:#f5a623;
+    --chalk:#f2f3f5;
+    --text-secondary:#8b90a8;
+    --success:#34d399;
+    --danger:#f26b6b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(245,166,35,0.06), transparent 55%),
+      var(--bg);
+    color:var(--chalk);
+    font-family:'Manrope',sans-serif;
+    min-height:100vh;
+  }
+  h1,h2,h3{font-family:'Oswald',sans-serif;text-transform:uppercase;margin:0;}
+
+  /* ---- Login screen ---- */
+  #loginScreen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .login-box{
+    width:100%;max-width:360px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:28px 24px;
+  }
+  .login-box .eyebrow{
+    font-family:'Space Mono',monospace;
+    font-size:12px;letter-spacing:3px;color:var(--amber);
+    text-transform:uppercase;display:block;margin-bottom:8px;
+  }
+  .login-box h1{font-size:26px;margin-bottom:20px;}
+  .field{margin-bottom:16px;}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;}
+  input{
+    width:100%;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:8px;padding:11px 12px;color:var(--chalk);
+    font-family:'Manrope',sans-serif;font-size:14px;outline:none;
+  }
+  input:focus{border-color:var(--amber);}
+  .btn{
+    background:var(--amber);color:#1a1200;border:none;border-radius:8px;
+    padding:13px;font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;
+    text-transform:uppercase;letter-spacing:1px;cursor:pointer;width:100%;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-secondary{
+    background:var(--surface-2);color:var(--chalk);border:1px solid var(--line);
+  }
+  #loginError{color:var(--danger);font-size:13px;margin-top:10px;display:none;}
+
+  /* ---- Dashboard ---- */
+  #dashboard{display:none;padding:24px 16px 64px;max-width:900px;margin:0 auto;}
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:24px;
+  }
+  .topbar .eyebrow{
+    font-family:'Space Mono',monospace;font-size:11px;letter-spacing:2px;
+    color:var(--amber);text-transform:uppercase;display:block;margin-bottom:4px;
+  }
+  .topbar h1{font-size:22px;}
+  .logout-btn{
+    background:none;border:1px solid var(--line);color:var(--text-secondary);
+    border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;
+    font-family:'Manrope',sans-serif;
+  }
+  .logout-btn:hover{color:var(--chalk);border-color:var(--amber);}
+
+  .stats-row{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:12px;margin-bottom:24px;
+  }
+  .stat-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;
+  }
+  .stat-card .label{font-size:12px;color:var(--text-secondary);}
+  .stat-card .value{font-family:'Oswald',sans-serif;font-size:26px;margin-top:2px;}
+
+  .generate-box{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:20px;margin-bottom:24px;display:flex;align-items:center;
+    justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+  .generate-box p{color:var(--text-secondary);font-size:13px;margin:4px 0 0;}
+  .generate-box .btn{width:auto;padding:12px 20px;}
+
+  .session-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;
+  }
+  @media (max-width:600px){.session-grid{grid-template-columns:1fr;}}
+
+  .session-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;
+  }
+  .session-card .head{
+    padding:14px 16px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .session-card .head h2{font-size:15px;}
+  .session-card .head .count{
+    font-family:'Space Mono',monospace;font-size:12px;color:var(--amber);
+  }
+  .siswa-row{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 16px;border-bottom:1px solid var(--line);
+    font-size:13px;
+  }
+  .siswa-row:last-child{border-bottom:none;}
+  .siswa-row .nama{flex:1;}
+  .siswa-row select{
+    background:var(--surface-2);border:1px solid var(--line);color:var(--chalk);
+    border-radius:6px;padding:5px 8px;font-size:12px;font-family:'Manrope',sans-serif;
+  }
+  .empty-state{
+    padding:24px 16px;text-align:center;color:var(--text-secondary);font-size:13px;
+  }
+  .cadangan-card{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;
+  }
+  .status-line{text-align:center;font-size:12px;color:var(--text-secondary);margin-top:10px;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <span class="eyebrow">Akses Terbatas</span>
+    <h1>Admin Futsal Camp</h1>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@email.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn" id="loginBtn">Masuk</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="topbar">
+    <div>
+      <span class="eyebrow">Admin Panel</span>
+      <h1>Jadwal Latihan</h1>
+    </div>
+    <button class="logout-btn" id="logoutBtn">Keluar</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="label">Total siswa</div><div class="value" id="statTotal">-</div></div>
+    <div class="stat-card"><div class="label">Selasa</div><div class="value" id="statSelasa">-</div></div>
+    <div class="stat-card"><div class="label">Kamis</div><div class="value" id="statKamis">-</div></div>
+    <div class="stat-card"><div class="label">Belum dijadwal</div><div class="value" id="statBelum">-</div></div>
+  </div>
+
+  <div class="generate-box">
+    <div>
+      <h2 style="font-size:14px;">Generate jadwal otomatis</h2>
+      <p>Bagi siswa yang belum dijadwal ke sesi Selasa/Kamis (maks 25 per sesi)</p>
+    </div>
+    <button class="btn" id="generateBtn">Generate Jadwal</button>
+  </div>
+  <div class="status-line" id="generateStatus"></div>
+
+  <div class="session-grid">
+    <div class="session-card">
+      <div class="head"><h2>Selasa</h2><span class="count" id="countSelasa">0/25</span></div>
+      <div id="listSelasa"></div>
+    </div>
+    <div class="session-card">
+      <div class="head"><h2>Kamis</h2><span class="count" id="countKamis">0/25</span></div>
+      <div id="listKamis"></div>
+    </div>
+  </div>
+
+  <div class="cadangan-card">
+    <div class="head"><h2>Belum dijadwal / Batal</h2><span class="count" id="countCadangan">0</span></div>
+    <div id="listCadangan"></div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWg3d1qtHFEwsN-GLakSDIvb-Wjbo7cIQ",
+    authDomain: "aka-futsal-camp.firebaseapp.com",
+    projectId: "aka-futsal-camp",
+    storageBucket: "aka-futsal-camp.firebasestorage.app",
+    messagingSenderId: "721774551002",
+    appId: "1:721774551002:web:bcd2e47b06d61daf626ae3"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const COLLECTION = "futsal_siswa";
+  const MAX_PER_SESI = 25;
+
+  const loginScreen = document.getElementById('loginScreen');
+  const dashboard = document.getElementById('dashboard');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const loginError = document.getElementById('loginError');
+
+  loginBtn.addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    loginError.style.display = 'none';
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Memproses...';
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+    } catch (err) {
+      loginError.textContent = 'Login gagal: email atau password salah.';
+      loginError.style.display = 'block';
+    }
+    loginBtn.disabled = false;
+    loginBtn.textContent = 'Masuk';
+  });
+
+  logoutBtn.addEventListener('click', () => auth.signOut());
+
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      loginScreen.style.display = 'none';
+      dashboard.style.display = 'block';
+      loadSiswa();
+    } else {
+      loginScreen.style.display = 'flex';
+      dashboard.style.display = 'none';
+    }
+  });
+
+  let siswaCache = [];
+
+  async function loadSiswa() {
+    const snap = await db.collection(COLLECTION).orderBy('tanggal_daftar', 'asc').get();
+    siswaCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+  }
+
+  function render() {
+    const selasa = siswaCache.filter(s => s.sesi === 'Selasa');
+    const kamis = siswaCache.filter(s => s.sesi === 'Kamis');
+    const cadangan = siswaCache.filter(s => !s.sesi || s.sesi === 'Batal');
+
+    document.getElementById('statTotal').textContent = siswaCache.length;
+    document.getElementById('statSelasa').textContent = selasa.length;
+    document.getElementById('statKamis').textContent = kamis.length;
+    document.getElementById('statBelum').textContent = cadangan.length;
+
+    document.getElementById('countSelasa').textContent = selasa.length + '/' + MAX_PER_SESI;
+    document.getElementById('countKamis').textContent = kamis.length + '/' + MAX_PER_SESI;
+    document.getElementById('countCadangan').textContent = cadangan.length;
+
+    renderList('listSelasa', selasa);
+    renderList('listKamis', kamis);
+    renderList('listCadangan', cadangan, true);
+  }
+
+  function renderList(containerId, list, isCadangan) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = '';
+    if (list.length === 0) {
+      el.innerHTML = '<div class="empty-state">Belum ada siswa</div>';
+      return;
+    }
+    list.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'siswa-row';
+      row.innerHTML = `
+        <span class="nama">${escapeHtml(s.nama || '(tanpa nama)')}</span>
+        <select data-id="${s.id}">
+          <option value="Selasa" ${s.sesi === 'Selasa' ? 'selected' : ''}>Selasa</option>
+          <option value="Kamis" ${s.sesi === 'Kamis' ? 'selected' : ''}>Kamis</option>
+          <option value="Batal" ${s.sesi === 'Batal' ? 'selected' : ''}>Batal</option>
+          ${!s.sesi ? '<option value="" selected disabled>Belum dijadwal</option>' : ''}
+        </select>
+      `;
+      el.appendChild(row);
+    });
+    el.querySelectorAll('select').forEach(sel => {
+      sel.addEventListener('change', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        const newSesi = e.target.value;
+        await db.collection(COLLECTION).doc(id).update({ sesi: newSesi });
+        const s = siswaCache.find(x => x.id === id);
+        if (s) s.sesi = newSesi;
+        render();
+      });
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('generateBtn');
+    const status = document.getElementById('generateStatus');
+    btn.disabled = true;
+    btn.textContent = 'Memproses...';
+
+    const belumDijadwal = siswaCache.filter(s => !s.sesi);
+    if (belumDijadwal.length === 0) {
+      status.textContent = 'Semua siswa sudah punya jadwal.';
+      btn.disabled = false;
+      btn.textContent = 'Generate Jadwal';
+      return;
+    }
+
+    let slotSelasa = MAX_PER_SESI - siswaCache.filter(s => s.sesi === 'Selasa').length;
+    let slotKamis = MAX_PER_SESI - siswaCache.filter(s => s.sesi === 'Kamis').length;
+
+    const batch = db.batch();
+    let assignedSelasa = 0, assignedKamis = 0, sisa = 0;
+
+    belumDijadwal.forEach(s => {
+      let target = null;
+      if (slotSelasa > 0 && (slotSelasa >= slotKamis)) {
+        target = 'Selasa'; slotSelasa--; assignedSelasa++;
+      } else if (slotKamis > 0) {
+        target = 'Kamis'; slotKamis--; assignedKamis++;
+      } else {
+        sisa++;
+        return; // biarin tanpa sesi, masuk cadangan
+      }
+      batch.update(db.collection(COLLECTION).doc(s.id), { sesi: target });
+      s.sesi = target;
+    });
+
+    await batch.commit();
+    render();
+
+    status.textContent = `Selesai: ${assignedSelasa} ke Selasa, ${assignedKamis} ke Kamis` + (sisa > 0 ? `, ${sisa} masuk daftar cadangan (kuota penuh)` : '.');
+    btn.disabled = false;
+    btn.textContent = 'Generate Jadwal';
+  });
+</script>
+</body>
+</html>
