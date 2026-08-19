@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AKA Futsal Camp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10131f; --surface:#1b2036; --surface-2:#232a45; --line:#2c3355;
+    --amber:#f5a623; --chalk:#f2f3f5; --text-secondary:#8b90a8; --success:#34d399;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(circle at 50% 0%, rgba(245,166,35,0.08), transparent 55%),var(--bg);
+    color:var(--chalk);
+    font-family:'Manrope',sans-serif;
+    min-height:100vh;
+    padding:0 0 60px;
+  }
+  h1,h2,h3{font-family:'Oswald',sans-serif;text-transform:uppercase;margin:0;}
+  p{line-height:1.6;}
+  .wrap{max-width:520px;margin:0 auto;padding:0 16px;}
+
+  .hero{text-align:center;padding:40px 16px 28px;}
+  .hero img.logo{width:88px;margin-bottom:14px;}
+  .hero .eyebrow{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:3px;color:var(--amber);text-transform:uppercase;display:block;margin-bottom:8px;}
+  .hero h1{font-size:clamp(28px,7vw,38px);letter-spacing:1px;line-height:1.05;}
+  .hero h1 span{color:var(--amber);}
+  .hero .sub{color:var(--text-secondary);font-size:14px;margin-top:10px;}
+
+  .badge-row{display:flex;justify-content:center;margin-top:16px;}
+  .badge{background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:6px 14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--amber);letter-spacing:1px;}
+
+  .about-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:24px;}
+  .about-card p{color:var(--text-secondary);font-size:13px;margin:0;}
+  .about-card p strong{color:var(--chalk);}
+
+  .section-title{display:flex;align-items:center;gap:10px;margin:28px 0 14px;}
+  .section-title h2{font-size:15px;color:var(--text-secondary);letter-spacing:2px;}
+  .section-title .line{flex:1;height:1px;background:var(--line);}
+
+  .vm-grid{display:grid;grid-template-columns:1fr;gap:12px;}
+  .vm-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;}
+  .vm-card h3{font-size:14px;color:var(--amber);margin-bottom:8px;}
+  .vm-card p{color:var(--text-secondary);font-size:13px;margin:0;}
+  .vm-card ul{margin:0;padding-left:18px;color:var(--text-secondary);font-size:13px;}
+  .vm-card li{margin-bottom:6px;}
+  .vm-card li:last-child{margin-bottom:0;}
+
+  .sesi-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px;cursor:pointer;}
+  .sesi-card .head{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;}
+  .sesi-card .head h3{font-size:16px;}
+  .sesi-card .head-right{display:flex;align-items:center;gap:10px;}
+  .sesi-card .kap{font-family:'Space Mono',monospace;font-size:12px;color:var(--amber);}
+  .sesi-card .chevron{color:var(--text-secondary);font-size:12px;transition:transform .2s;}
+  .sesi-card.open .chevron{transform:rotate(180deg);}
+  .sesi-card .names{max-height:0;overflow:hidden;transition:max-height .25s ease;border-top:0 solid var(--line);}
+  .sesi-card.open .names{max-height:500px;border-top-width:1px;}
+  .names-inner{padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px;}
+  .name-pill{background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12px;color:var(--chalk);}
+  .empty-sesi{padding:14px 18px;color:var(--text-secondary);font-size:13px;}
+
+  .loading, .no-sesi{text-align:center;color:var(--text-secondary);font-size:13px;padding:30px 16px;}
+
+  .social-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:6px;}
+  .social-link{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;text-decoration:none;color:var(--chalk);font-size:13px;font-weight:600;}
+  .social-link:hover{border-color:var(--amber);}
+
+  .cta-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;text-align:center;margin-top:30px;}
+  .cta-box p{color:var(--text-secondary);font-size:13px;margin:0 0 14px;}
+  .cta-btn{display:inline-block;background:var(--amber);color:#1a1200;text-decoration:none;border-radius:8px;padding:13px 24px;font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:1px;}
+  .cta-btn:hover{filter:brightness(1.08);}
+
+  .footer-note{text-align:center;color:var(--text-secondary);font-size:11px;font-family:'Space Mono',monospace;margin-top:36px;letter-spacing:1px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <img class="logo" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
+    <span class="eyebrow">Program Pembinaan</span>
+    <h1>AKA <span>Futsal Camp</span></h1>
+    <p class="sub">Fase awal pencarian bakat — cikal bakal AKA Futsal Club</p>
+    <div class="badge-row"><span class="badge">MUSIM SELEKSI SEDANG BERJALAN</span></div>
+  </div>
+
+  <div class="about-card">
+    <p><strong>AKA Futsal Camp</strong> adalah program latihan futsal untuk anak & remaja di Probolinggo, sekaligus proses awal pencarian bakat sebelum resmi menjadi <strong>AKA Futsal Club</strong>. Tiap peserta dilatih rutin dan dinilai lewat musim seleksi bulanan menuju skuad inti.</p>
+  </div>
+
+  <div class="section-title"><h2>Visi & Misi</h2><div class="line"></div></div>
+  <div class="vm-grid" id="visiMisiContainer">
+    <div class="loading">Memuat...</div>
+  </div>
+
+  <div class="section-title"><h2>Sesi Latihan</h2><div class="line"></div></div>
+  <div id="sesiContainer">
+    <div class="loading">Memuat jadwal...</div>
+  </div>
+
+  <div class="section-title"><h2>Ikuti Kami</h2><div class="line"></div></div>
+  <div class="social-row" id="socialContainer"></div>
+
+  <div class="cta-box">
+    <p>Belum terdaftar? Gabung sekarang, kuota terbatas per sesi.</p>
+    <a class="cta-btn" href="form_siswa.html">Daftar Sekarang</a>
+  </div>
+
+  <div class="footer-note">AKA FUTSAL CAMP · UPDATE OTOMATIS</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWg3d1qtHFEwsN-GLakSDIvb-Wjbo7cIQ",
+    authDomain: "aka-futsal-camp.firebaseapp.com",
+    projectId: "aka-futsal-camp",
+    storageBucket: "aka-futsal-camp.firebasestorage.app",
+    messagingSenderId: "721774551002",
+    appId: "1:721774551002:web:bcd2e47b06d61daf626ae3"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  const SOCIAL_META = {
+    instagram: { label: 'Instagram', icon: 'IG' },
+    tiktok: { label: 'TikTok', icon: 'TT' },
+    facebook: { label: 'Facebook', icon: 'FB' },
+    youtube: { label: 'YouTube', icon: 'YT' }
+  };
+
+  async function loadPengaturan() {
+    const vmContainer = document.getElementById('visiMisiContainer');
+    const socialContainer = document.getElementById('socialContainer');
+    try {
+      const doc = await db.collection('pengaturan').doc('umum').get();
+      const data = doc.exists ? doc.data() : {};
+
+      vmContainer.innerHTML = '';
+      if (data.visi) {
+        vmContainer.innerHTML += `<div class="vm-card"><h3>Visi</h3><p>${escapeHtml(data.visi)}</p></div>`;
+      }
+      if (data.misi && data.misi.length) {
+        const items = data.misi.map(m => `<li>${escapeHtml(m)}</li>`).join('');
+        vmContainer.innerHTML += `<div class="vm-card"><h3>Misi</h3><ul>${items}</ul></div>`;
+      }
+      if (!data.visi && !(data.misi && data.misi.length)) {
+        vmContainer.innerHTML = '<div class="loading">Visi & misi belum ditambahkan.</div>';
+      }
+
+      socialContainer.innerHTML = '';
+      let anySocial = false;
+      Object.keys(SOCIAL_META).forEach(key => {
+        if (data[key]) {
+          anySocial = true;
+          const meta = SOCIAL_META[key];
+          const a = document.createElement('a');
+          a.href = data[key];
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.className = 'social-link';
+          a.innerHTML = `<span>${meta.icon}</span><span>${meta.label}</span>`;
+          socialContainer.appendChild(a);
+        }
+      });
+      if (!anySocial) {
+        socialContainer.innerHTML = '<div class="loading">Sosial media segera hadir.</div>';
+      }
+    } catch (err) {
+      console.error(err);
+      vmContainer.innerHTML = '';
+      socialContainer.innerHTML = '';
+    }
+  }
+
+  async function loadJadwal() {
+    const container = document.getElementById('sesiContainer');
+    try {
+      const [sesiSnap, siswaSnap] = await Promise.all([
+        db.collection('sesi_latihan').orderBy('createdAt', 'asc').get(),
+        db.collection('futsal_siswa').get()
+      ]);
+
+      const sesiList = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const siswaList = siswaSnap.docs.map(d => d.data());
+
+      if (sesiList.length === 0) {
+        container.innerHTML = '<div class="no-sesi">Jadwal belum diumumkan, pantau terus ya.</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      sesiList.forEach(sesi => {
+        const anggota = siswaList.filter(s => s.sesi === sesi.label);
+        const card = document.createElement('div');
+        card.className = 'sesi-card';
+        card.innerHTML = `
+          <div class="head">
+            <h3>${escapeHtml(sesi.label)}</h3>
+            <div class="head-right">
+              <span class="kap">${anggota.length}/${sesi.kapasitas}</span>
+              <span class="chevron">▾</span>
+            </div>
+          </div>
+          <div class="names"><div class="names-inner"></div></div>
+        `;
+        const namesInner = card.querySelector('.names-inner');
+        if (anggota.length === 0) {
+          namesInner.outerHTML = '<div class="empty-sesi">Belum ada peserta</div>';
+        } else {
+          anggota.forEach(s => {
+            const pill = document.createElement('span');
+            pill.className = 'name-pill';
+            pill.textContent = s.nama || '(tanpa nama)';
+            namesInner.appendChild(pill);
+          });
+        }
+        card.querySelector('.head').addEventListener('click', () => card.classList.toggle('open'));
+        container.appendChild(card);
+      });
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = '<div class="no-sesi">Gagal memuat jadwal, coba refresh halaman.</div>';
+    }
+  }
+
+  loadPengaturan();
+  loadJadwal();
+</script>
+</body>
+</html>
