@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Aka Futsal Camp</title>
+<title>Admin - Futsal Camp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -106,7 +106,7 @@
   <div class="login-box">
     <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
     <span class="eyebrow">Akses Terbatas</span>
-    <h1>Admin Aka Futsal Camp</h1>
+    <h1>Admin Futsal Camp</h1>
     <div class="field">
       <label>Email</label>
       <input type="email" id="loginEmail" placeholder="admin@email.com" autocomplete="username">
@@ -125,7 +125,7 @@
     <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
     <div class="titles">
       <span class="eyebrow">Admin Panel</span>
-      <h1>Aka Futsal Camp</h1>
+      <h1>AK Futsal Camp</h1>
     </div>
     <button class="logout-btn" id="logoutBtn">Keluar</button>
   </div>
@@ -156,10 +156,12 @@
       </div>
       <div id="sesiList"></div>
       <div class="add-sesi-form">
-        <input type="text" id="sesiLabel" placeholder="cth. Selasa, 25 Agustus / Rabu Sore">
+        <input type="date" id="sesiTanggal">
+        <input type="text" id="sesiKeterangan" placeholder="Keterangan (opsional, cth. Sore)">
         <input type="number" id="sesiKapasitas" placeholder="Kapasitas" value="25" min="1">
         <button class="btn btn-secondary" id="btnTambahSesi">+ Tambah Sesi</button>
       </div>
+      <div class="status-line" id="sesiPreview" style="text-align:left;margin-top:8px;"></div>
     </div>
 
     <div class="section-head">
@@ -389,13 +391,38 @@
     await loadAll();
   }
 
+  const NAMA_HARI = ['Minggu','Senin','Selasa','Rabu','Kamis',"Jum'at",'Sabtu'];
+  const NAMA_BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+  function formatTanggalIndo(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return `${NAMA_HARI[d.getDay()]}, ${d.getDate()} ${NAMA_BULAN[d.getMonth()]}`;
+  }
+
+  const sesiTanggalInput = document.getElementById('sesiTanggal');
+  const sesiKeteranganInput = document.getElementById('sesiKeterangan');
+  const sesiPreview = document.getElementById('sesiPreview');
+
+  function updateSesiPreview() {
+    const formatted = formatTanggalIndo(sesiTanggalInput.value);
+    const ket = sesiKeteranganInput.value.trim();
+    sesiPreview.textContent = formatted ? ('Label sesi: ' + formatted + (ket ? ' (' + ket + ')' : '')) : '';
+  }
+  sesiTanggalInput.addEventListener('change', updateSesiPreview);
+  sesiKeteranganInput.addEventListener('input', updateSesiPreview);
+
   document.getElementById('btnTambahSesi').addEventListener('click', async () => {
-    const label = document.getElementById('sesiLabel').value.trim();
+    const tanggal = sesiTanggalInput.value;
+    const ket = sesiKeteranganInput.value.trim();
     const kap = Number(document.getElementById('sesiKapasitas').value) || 25;
-    if (!label) { alert('Isi nama/tanggal sesi dulu'); return; }
-    await db.collection(SESI_COL).add({ label, kapasitas: kap, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    document.getElementById('sesiLabel').value = '';
+    if (!tanggal) { alert('Pilih tanggal sesi dulu'); return; }
+    const label = formatTanggalIndo(tanggal) + (ket ? ' (' + ket + ')' : '');
+    await db.collection(SESI_COL).add({ label, tanggal, kapasitas: kap, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    sesiTanggalInput.value = '';
+    sesiKeteranganInput.value = '';
     document.getElementById('sesiKapasitas').value = 25;
+    sesiPreview.textContent = '';
     await loadAll();
   });
 
