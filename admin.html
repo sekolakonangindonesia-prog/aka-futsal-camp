@@ -104,7 +104,7 @@
 
 <div id="loginScreen">
   <div class="login-box">
-    <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
+    <img class="logo" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
     <span class="eyebrow">Akses Terbatas</span>
     <h1>Admin AKA Futsal Camp</h1>
     <div class="field">
@@ -122,7 +122,7 @@
 
 <div id="dashboard">
   <div class="topbar">
-    <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
+    <img class="logo" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
     <div class="titles">
       <span class="eyebrow">Admin Panel</span>
       <h1>AKA Futsal Camp</h1>
@@ -133,6 +133,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="siswaTab">Kelola Siswa</button>
     <button class="tab-btn" data-tab="jadwalTab">Jadwal Latihan</button>
+    <button class="tab-btn" data-tab="laporanTab">Laporan Keuangan</button>
     <button class="tab-btn" data-tab="pengaturanTab">Pengaturan</button>
   </div>
 
@@ -153,7 +154,7 @@
   <div class="tab-panel" id="jadwalTab">
     <div class="sesi-config">
       <div class="section-head" style="margin-bottom:8px;">
-        <h2>Sesi Latihan Minggu Ini</h2>
+        <h2>Sesi Latihan</h2>
       </div>
       <div id="sesiList"></div>
       <div class="add-sesi-form">
@@ -166,16 +167,34 @@
     </div>
 
     <div class="section-head">
-      <h2>Generate Jadwal</h2>
-      <button class="btn" id="generateBtn">Generate Jadwal</button>
+      <h2>Generate Kehadiran</h2>
+      <button class="btn" id="generateBtn">Generate Otomatis</button>
     </div>
+    <p style="color:var(--text-secondary);font-size:12px;margin:-8px 0 16px;">Isi siswa yang belum ikut sesi manapun minggu ini ke sesi yang masih ada slot kosong</p>
     <div class="status-line" id="generateStatus"></div>
 
     <div class="session-grid" id="sessionGrid" style="margin-top:16px;"></div>
+  </div>
 
+  <div class="tab-panel" id="laporanTab">
+    <div class="section-head">
+      <h2>Laporan Keuangan</h2>
+    </div>
+    <div class="sesi-config" style="margin-bottom:20px;">
+      <div class="add-sesi-form" style="margin-top:0;">
+        <input type="month" id="laporanBulan">
+        <button class="btn btn-secondary" id="btnMuatLaporan">Muat Laporan</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Total kehadiran</div><div class="value" id="lapTotal">-</div></div>
+      <div class="stat-card"><div class="label">Sudah bayar</div><div class="value" id="lapLunas">-</div></div>
+      <div class="stat-card"><div class="label">Belum bayar</div><div class="value" id="lapBelum">-</div></div>
+      <div class="stat-card"><div class="label">Pendapatan</div><div class="value" id="lapPendapatan" style="font-size:18px;">-</div></div>
+    </div>
     <div class="session-card">
-      <div class="head"><h2>Belum dijadwal / Batal</h2><span class="count" id="countCadangan">0</span></div>
-      <div id="listCadangan"></div>
+      <div class="head"><h2>Rekap per Sesi</h2></div>
+      <div id="lapPerSesi"></div>
     </div>
   </div>
 
@@ -282,14 +301,18 @@
 
   let siswaCache = [];
   let sesiCache = [];
+  let kehadiranCache = [];
+  const HADIR_COL = "kehadiran";
 
   async function loadAll() {
-    const [siswaSnap, sesiSnap] = await Promise.all([
+    const [siswaSnap, sesiSnap, hadirSnap] = await Promise.all([
       db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
-      db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
+      db.collection(SESI_COL).orderBy('createdAt', 'asc').get(),
+      db.collection(HADIR_COL).get()
     ]);
     siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    kehadiranCache = hadirSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderSiswaTab();
     renderJadwalTab();
 
@@ -340,7 +363,8 @@
   }
 
   function renderSiswaTab() {
-    const dijadwal = siswaCache.filter(s => s.sesi && s.sesi !== 'Batal').length;
+    const idsIkutMingguIni = new Set(kehadiranCache.map(k => k.siswa_id));
+    const dijadwal = siswaCache.filter(s => idsIkutMingguIni.has(s.id)).length;
     document.getElementById('statTotal').textContent = siswaCache.length;
     document.getElementById('statDijadwal').textContent = dijadwal;
     document.getElementById('statBelum').textContent = siswaCache.length - dijadwal;
@@ -352,13 +376,14 @@
       return;
     }
     siswaCache.forEach(s => {
+      const jumlahHadir = kehadiranCache.filter(k => k.siswa_id === s.id).length;
       const row = document.createElement('div');
       row.className = 'siswa-item';
       row.innerHTML = `
         ${avatarHtml(s)}
         <div class="info">
           <div class="nama">${escapeHtml(s.nama)}</div>
-          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.sesi ? ' · ' + escapeHtml(s.sesi) : ' · belum dijadwal'}</div>
+          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''} · ${jumlahHadir} sesi tercatat</div>
         </div>
         <div class="actions">
           <button class="icon-btn" data-edit="${s.id}">Edit</button>
