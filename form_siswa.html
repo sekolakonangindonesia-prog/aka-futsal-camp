@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daftar Futsal Camp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10131f;
+    --surface:#1b2036;
+    --surface-2:#232a45;
+    --line:#2c3355;
+    --amber:#f5a623;
+    --amber-dim:#c98a1e;
+    --chalk:#f2f3f5;
+    --text-secondary:#8b90a8;
+    --success:#34d399;
+    --danger:#f26b6b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 50% 0%, rgba(245,166,35,0.08), transparent 55%),
+      var(--bg);
+    color:var(--chalk);
+    font-family:'Manrope',sans-serif;
+    min-height:100vh;
+    padding:32px 16px 64px;
+  }
+  .wrap{max-width:480px;margin:0 auto;}
+
+  /* Scoreboard hero */
+  .hero{
+    text-align:center;
+    margin-bottom:32px;
+    position:relative;
+  }
+  .hero .eyebrow{
+    font-family:'Space Mono',monospace;
+    font-size:12px;
+    letter-spacing:3px;
+    color:var(--amber);
+    text-transform:uppercase;
+    display:block;
+    margin-bottom:10px;
+    opacity:0.9;
+  }
+  .hero h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    font-size:clamp(32px,8vw,44px);
+    text-transform:uppercase;
+    letter-spacing:1px;
+    margin:0;
+    line-height:1.05;
+  }
+  .hero h1 span{color:var(--amber);}
+  .hero .sub{
+    color:var(--text-secondary);
+    font-size:14px;
+    margin-top:10px;
+  }
+  .hero .clock{
+    font-family:'Space Mono',monospace;
+    font-size:11px;
+    color:var(--text-secondary);
+    margin-top:18px;
+    letter-spacing:2px;
+  }
+  .hero .clock b{color:var(--chalk);}
+
+  form{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:24px 20px;
+  }
+  .field{margin-bottom:18px;}
+  .field:last-of-type{margin-bottom:0;}
+  label{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:7px;
+    color:var(--chalk);
+  }
+  label .opt{
+    font-family:'Space Mono',monospace;
+    font-size:10px;
+    font-weight:400;
+    color:var(--text-secondary);
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  input[type=text], input[type=number], input[type=date]{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px 13px;
+    color:var(--chalk);
+    font-family:'Manrope',sans-serif;
+    font-size:15px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  input:focus{border-color:var(--amber);}
+  input::placeholder{color:#565d80;}
+
+  .photo-box{
+    display:flex;
+    align-items:center;
+    gap:14px;
+  }
+  .photo-preview{
+    width:64px;height:64px;
+    border-radius:10px;
+    background:var(--surface-2);
+    border:1px dashed var(--line);
+    flex-shrink:0;
+    overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text-secondary);
+    font-size:10px;
+    text-align:center;
+  }
+  .photo-preview img{width:100%;height:100%;object-fit:cover;}
+  .photo-btn{
+    flex:1;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:12px;
+    color:var(--text-secondary);
+    font-size:13px;
+    cursor:pointer;
+    text-align:center;
+  }
+  .photo-btn:hover{border-color:var(--amber);color:var(--chalk);}
+  input[type=file]{display:none;}
+
+  .submit-btn{
+    width:100%;
+    margin-top:22px;
+    background:var(--amber);
+    color:#1a1200;
+    border:none;
+    border-radius:8px;
+    padding:15px;
+    font-family:'Oswald',sans-serif;
+    font-weight:600;
+    font-size:15px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    cursor:pointer;
+    transition:filter .15s, transform .1s;
+  }
+  .submit-btn:hover{filter:brightness(1.08);}
+  .submit-btn:active{transform:scale(0.98);}
+  .submit-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+  .error-msg{
+    color:var(--danger);
+    font-size:12px;
+    margin-top:6px;
+    display:none;
+  }
+  .field.invalid input{border-color:var(--danger);}
+  .field.invalid .error-msg{display:block;}
+
+  .status-line{
+    text-align:center;
+    font-size:12px;
+    color:var(--text-secondary);
+    margin-top:14px;
+    font-family:'Space Mono',monospace;
+  }
+
+  /* Success state */
+  .success-screen{
+    display:none;
+    text-align:center;
+    padding:48px 20px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+  }
+  .success-badge{
+    width:56px;height:56px;
+    border-radius:50%;
+    background:rgba(52,211,153,0.12);
+    border:1px solid var(--success);
+    color:var(--success);
+    font-size:26px;
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 18px;
+  }
+  .success-screen h2{
+    font-family:'Oswald',sans-serif;
+    text-transform:uppercase;
+    font-size:22px;
+    margin:0 0 8px;
+  }
+  .success-screen p{
+    color:var(--text-secondary);
+    font-size:14px;
+    line-height:1.5;
+    margin:0;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <img src="aka%20futsal%20camp.png" alt="AK Futsal Camp" style="width:96px;height:auto;margin-bottom:14px;">
+    <span class="eyebrow">Sesi Terbuka</span>
+    <h1>Daftar <span>Futsal Camp</span></h1>
+    <p class="sub">Isi data kamu di bawah — jadwal latihan akan diumumkan di grup WA</p>
+    <div class="clock">SELASA · KAMIS &nbsp;—&nbsp; <b>25</b> SISWA / SESI</div>
+  </div>
+
+  <form id="regForm" novalidate>
+    <div class="field" data-field="nama">
+      <label>Nama lengkap</label>
+      <input type="text" id="nama" placeholder="cth. Andi Saputra" autocomplete="name">
+      <div class="error-msg">Nama wajib diisi</div>
+    </div>
+
+    <div class="field" data-field="usia">
+      <label>Usia</label>
+      <input type="number" id="usia" placeholder="cth. 13" min="1" max="99">
+      <div class="error-msg">Usia wajib diisi</div>
+    </div>
+
+    <div class="field" data-field="ttl">
+      <label>Tempat, tanggal lahir</label>
+      <input type="text" id="ttl" placeholder="cth. Probolinggo, 12 Mei 2012">
+      <div class="error-msg">Tempat tanggal lahir wajib diisi</div>
+    </div>
+
+    <div class="field" data-field="foto">
+      <label>Foto</label>
+      <div class="photo-box">
+        <div class="photo-preview" id="photoPreview">Belum ada foto</div>
+        <label for="fotoInput" class="photo-btn" id="photoBtnLabel">Pilih foto</label>
+        <input type="file" id="fotoInput" accept="image/*" capture="environment">
+      </div>
+      <div class="error-msg">Foto wajib diupload</div>
+    </div>
+
+    <div class="field">
+      <label>Kelas <span class="opt">opsional</span></label>
+      <input type="text" id="kelas" placeholder="cth. 8B">
+    </div>
+
+    <div class="field">
+      <label>Asal sekolah <span class="opt">opsional</span></label>
+      <input type="text" id="sekolah" placeholder="cth. SMPN 1 Probolinggo">
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Daftar sekarang</button>
+    <div class="status-line" id="statusLine"></div>
+  </form>
+
+  <div class="success-screen" id="successScreen">
+    <div class="success-badge">✓</div>
+    <h2>Pendaftaran berhasil</h2>
+    <p>Data kamu sudah masuk. Pantau grup WA untuk pengumuman jadwal sesi latihanmu.</p>
+  </div>
+
+</div>
+
+<!-- Firebase (compat SDK, konsisten dengan platform YSKI) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  // TODO: ganti dengan config Firebase project YSKI yang sudah ada
+  // (bisa disalin dari file config yang sudah dipakai di admin.html / dashboard-tim.html)
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWg3d1qtHFEwsN-GLakSDIvb-Wjbo7cIQ",
+    authDomain: "aka-futsal-camp.firebaseapp.com",
+    projectId: "aka-futsal-camp",
+    storageBucket: "aka-futsal-camp.firebasestorage.app",
+    messagingSenderId: "721774551002",
+    appId: "1:721774551002:web:bcd2e47b06d61daf626ae3"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const COLLECTION = "futsal_siswa"; // ganti kalau mau nama koleksi lain
+
+  const form = document.getElementById('regForm');
+  const fotoInput = document.getElementById('fotoInput');
+  const photoPreview = document.getElementById('photoPreview');
+  const submitBtn = document.getElementById('submitBtn');
+  const statusLine = document.getElementById('statusLine');
+
+  let fotoBase64 = null;
+
+  // Kompres foto di sisi client sebelum disimpan sebagai base64
+  // (menghindari isu limit 1MB per dokumen Firestore, sesuai pola yang sudah dipakai di platform YSKI)
+  fotoInput.addEventListener('change', () => {
+    const file = fotoInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 640;
+        let { width, height } = img;
+        if (width > height && width > MAX_DIM) {
+          height = Math.round(height * (MAX_DIM / width));
+          width = MAX_DIM;
+        } else if (height > MAX_DIM) {
+          width = Math.round(width * (MAX_DIM / height));
+          height = MAX_DIM;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        fotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+        photoPreview.innerHTML = `<img src="${fotoBase64}" alt="preview">`;
+        clearFieldError('foto');
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function setFieldError(name, hasError) {
+    const el = document.querySelector(`[data-field="${name}"]`);
+    if (!el) return;
+    el.classList.toggle('invalid', hasError);
+  }
+  function clearFieldError(name) { setFieldError(name, false); }
+
+  function validate() {
+    const nama = document.getElementById('nama').value.trim();
+    const usia = document.getElementById('usia').value.trim();
+    const ttl = document.getElementById('ttl').value.trim();
+
+    let valid = true;
+    if (!nama) { setFieldError('nama', true); valid = false; } else clearFieldError('nama');
+    if (!usia) { setFieldError('usia', true); valid = false; } else clearFieldError('usia');
+    if (!ttl) { setFieldError('ttl', true); valid = false; } else clearFieldError('ttl');
+    if (!fotoBase64) { setFieldError('foto', true); valid = false; } else clearFieldError('foto');
+
+    return valid;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!validate()) {
+      statusLine.textContent = 'Lengkapi dulu data yang wajib diisi ya.';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Mengirim...';
+    statusLine.textContent = '';
+
+    const data = {
+      nama: document.getElementById('nama').value.trim(),
+      usia: Number(document.getElementById('usia').value.trim()),
+      tempat_tanggal_lahir: document.getElementById('ttl').value.trim(),
+      foto: fotoBase64,
+      kelas: document.getElementById('kelas').value.trim() || null,
+      sekolah: document.getElementById('sekolah').value.trim() || null,
+      status_bayar: 'belum_bayar',
+      metode_bayar: null,
+      sesi: null,
+      tanggal_daftar: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+      await db.collection(COLLECTION).add(data);
+      form.style.display = 'none';
+      document.getElementById('successScreen').style.display = 'block';
+    } catch (err) {
+      console.error(err);
+      statusLine.textContent = 'Gagal mengirim data, coba lagi.';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Daftar sekarang';
+    }
+  });
+</script>
+</body>
+</html>
