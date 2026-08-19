@@ -3,156 +3,110 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Futsal Camp</title>
+<title>Admin - Aka Futsal Camp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#10131f;
-    --surface:#1b2036;
-    --surface-2:#232a45;
-    --line:#2c3355;
-    --amber:#f5a623;
-    --chalk:#f2f3f5;
-    --text-secondary:#8b90a8;
-    --success:#34d399;
-    --danger:#f26b6b;
+    --bg:#10131f; --surface:#1b2036; --surface-2:#232a45; --line:#2c3355;
+    --amber:#f5a623; --chalk:#f2f3f5; --text-secondary:#8b90a8;
+    --success:#34d399; --danger:#f26b6b;
   }
   *{box-sizing:border-box;}
-  body{
-    margin:0;
-    background:
-      radial-gradient(circle at 50% 0%, rgba(245,166,35,0.06), transparent 55%),
-      var(--bg);
-    color:var(--chalk);
-    font-family:'Manrope',sans-serif;
-    min-height:100vh;
-  }
+  body{margin:0;background:radial-gradient(circle at 50% 0%, rgba(245,166,35,0.06), transparent 55%),var(--bg);color:var(--chalk);font-family:'Manrope',sans-serif;min-height:100vh;}
   h1,h2,h3{font-family:'Oswald',sans-serif;text-transform:uppercase;margin:0;}
+  img{max-width:100%;}
 
-  /* ---- Login screen ---- */
-  #loginScreen{
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:20px;
-  }
-  .login-box{
-    width:100%;max-width:360px;
-    background:var(--surface);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:28px 24px;
-  }
-  .login-box .eyebrow{
-    font-family:'Space Mono',monospace;
-    font-size:12px;letter-spacing:3px;color:var(--amber);
-    text-transform:uppercase;display:block;margin-bottom:8px;
-  }
-  .login-box h1{font-size:26px;margin-bottom:20px;}
-  .field{margin-bottom:16px;}
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .login-box{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 24px;text-align:center;}
+  .login-box img.logo{width:80px;margin:0 auto 14px;display:block;}
+  .login-box .eyebrow{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:3px;color:var(--amber);text-transform:uppercase;display:block;margin-bottom:8px;}
+  .login-box h1{font-size:24px;margin-bottom:20px;}
+  .field{margin-bottom:16px;text-align:left;}
   label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;}
-  input{
-    width:100%;background:var(--surface-2);border:1px solid var(--line);
-    border-radius:8px;padding:11px 12px;color:var(--chalk);
-    font-family:'Manrope',sans-serif;font-size:14px;outline:none;
-  }
-  input:focus{border-color:var(--amber);}
-  .btn{
-    background:var(--amber);color:#1a1200;border:none;border-radius:8px;
-    padding:13px;font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;
-    text-transform:uppercase;letter-spacing:1px;cursor:pointer;width:100%;
-  }
+  input,select,textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:11px 12px;color:var(--chalk);font-family:'Manrope',sans-serif;font-size:14px;outline:none;}
+  input:focus,select:focus{border-color:var(--amber);}
+  .btn{background:var(--amber);color:#1a1200;border:none;border-radius:8px;padding:12px 18px;font-family:'Oswald',sans-serif;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;}
   .btn:hover{filter:brightness(1.08);}
   .btn:disabled{opacity:0.5;cursor:not-allowed;}
-  .btn-secondary{
-    background:var(--surface-2);color:var(--chalk);border:1px solid var(--line);
-  }
+  .btn-secondary{background:var(--surface-2);color:var(--chalk);border:1px solid var(--line);}
+  .btn-full{width:100%;}
   #loginError{color:var(--danger);font-size:13px;margin-top:10px;display:none;}
 
-  /* ---- Dashboard ---- */
-  #dashboard{display:none;padding:24px 16px 64px;max-width:900px;margin:0 auto;}
-  .topbar{
-    display:flex;align-items:center;justify-content:space-between;
-    margin-bottom:24px;
-  }
-  .topbar .eyebrow{
-    font-family:'Space Mono',monospace;font-size:11px;letter-spacing:2px;
-    color:var(--amber);text-transform:uppercase;display:block;margin-bottom:4px;
-  }
-  .topbar h1{font-size:22px;}
-  .logout-btn{
-    background:none;border:1px solid var(--line);color:var(--text-secondary);
-    border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;
-    font-family:'Manrope',sans-serif;
-  }
+  #dashboard{display:none;}
+  .topbar{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:5;}
+  .topbar img.logo{width:36px;}
+  .topbar .titles{flex:1;}
+  .topbar .eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;display:block;}
+  .topbar h1{font-size:17px;}
+  .logout-btn{background:none;border:1px solid var(--line);color:var(--text-secondary);border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-family:'Manrope',sans-serif;}
   .logout-btn:hover{color:var(--chalk);border-color:var(--amber);}
 
-  .stats-row{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
-    gap:12px;margin-bottom:24px;
-  }
-  .stat-card{
-    background:var(--surface);border:1px solid var(--line);border-radius:12px;
-    padding:14px 16px;
-  }
+  .tabs{display:flex;gap:8px;padding:14px 20px 0;max-width:960px;margin:0 auto;}
+  .tab-btn{background:none;border:none;color:var(--text-secondary);font-family:'Oswald',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding:10px 4px;cursor:pointer;border-bottom:2px solid transparent;}
+  .tab-btn.active{color:var(--amber);border-bottom-color:var(--amber);}
+
+  .tab-panel{display:none;padding:20px;max-width:960px;margin:0 auto 60px;}
+  .tab-panel.active{display:block;}
+
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin-bottom:20px;}
+  .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
   .stat-card .label{font-size:12px;color:var(--text-secondary);}
-  .stat-card .value{font-family:'Oswald',sans-serif;font-size:26px;margin-top:2px;}
+  .stat-card .value{font-family:'Oswald',sans-serif;font-size:24px;margin-top:2px;}
 
-  .generate-box{
-    background:var(--surface);border:1px solid var(--line);border-radius:14px;
-    padding:20px;margin-bottom:24px;display:flex;align-items:center;
-    justify-content:space-between;gap:16px;flex-wrap:wrap;
-  }
-  .generate-box p{color:var(--text-secondary);font-size:13px;margin:4px 0 0;}
-  .generate-box .btn{width:auto;padding:12px 20px;}
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap;}
+  .section-head h2{font-size:16px;}
 
-  .session-grid{
-    display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;
-  }
-  @media (max-width:600px){.session-grid{grid-template-columns:1fr;}}
+  .siswa-table{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .siswa-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .siswa-item:last-child{border-bottom:none;}
+  .avatar{width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--surface-2);flex-shrink:0;}
+  .avatar-placeholder{width:38px;height:38px;border-radius:8px;background:var(--surface-2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-secondary);}
+  .siswa-item .info{flex:1;min-width:0;}
+  .siswa-item .nama{font-weight:600;font-size:14px;}
+  .siswa-item .meta{font-size:12px;color:var(--text-secondary);}
+  .siswa-item .actions{display:flex;gap:6px;}
+  .icon-btn{background:none;border:1px solid var(--line);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;font-family:'Manrope',sans-serif;}
+  .icon-btn:hover{color:var(--chalk);border-color:var(--amber);}
+  .empty-state{padding:24px 16px;text-align:center;color:var(--text-secondary);font-size:13px;}
 
-  .session-card{
-    background:var(--surface);border:1px solid var(--line);border-radius:14px;
-    overflow:hidden;
-  }
-  .session-card .head{
-    padding:14px 16px;border-bottom:1px solid var(--line);
-    display:flex;align-items:center;justify-content:space-between;
-  }
-  .session-card .head h2{font-size:15px;}
-  .session-card .head .count{
-    font-family:'Space Mono',monospace;font-size:12px;color:var(--amber);
-  }
-  .siswa-row{
-    display:flex;align-items:center;gap:10px;
-    padding:10px 16px;border-bottom:1px solid var(--line);
-    font-size:13px;
-  }
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:20;align-items:center;justify-content:center;padding:16px;}
+  .overlay.active{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;}
+  .modal h2{font-size:16px;margin-bottom:16px;}
+  .modal-actions{display:flex;gap:10px;margin-top:18px;}
+  .modal-actions .btn{flex:1;}
+  .photo-preview{width:64px;height:64px;border-radius:10px;background:var(--surface-2);border:1px dashed var(--line);margin-bottom:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-secondary);text-align:center;}
+  .photo-preview img{width:100%;height:100%;object-fit:cover;}
+
+  .sesi-config{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:20px;}
+  .sesi-list-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .sesi-list-row:last-of-type{border-bottom:none;}
+  .sesi-list-row .label{flex:1;font-weight:600;}
+  .sesi-list-row .kap{color:var(--text-secondary);font-family:'Space Mono',monospace;font-size:12px;}
+  .add-sesi-form{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .add-sesi-form input{width:auto;flex:1;min-width:120px;}
+  .add-sesi-form input#sesiKapasitas{max-width:90px;}
+
+  .session-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:20px;}
+  .session-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .session-card .head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+  .session-card .head h2{font-size:14px;}
+  .session-card .head .count{font-family:'Space Mono',monospace;font-size:11px;color:var(--amber);}
+  .siswa-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13px;}
   .siswa-row:last-child{border-bottom:none;}
   .siswa-row .nama{flex:1;}
-  .siswa-row select{
-    background:var(--surface-2);border:1px solid var(--line);color:var(--chalk);
-    border-radius:6px;padding:5px 8px;font-size:12px;font-family:'Manrope',sans-serif;
-  }
-  .empty-state{
-    padding:24px 16px;text-align:center;color:var(--text-secondary);font-size:13px;
-  }
-  .cadangan-card{
-    background:var(--surface);border:1px solid var(--line);border-radius:14px;
-    overflow:hidden;
-  }
+  .siswa-row select{width:auto;padding:5px 8px;font-size:12px;}
   .status-line{text-align:center;font-size:12px;color:var(--text-secondary);margin-top:10px;}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="loginScreen">
   <div class="login-box">
+    <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
     <span class="eyebrow">Akses Terbatas</span>
-    <h1>Admin Futsal Camp</h1>
+    <h1>Admin Aka Futsal Camp</h1>
     <div class="field">
       <label>Email</label>
       <input type="email" id="loginEmail" placeholder="admin@email.com" autocomplete="username">
@@ -161,55 +115,94 @@
       <label>Password</label>
       <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
     </div>
-    <button class="btn" id="loginBtn">Masuk</button>
+    <button class="btn btn-full" id="loginBtn">Masuk</button>
     <div id="loginError"></div>
   </div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard">
   <div class="topbar">
-    <div>
+    <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
+    <div class="titles">
       <span class="eyebrow">Admin Panel</span>
-      <h1>Jadwal Latihan</h1>
+      <h1>Aka Futsal Camp</h1>
     </div>
     <button class="logout-btn" id="logoutBtn">Keluar</button>
   </div>
 
-  <div class="stats-row">
-    <div class="stat-card"><div class="label">Total siswa</div><div class="value" id="statTotal">-</div></div>
-    <div class="stat-card"><div class="label">Selasa</div><div class="value" id="statSelasa">-</div></div>
-    <div class="stat-card"><div class="label">Kamis</div><div class="value" id="statKamis">-</div></div>
-    <div class="stat-card"><div class="label">Belum dijadwal</div><div class="value" id="statBelum">-</div></div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="siswaTab">Kelola Siswa</button>
+    <button class="tab-btn" data-tab="jadwalTab">Jadwal Latihan</button>
   </div>
 
-  <div class="generate-box">
-    <div>
-      <h2 style="font-size:14px;">Generate jadwal otomatis</h2>
-      <p>Bagi siswa yang belum dijadwal ke sesi Selasa/Kamis (maks 25 per sesi)</p>
+  <div class="tab-panel active" id="siswaTab">
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Total siswa</div><div class="value" id="statTotal">-</div></div>
+      <div class="stat-card"><div class="label">Sudah dijadwal</div><div class="value" id="statDijadwal">-</div></div>
+      <div class="stat-card"><div class="label">Belum dijadwal</div><div class="value" id="statBelum">-</div></div>
     </div>
-    <button class="btn" id="generateBtn">Generate Jadwal</button>
-  </div>
-  <div class="status-line" id="generateStatus"></div>
 
-  <div class="session-grid">
+    <div class="section-head">
+      <h2>Daftar Siswa</h2>
+      <button class="btn" id="btnTambahSiswa">+ Tambah Siswa</button>
+    </div>
+    <div class="siswa-table" id="siswaTable"></div>
+  </div>
+
+  <div class="tab-panel" id="jadwalTab">
+    <div class="sesi-config">
+      <div class="section-head" style="margin-bottom:8px;">
+        <h2>Sesi Latihan Minggu Ini</h2>
+      </div>
+      <div id="sesiList"></div>
+      <div class="add-sesi-form">
+        <input type="text" id="sesiLabel" placeholder="cth. Selasa, 25 Agustus / Rabu Sore">
+        <input type="number" id="sesiKapasitas" placeholder="Kapasitas" value="25" min="1">
+        <button class="btn btn-secondary" id="btnTambahSesi">+ Tambah Sesi</button>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <h2>Generate Jadwal</h2>
+      <button class="btn" id="generateBtn">Generate Jadwal</button>
+    </div>
+    <div class="status-line" id="generateStatus"></div>
+
+    <div class="session-grid" id="sessionGrid" style="margin-top:16px;"></div>
+
     <div class="session-card">
-      <div class="head"><h2>Selasa</h2><span class="count" id="countSelasa">0/25</span></div>
-      <div id="listSelasa"></div>
+      <div class="head"><h2>Belum dijadwal / Batal</h2><span class="count" id="countCadangan">0</span></div>
+      <div id="listCadangan"></div>
     </div>
-    <div class="session-card">
-      <div class="head"><h2>Kamis</h2><span class="count" id="countKamis">0/25</span></div>
-      <div id="listKamis"></div>
-    </div>
-  </div>
-
-  <div class="cadangan-card">
-    <div class="head"><h2>Belum dijadwal / Batal</h2><span class="count" id="countCadangan">0</span></div>
-    <div id="listCadangan"></div>
   </div>
 </div>
 
-<!-- Firebase -->
+<div class="overlay" id="siswaModalOverlay">
+  <div class="modal">
+    <h2 id="siswaModalTitle">Tambah Siswa</h2>
+    <div class="field">
+      <div class="photo-preview" id="modalPhotoPreview">Belum ada foto</div>
+      <label for="modalFotoInput" class="btn btn-secondary" style="display:inline-block;font-size:12px;padding:8px 14px;">Pilih foto</label>
+      <input type="file" id="modalFotoInput" accept="image/*" style="display:none;">
+    </div>
+    <div class="field"><label>Nama lengkap</label><input type="text" id="modalNama"></div>
+    <div class="field"><label>Usia</label><input type="number" id="modalUsia" min="1"></div>
+    <div class="field"><label>Tempat, tanggal lahir</label><input type="text" id="modalTtl"></div>
+    <div class="field"><label>Kelas (opsional)</label><input type="text" id="modalKelas"></div>
+    <div class="field"><label>Asal sekolah (opsional)</label><input type="text" id="modalSekolah"></div>
+    <div class="field"><label>Status bayar</label>
+      <select id="modalStatusBayar">
+        <option value="belum_bayar">Belum bayar</option>
+        <option value="lunas">Lunas</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnBatalSiswa">Batal</button>
+      <button class="btn" id="btnSimpanSiswa">Simpan</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -225,150 +218,307 @@
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
-  const COLLECTION = "futsal_siswa";
-  const MAX_PER_SESI = 25;
+  const SISWA_COL = "futsal_siswa";
+  const SESI_COL = "sesi_latihan";
 
   const loginScreen = document.getElementById('loginScreen');
   const dashboard = document.getElementById('dashboard');
   const loginBtn = document.getElementById('loginBtn');
-  const logoutBtn = document.getElementById('logoutBtn');
   const loginError = document.getElementById('loginError');
 
   loginBtn.addEventListener('click', async () => {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     loginError.style.display = 'none';
-    loginBtn.disabled = true;
-    loginBtn.textContent = 'Memproses...';
-    try {
-      await auth.signInWithEmailAndPassword(email, password);
-    } catch (err) {
-      loginError.textContent = 'Login gagal: email atau password salah.';
-      loginError.style.display = 'block';
-    }
-    loginBtn.disabled = false;
-    loginBtn.textContent = 'Masuk';
+    loginBtn.disabled = true; loginBtn.textContent = 'Memproses...';
+    try { await auth.signInWithEmailAndPassword(email, password); }
+    catch (err) { loginError.textContent = 'Login gagal: email atau password salah.'; loginError.style.display = 'block'; }
+    loginBtn.disabled = false; loginBtn.textContent = 'Masuk';
   });
-
-  logoutBtn.addEventListener('click', () => auth.signOut());
+  document.getElementById('logoutBtn').addEventListener('click', () => auth.signOut());
 
   auth.onAuthStateChanged((user) => {
     if (user) {
       loginScreen.style.display = 'none';
       dashboard.style.display = 'block';
-      loadSiswa();
+      loadAll();
     } else {
       loginScreen.style.display = 'flex';
       dashboard.style.display = 'none';
     }
   });
 
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
   let siswaCache = [];
+  let sesiCache = [];
 
-  async function loadSiswa() {
-    const snap = await db.collection(COLLECTION).orderBy('tanggal_daftar', 'asc').get();
-    siswaCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    render();
-  }
-
-  function render() {
-    const selasa = siswaCache.filter(s => s.sesi === 'Selasa');
-    const kamis = siswaCache.filter(s => s.sesi === 'Kamis');
-    const cadangan = siswaCache.filter(s => !s.sesi || s.sesi === 'Batal');
-
-    document.getElementById('statTotal').textContent = siswaCache.length;
-    document.getElementById('statSelasa').textContent = selasa.length;
-    document.getElementById('statKamis').textContent = kamis.length;
-    document.getElementById('statBelum').textContent = cadangan.length;
-
-    document.getElementById('countSelasa').textContent = selasa.length + '/' + MAX_PER_SESI;
-    document.getElementById('countKamis').textContent = kamis.length + '/' + MAX_PER_SESI;
-    document.getElementById('countCadangan').textContent = cadangan.length;
-
-    renderList('listSelasa', selasa);
-    renderList('listKamis', kamis);
-    renderList('listCadangan', cadangan, true);
-  }
-
-  function renderList(containerId, list, isCadangan) {
-    const el = document.getElementById(containerId);
-    el.innerHTML = '';
-    if (list.length === 0) {
-      el.innerHTML = '<div class="empty-state">Belum ada siswa</div>';
-      return;
-    }
-    list.forEach(s => {
-      const row = document.createElement('div');
-      row.className = 'siswa-row';
-      row.innerHTML = `
-        <span class="nama">${escapeHtml(s.nama || '(tanpa nama)')}</span>
-        <select data-id="${s.id}">
-          <option value="Selasa" ${s.sesi === 'Selasa' ? 'selected' : ''}>Selasa</option>
-          <option value="Kamis" ${s.sesi === 'Kamis' ? 'selected' : ''}>Kamis</option>
-          <option value="Batal" ${s.sesi === 'Batal' ? 'selected' : ''}>Batal</option>
-          ${!s.sesi ? '<option value="" selected disabled>Belum dijadwal</option>' : ''}
-        </select>
-      `;
-      el.appendChild(row);
-    });
-    el.querySelectorAll('select').forEach(sel => {
-      sel.addEventListener('change', async (e) => {
-        const id = e.target.getAttribute('data-id');
-        const newSesi = e.target.value;
-        await db.collection(COLLECTION).doc(id).update({ sesi: newSesi });
-        const s = siswaCache.find(x => x.id === id);
-        if (s) s.sesi = newSesi;
-        render();
-      });
-    });
+  async function loadAll() {
+    const [siswaSnap, sesiSnap] = await Promise.all([
+      db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
+      db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
+    ]);
+    siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderSiswaTab();
+    renderJadwalTab();
   }
 
   function escapeHtml(str) {
     const div = document.createElement('div');
-    div.textContent = str;
+    div.textContent = str || '';
     return div.innerHTML;
+  }
+
+  function avatarHtml(s) {
+    return s.foto ? `<img class="avatar" src="${s.foto}" alt="">` : `<div class="avatar-placeholder">?</div>`;
+  }
+
+  function renderSiswaTab() {
+    const dijadwal = siswaCache.filter(s => s.sesi && s.sesi !== 'Batal').length;
+    document.getElementById('statTotal').textContent = siswaCache.length;
+    document.getElementById('statDijadwal').textContent = dijadwal;
+    document.getElementById('statBelum').textContent = siswaCache.length - dijadwal;
+
+    const table = document.getElementById('siswaTable');
+    table.innerHTML = '';
+    if (siswaCache.length === 0) {
+      table.innerHTML = '<div class="empty-state">Belum ada siswa terdaftar</div>';
+      return;
+    }
+    siswaCache.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'siswa-item';
+      row.innerHTML = `
+        ${avatarHtml(s)}
+        <div class="info">
+          <div class="nama">${escapeHtml(s.nama)}</div>
+          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.sesi ? ' · ' + escapeHtml(s.sesi) : ' · belum dijadwal'}</div>
+        </div>
+        <div class="actions">
+          <button class="icon-btn" data-edit="${s.id}">Edit</button>
+          <button class="icon-btn" data-del="${s.id}">Hapus</button>
+        </div>
+      `;
+      table.appendChild(row);
+    });
+    table.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openSiswaModal(b.dataset.edit)));
+    table.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => hapusSiswa(b.dataset.del)));
+  }
+
+  const overlay = document.getElementById('siswaModalOverlay');
+  let editingId = null;
+  let modalFotoBase64 = null;
+
+  document.getElementById('btnTambahSiswa').addEventListener('click', () => openSiswaModal(null));
+  document.getElementById('btnBatalSiswa').addEventListener('click', closeSiswaModal);
+
+  function openSiswaModal(id) {
+    editingId = id;
+    const s = id ? siswaCache.find(x => x.id === id) : null;
+    document.getElementById('siswaModalTitle').textContent = id ? 'Edit Siswa' : 'Tambah Siswa';
+    document.getElementById('modalNama').value = s ? s.nama || '' : '';
+    document.getElementById('modalUsia').value = s ? s.usia || '' : '';
+    document.getElementById('modalTtl').value = s ? s.tempat_tanggal_lahir || '' : '';
+    document.getElementById('modalKelas').value = s ? s.kelas || '' : '';
+    document.getElementById('modalSekolah').value = s ? s.sekolah || '' : '';
+    document.getElementById('modalStatusBayar').value = s ? (s.status_bayar || 'belum_bayar') : 'belum_bayar';
+    modalFotoBase64 = s ? (s.foto || null) : null;
+    const preview = document.getElementById('modalPhotoPreview');
+    preview.innerHTML = modalFotoBase64 ? `<img src="${modalFotoBase64}">` : 'Belum ada foto';
+    overlay.classList.add('active');
+  }
+  function closeSiswaModal() { overlay.classList.remove('active'); editingId = null; }
+
+  document.getElementById('modalFotoInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 640;
+        let { width, height } = img;
+        if (width > height && width > MAX_DIM) { height = Math.round(height * (MAX_DIM / width)); width = MAX_DIM; }
+        else if (height > MAX_DIM) { width = Math.round(width * (MAX_DIM / height)); height = MAX_DIM; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        modalFotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        document.getElementById('modalPhotoPreview').innerHTML = `<img src="${modalFotoBase64}">`;
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('btnSimpanSiswa').addEventListener('click', async () => {
+    const data = {
+      nama: document.getElementById('modalNama').value.trim(),
+      usia: Number(document.getElementById('modalUsia').value) || null,
+      tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
+      kelas: document.getElementById('modalKelas').value.trim() || null,
+      sekolah: document.getElementById('modalSekolah').value.trim() || null,
+      status_bayar: document.getElementById('modalStatusBayar').value,
+      foto: modalFotoBase64
+    };
+    if (!data.nama) { alert('Nama wajib diisi'); return; }
+
+    if (editingId) {
+      await db.collection(SISWA_COL).doc(editingId).update(data);
+    } else {
+      data.sesi = null;
+      data.metode_bayar = null;
+      data.tanggal_daftar = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(SISWA_COL).add(data);
+    }
+    closeSiswaModal();
+    await loadAll();
+  });
+
+  async function hapusSiswa(id) {
+    if (!confirm('Yakin hapus data siswa ini?')) return;
+    await db.collection(SISWA_COL).doc(id).delete();
+    await loadAll();
+  }
+
+  document.getElementById('btnTambahSesi').addEventListener('click', async () => {
+    const label = document.getElementById('sesiLabel').value.trim();
+    const kap = Number(document.getElementById('sesiKapasitas').value) || 25;
+    if (!label) { alert('Isi nama/tanggal sesi dulu'); return; }
+    await db.collection(SESI_COL).add({ label, kapasitas: kap, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    document.getElementById('sesiLabel').value = '';
+    document.getElementById('sesiKapasitas').value = 25;
+    await loadAll();
+  });
+
+  async function hapusSesi(id) {
+    const label = sesiCache.find(s => s.id === id)?.label;
+    const terisi = siswaCache.filter(s => s.sesi === label).length;
+    if (terisi > 0) {
+      alert('Sesi ini masih ada ' + terisi + ' siswa. Pindahkan dulu siswanya sebelum hapus sesi.');
+      return;
+    }
+    if (!confirm('Hapus sesi "' + label + '"?')) return;
+    await db.collection(SESI_COL).doc(id).delete();
+    await loadAll();
+  }
+
+  function renderJadwalTab() {
+    const sesiListEl = document.getElementById('sesiList');
+    sesiListEl.innerHTML = '';
+    if (sesiCache.length === 0) {
+      sesiListEl.innerHTML = '<div class="empty-state">Belum ada sesi ditambahkan</div>';
+    } else {
+      sesiCache.forEach(sesi => {
+        const terisi = siswaCache.filter(s => s.sesi === sesi.label).length;
+        const row = document.createElement('div');
+        row.className = 'sesi-list-row';
+        row.innerHTML = `
+          <span class="label">${escapeHtml(sesi.label)}</span>
+          <span class="kap">${terisi}/${sesi.kapasitas}</span>
+          <button class="icon-btn" data-hapus-sesi="${sesi.id}">Hapus</button>
+        `;
+        sesiListEl.appendChild(row);
+      });
+      sesiListEl.querySelectorAll('[data-hapus-sesi]').forEach(b => b.addEventListener('click', () => hapusSesi(b.dataset.hapusSesi)));
+    }
+
+    const grid = document.getElementById('sessionGrid');
+    grid.innerHTML = '';
+    sesiCache.forEach(sesi => {
+      const list = siswaCache.filter(s => s.sesi === sesi.label);
+      const card = document.createElement('div');
+      card.className = 'session-card';
+      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><span class="count">${list.length}/${sesi.kapasitas}</span></div><div class="sesi-body"></div>`;
+      const body = card.querySelector('.sesi-body');
+      if (list.length === 0) {
+        body.innerHTML = '<div class="empty-state">Belum ada siswa</div>';
+      } else {
+        list.forEach(s => body.appendChild(buildSiswaRow(s)));
+      }
+      grid.appendChild(card);
+    });
+
+    const cadangan = siswaCache.filter(s => !s.sesi || s.sesi === 'Batal');
+    document.getElementById('countCadangan').textContent = cadangan.length;
+    const cadEl = document.getElementById('listCadangan');
+    cadEl.innerHTML = '';
+    if (cadangan.length === 0) {
+      cadEl.innerHTML = '<div class="empty-state">Tidak ada</div>';
+    } else {
+      cadangan.forEach(s => cadEl.appendChild(buildSiswaRow(s)));
+    }
+  }
+
+  function buildSiswaRow(s) {
+    const row = document.createElement('div');
+    row.className = 'siswa-row';
+    const options = sesiCache.map(sesi => `<option value="${escapeHtml(sesi.label)}" ${s.sesi === sesi.label ? 'selected' : ''}>${escapeHtml(sesi.label)}</option>`).join('');
+    row.innerHTML = `
+      ${avatarHtml(s)}
+      <span class="nama">${escapeHtml(s.nama)}</span>
+      <select data-id="${s.id}">
+        <option value="" ${!s.sesi ? 'selected' : ''} disabled>Belum dijadwal</option>
+        ${options}
+        <option value="Batal" ${s.sesi === 'Batal' ? 'selected' : ''}>Batal</option>
+      </select>
+    `;
+    row.querySelector('select').addEventListener('change', async (e) => {
+      const id = e.target.getAttribute('data-id');
+      const newSesi = e.target.value;
+      await db.collection(SISWA_COL).doc(id).update({ sesi: newSesi });
+      await loadAll();
+    });
+    return row;
   }
 
   document.getElementById('generateBtn').addEventListener('click', async () => {
     const btn = document.getElementById('generateBtn');
     const status = document.getElementById('generateStatus');
-    btn.disabled = true;
-    btn.textContent = 'Memproses...';
+    if (sesiCache.length === 0) { status.textContent = 'Tambahkan minimal satu sesi dulu.'; return; }
+    btn.disabled = true; btn.textContent = 'Memproses...';
 
     const belumDijadwal = siswaCache.filter(s => !s.sesi);
     if (belumDijadwal.length === 0) {
       status.textContent = 'Semua siswa sudah punya jadwal.';
-      btn.disabled = false;
-      btn.textContent = 'Generate Jadwal';
+      btn.disabled = false; btn.textContent = 'Generate Jadwal';
       return;
     }
 
-    let slotSelasa = MAX_PER_SESI - siswaCache.filter(s => s.sesi === 'Selasa').length;
-    let slotKamis = MAX_PER_SESI - siswaCache.filter(s => s.sesi === 'Kamis').length;
+    const slot = {};
+    sesiCache.forEach(sesi => {
+      const terisi = siswaCache.filter(s => s.sesi === sesi.label).length;
+      slot[sesi.label] = sesi.kapasitas - terisi;
+    });
 
     const batch = db.batch();
-    let assignedSelasa = 0, assignedKamis = 0, sisa = 0;
+    let hasil = {}; sesiCache.forEach(s => hasil[s.label] = 0);
+    let sisa = 0;
 
     belumDijadwal.forEach(s => {
-      let target = null;
-      if (slotSelasa > 0 && (slotSelasa >= slotKamis)) {
-        target = 'Selasa'; slotSelasa--; assignedSelasa++;
-      } else if (slotKamis > 0) {
-        target = 'Kamis'; slotKamis--; assignedKamis++;
+      const target = Object.keys(slot).reduce((best, key) => (slot[key] > (slot[best] || 0) ? key : best), Object.keys(slot)[0]);
+      if (slot[target] > 0) {
+        slot[target]--; hasil[target]++;
+        batch.update(db.collection(SISWA_COL).doc(s.id), { sesi: target });
       } else {
         sisa++;
-        return; // biarin tanpa sesi, masuk cadangan
       }
-      batch.update(db.collection(COLLECTION).doc(s.id), { sesi: target });
-      s.sesi = target;
     });
 
     await batch.commit();
-    render();
+    await loadAll();
 
-    status.textContent = `Selesai: ${assignedSelasa} ke Selasa, ${assignedKamis} ke Kamis` + (sisa > 0 ? `, ${sisa} masuk daftar cadangan (kuota penuh)` : '.');
-    btn.disabled = false;
-    btn.textContent = 'Generate Jadwal';
+    const ringkasan = Object.entries(hasil).filter(([k, v]) => v > 0).map(([k, v]) => `${v} ke ${k}`).join(', ');
+    status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} masuk cadangan (semua sesi penuh)` : '.');
+    btn.disabled = false; btn.textContent = 'Generate Jadwal';
   });
 </script>
 </body>
