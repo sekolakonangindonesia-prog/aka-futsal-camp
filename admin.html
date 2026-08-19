@@ -284,23 +284,28 @@
   let sesiCache = [];
 
   async function loadAll() {
-    const [siswaSnap, sesiSnap, settingDoc] = await Promise.all([
+    const [siswaSnap, sesiSnap] = await Promise.all([
       db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
-      db.collection(SESI_COL).orderBy('createdAt', 'asc').get(),
-      db.collection('pengaturan').doc('umum').get()
+      db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
     ]);
     siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderSiswaTab();
     renderJadwalTab();
-    if (settingDoc.exists) {
-      const s = settingDoc.data();
-      document.getElementById('settingVisi').value = s.visi || '';
-      document.getElementById('settingMisi').value = (s.misi || []).join('\n');
-      document.getElementById('settingIg').value = s.instagram || '';
-      document.getElementById('settingTiktok').value = s.tiktok || '';
-      document.getElementById('settingFb').value = s.facebook || '';
-      document.getElementById('settingYt').value = s.youtube || '';
+
+    try {
+      const settingDoc = await db.collection('pengaturan').doc('umum').get();
+      if (settingDoc.exists) {
+        const s = settingDoc.data();
+        document.getElementById('settingVisi').value = s.visi || '';
+        document.getElementById('settingMisi').value = (s.misi || []).join('\n');
+        document.getElementById('settingIg').value = s.instagram || '';
+        document.getElementById('settingTiktok').value = s.tiktok || '';
+        document.getElementById('settingFb').value = s.facebook || '';
+        document.getElementById('settingYt').value = s.youtube || '';
+      }
+    } catch (err) {
+      console.error('Gagal memuat pengaturan:', err);
     }
   }
 
