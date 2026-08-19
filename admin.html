@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - AKA Futsal Camp</title>
+<title>Admin - Futsal Camp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -106,7 +106,7 @@
   <div class="login-box">
     <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
     <span class="eyebrow">Akses Terbatas</span>
-    <h1>Admin AKA Futsal Camp</h1>
+    <h1>Admin Futsal Camp</h1>
     <div class="field">
       <label>Email</label>
       <input type="email" id="loginEmail" placeholder="admin@email.com" autocomplete="username">
@@ -125,7 +125,7 @@
     <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
     <div class="titles">
       <span class="eyebrow">Admin Panel</span>
-      <h1>AKA Futsal Camp</h1>
+      <h1>AK Futsal Camp</h1>
     </div>
     <button class="logout-btn" id="logoutBtn">Keluar</button>
   </div>
@@ -133,6 +133,7 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="siswaTab">Kelola Siswa</button>
     <button class="tab-btn" data-tab="jadwalTab">Jadwal Latihan</button>
+    <button class="tab-btn" data-tab="pengaturanTab">Pengaturan</button>
   </div>
 
   <div class="tab-panel active" id="siswaTab">
@@ -175,6 +176,26 @@
     <div class="session-card">
       <div class="head"><h2>Belum dijadwal / Batal</h2><span class="count" id="countCadangan">0</span></div>
       <div id="listCadangan"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="pengaturanTab">
+    <div class="section-head"><h2>Tentang Camp</h2></div>
+    <div class="sesi-config">
+      <div class="field"><label>Visi</label><textarea id="settingVisi" rows="3"></textarea></div>
+      <div class="field"><label>Misi (satu baris = satu poin)</label><textarea id="settingMisi" rows="5"></textarea></div>
+      <button class="btn" id="btnSimpanTentang">Simpan Visi & Misi</button>
+      <div class="status-line" id="tentangStatus"></div>
+    </div>
+
+    <div class="section-head"><h2>Sosial Media</h2></div>
+    <div class="sesi-config">
+      <div class="field"><label>Instagram (link lengkap)</label><input type="text" id="settingIg" placeholder="https://instagram.com/..."></div>
+      <div class="field"><label>TikTok (link lengkap)</label><input type="text" id="settingTiktok" placeholder="https://tiktok.com/@..."></div>
+      <div class="field"><label>Facebook (link lengkap)</label><input type="text" id="settingFb" placeholder="https://facebook.com/..."></div>
+      <div class="field"><label>YouTube (link lengkap)</label><input type="text" id="settingYt" placeholder="https://youtube.com/@..."></div>
+      <button class="btn" id="btnSimpanSosial">Simpan Sosial Media</button>
+      <div class="status-line" id="sosialStatus"></div>
     </div>
   </div>
 </div>
@@ -263,15 +284,45 @@
   let sesiCache = [];
 
   async function loadAll() {
-    const [siswaSnap, sesiSnap] = await Promise.all([
+    const [siswaSnap, sesiSnap, settingDoc] = await Promise.all([
       db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
-      db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
+      db.collection(SESI_COL).orderBy('createdAt', 'asc').get(),
+      db.collection('pengaturan').doc('umum').get()
     ]);
     siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderSiswaTab();
     renderJadwalTab();
+    if (settingDoc.exists) {
+      const s = settingDoc.data();
+      document.getElementById('settingVisi').value = s.visi || '';
+      document.getElementById('settingMisi').value = (s.misi || []).join('\n');
+      document.getElementById('settingIg').value = s.instagram || '';
+      document.getElementById('settingTiktok').value = s.tiktok || '';
+      document.getElementById('settingFb').value = s.facebook || '';
+      document.getElementById('settingYt').value = s.youtube || '';
+    }
   }
+
+  document.getElementById('btnSimpanTentang').addEventListener('click', async () => {
+    const visi = document.getElementById('settingVisi').value.trim();
+    const misi = document.getElementById('settingMisi').value.split('\n').map(s => s.trim()).filter(Boolean);
+    await db.collection('pengaturan').doc('umum').set({ visi, misi }, { merge: true });
+    document.getElementById('tentangStatus').textContent = 'Tersimpan.';
+    setTimeout(() => document.getElementById('tentangStatus').textContent = '', 2000);
+  });
+
+  document.getElementById('btnSimpanSosial').addEventListener('click', async () => {
+    const data = {
+      instagram: document.getElementById('settingIg').value.trim(),
+      tiktok: document.getElementById('settingTiktok').value.trim(),
+      facebook: document.getElementById('settingFb').value.trim(),
+      youtube: document.getElementById('settingYt').value.trim()
+    };
+    await db.collection('pengaturan').doc('umum').set(data, { merge: true });
+    document.getElementById('sosialStatus').textContent = 'Tersimpan.';
+    setTimeout(() => document.getElementById('sosialStatus').textContent = '', 2000);
+  });
 
   function escapeHtml(str) {
     const div = document.createElement('div');
