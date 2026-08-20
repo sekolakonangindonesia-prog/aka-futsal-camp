@@ -98,6 +98,11 @@
   .siswa-row .nama{flex:1;}
   .siswa-row select{width:auto;padding:5px 8px;font-size:12px;}
   .status-line{text-align:center;font-size:12px;color:var(--text-secondary);margin-top:10px;}
+  .badge-selesai{background:rgba(52,211,153,0.15);color:var(--success);border:1px solid var(--success);border-radius:6px;padding:2px 8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;}
+  .session-card.selesai{opacity:0.85;}
+  .laporan-row{cursor:pointer;}
+  .laporan-detail{display:none;padding:8px 16px 12px;background:var(--surface-2);}
+  .laporan-detail.open{display:block;}
 </style>
 </head>
 <body>
@@ -731,58 +736,98 @@
       const sudahHadir = kehadiranCache.filter(k => k.sesi_id === sesi.id).map(k => k.siswa_id);
       const idsDitampilkan = Array.from(new Set([...direncanakan, ...sudahHadir]));
       const daftarSiswa = idsDitampilkan.map(id => siswaCache.find(s => s.id === id)).filter(Boolean);
+      const isSelesai = !!sesi.selesai;
 
       const card = document.createElement('div');
-      card.className = 'session-card';
-      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><span class="count">${sudahHadir.length}/${sesi.kapasitas}</span></div><div class="sesi-body"></div>`;
+      card.className = 'session-card' + (isSelesai ? ' selesai' : '');
+      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><div style="display:flex;align-items:center;gap:8px;">${isSelesai ? '<span class="badge-selesai">Selesai</span>' : ''}<span class="count">${sudahHadir.length}/${sesi.kapasitas}</span></div></div><div class="sesi-body"></div>`;
       const body = card.querySelector('.sesi-body');
       if (daftarSiswa.length === 0) {
         body.innerHTML = '<div class="empty-state">Belum ada rencana untuk sesi ini</div>';
       } else {
-        daftarSiswa.forEach(s => body.appendChild(buildKehadiranRow(s, sesi)));
+        daftarSiswa.forEach(s => body.appendChild(buildKehadiranRow(s, sesi, isSelesai)));
       }
-      const walkinBtn = document.createElement('button');
-      walkinBtn.className = 'icon-btn';
-      walkinBtn.style.margin = '10px 16px 14px';
-      walkinBtn.textContent = '+ Tambah Peserta Dadakan';
-      walkinBtn.addEventListener('click', () => openWalkinModal(sesi));
-      card.appendChild(walkinBtn);
+
+      const actionsRow = document.createElement('div');
+      actionsRow.style.cssText = 'display:flex;gap:8px;margin:10px 16px 14px;flex-wrap:wrap;';
+      if (isSelesai) {
+        const reopenBtn = document.createElement('button');
+        reopenBtn.className = 'icon-btn';
+        reopenBtn.textContent = 'Buka Kembali';
+        reopenBtn.addEventListener('click', () => toggleSelesaiSesi(sesi, false));
+        actionsRow.appendChild(reopenBtn);
+      } else {
+        const walkinBtn = document.createElement('button');
+        walkinBtn.className = 'icon-btn';
+        walkinBtn.textContent = '+ Tambah Peserta Dadakan';
+        walkinBtn.addEventListener('click', () => openWalkinModal(sesi));
+        actionsRow.appendChild(walkinBtn);
+
+        const selesaiBtn = document.createElement('button');
+        selesaiBtn.className = 'btn btn-secondary';
+        selesaiBtn.style.cssText = 'font-size:11px;padding:8px 14px;';
+        selesaiBtn.textContent = 'Tandai Selesai';
+        selesaiBtn.addEventListener('click', () => toggleSelesaiSesi(sesi, true));
+        actionsRow.appendChild(selesaiBtn);
+      }
+      card.appendChild(actionsRow);
       grid.appendChild(card);
     });
   }
 
-  function buildKehadiranRow(s, sesi) {
+  async function toggleSelesaiSesi(sesi, selesai) {
+    if (selesai && !confirm('Tandai sesi "' + sesi.label + '" selesai?\n\nKehadiran & status bayar yang sudah dicentang akan terkunci sebagai riwayat final (nggak bisa diubah lagi sampai kamu buka kembali).')) return;
+    try {
+      await db.collection(SESI_COL).doc(sesi.id).update({ selesai: selesai });
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal update status sesi:', err);
+      alert('Gagal menandai sesi: ' + err.message);
+    }
+  }
+
+  function buildKehadiranRow(s, sesi, isSelesai) {
     const kehadiran = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
     const row = document.createElement('div');
     row.className = 'siswa-row';
     row.innerHTML = `
-      <input type="checkbox" data-siswa="${s.id}" data-sesi="${sesi.id}" ${kehadiran ? 'checked' : ''} style="width:auto;">
+      <input type="checkbox" data-siswa="${s.id}" data-sesi="${sesi.id}" ${kehadiran ? 'checked' : ''} ${isSelesai ? 'disabled' : ''} style="width:auto;">
       ${avatarHtml(s)}
       <span class="nama">${escapeHtml(s.nama)}</span>
-      ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" style="width:auto;">${PAYMENT_OPTIONS}</select>` : ''}
+      ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" ${isSelesai ? 'disabled' : ''} style="width:auto;">${PAYMENT_OPTIONS}</select>` : ''}
     `;
     if (kehadiran) {
       row.querySelector('select').value = kehadiran.status_bayar || 'belum_bayar';
     }
     row.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
       const checked = e.target.checked;
-      if (checked) {
-        await db.collection(HADIR_COL).add({
-          siswa_id: s.id, siswa_nama: s.nama,
-          sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
-          status_bayar: 'belum_bayar', walk_in: false,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } else {
-        const existing = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
-        if (existing) await db.collection(HADIR_COL).doc(existing.id).delete();
+      try {
+        if (checked) {
+          await db.collection(HADIR_COL).add({
+            siswa_id: s.id, siswa_nama: s.nama,
+            sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
+            status_bayar: 'belum_bayar', walk_in: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } else {
+          const existing = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
+          if (existing) await db.collection(HADIR_COL).doc(existing.id).delete();
+        }
+      } catch (err) {
+        console.error('Gagal update kehadiran:', err);
+        alert('Gagal menyimpan kehadiran: ' + err.message);
       }
       await loadAll();
     });
     const select = row.querySelector('select[data-hadir-id]');
     if (select) {
       select.addEventListener('change', async (e) => {
-        await db.collection(HADIR_COL).doc(e.target.getAttribute('data-hadir-id')).update({ status_bayar: e.target.value });
+        try {
+          await db.collection(HADIR_COL).doc(e.target.getAttribute('data-hadir-id')).update({ status_bayar: e.target.value });
+        } catch (err) {
+          console.error('Gagal update status bayar:', err);
+          alert('Gagal menyimpan status bayar: ' + err.message);
+        }
         await loadAll();
       });
     }
@@ -849,15 +894,28 @@
     if (keys.length === 0) {
       el.innerHTML = '<div class="empty-state">Tidak ada data di periode ini</div>';
     } else {
+      const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar' };
       keys.forEach(label => {
         const row = document.createElement('div');
-        row.className = 'siswa-row';
-        row.innerHTML = `<span class="nama">${escapeHtml(label)}</span><span style="color:var(--text-secondary);font-size:12px;">${perSesi[label].lunas}/${perSesi[label].total} lunas</span>`;
+        row.className = 'siswa-row laporan-row';
+        row.innerHTML = `<span class="nama">${escapeHtml(label)}</span><span style="color:var(--text-secondary);font-size:12px;">${perSesi[label].lunas}/${perSesi[label].total} lunas &#9662;</span>`;
+
+        const anggota = filtered.filter(k => k.sesi_label === label);
+        const detail = document.createElement('div');
+        detail.className = 'laporan-detail';
+        detail.innerHTML = anggota.map(k =>
+          `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--line);">
+             <span>${escapeHtml(k.siswa_nama)}${k.walk_in ? ' <span style="color:var(--amber);">(dadakan)</span>' : ''}</span>
+             <span style="color:var(--text-secondary);">${labelBayar[k.status_bayar] || 'Belum bayar'}</span>
+           </div>`
+        ).join('');
+
+        row.addEventListener('click', () => detail.classList.toggle('open'));
         el.appendChild(row);
+        el.appendChild(detail);
       });
     }
   }
-  
 </script>
 </body>
 </html>
