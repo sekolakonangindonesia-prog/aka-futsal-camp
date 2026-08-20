@@ -187,13 +187,13 @@
   async function loadJadwal() {
     const container = document.getElementById('sesiContainer');
     try {
-      const [sesiSnap, siswaSnap] = await Promise.all([
+      const [sesiSnap, hadirSnap] = await Promise.all([
         db.collection('sesi_latihan').orderBy('createdAt', 'asc').get(),
-        db.collection('futsal_siswa').get()
+        db.collection('kehadiran').get()
       ]);
 
       const sesiList = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const siswaList = siswaSnap.docs.map(d => d.data());
+      const hadirList = hadirSnap.docs.map(d => d.data());
 
       if (sesiList.length === 0) {
         container.innerHTML = '<div class="no-sesi">Jadwal belum diumumkan, pantau terus ya.</div>';
@@ -202,7 +202,7 @@
 
       container.innerHTML = '';
       sesiList.forEach(sesi => {
-        const anggota = siswaList.filter(s => s.sesi === sesi.label);
+        const anggota = hadirList.filter(k => k.sesi_id === sesi.id);
         const card = document.createElement('div');
         card.className = 'sesi-card';
         card.innerHTML = `
@@ -219,10 +219,10 @@
         if (anggota.length === 0) {
           namesInner.outerHTML = '<div class="empty-sesi">Belum ada peserta</div>';
         } else {
-          anggota.forEach(s => {
+          anggota.forEach(k => {
             const pill = document.createElement('span');
             pill.className = 'name-pill';
-            pill.textContent = s.nama || '(tanpa nama)';
+            pill.textContent = k.siswa_nama || '(tanpa nama)';
             namesInner.appendChild(pill);
           });
         }
