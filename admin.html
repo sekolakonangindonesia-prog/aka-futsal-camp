@@ -305,14 +305,21 @@
   const HADIR_COL = "kehadiran";
 
   async function loadAll() {
-    const [siswaSnap, sesiSnap, hadirSnap] = await Promise.all([
+    const [siswaSnap, sesiSnap] = await Promise.all([
       db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
-      db.collection(SESI_COL).orderBy('createdAt', 'asc').get(),
-      db.collection(HADIR_COL).get()
+      db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
     ]);
     siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    kehadiranCache = hadirSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    try {
+      const hadirSnap = await db.collection(HADIR_COL).get();
+      kehadiranCache = hadirSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.error('Gagal memuat kehadiran (cek rules Firestore untuk collection kehadiran):', err);
+      kehadiranCache = [];
+    }
+
     renderSiswaTab();
     renderJadwalTab();
 
@@ -526,7 +533,7 @@
       sesiListEl.innerHTML = '<div class="empty-state">Belum ada sesi ditambahkan</div>';
     } else {
       sesiCache.forEach(sesi => {
-        const terisi = siswaCache.filter(s => s.sesi === sesi.label).length;
+        const terisi = kehadiranCache.filter(k => k.sesi_id === sesi.id).length;
         const row = document.createElement('div');
         row.className = 'sesi-list-row';
         row.innerHTML = `
@@ -542,49 +549,51 @@
     const grid = document.getElementById('sessionGrid');
     grid.innerHTML = '';
     sesiCache.forEach(sesi => {
-      const list = siswaCache.filter(s => s.sesi === sesi.label);
+      const hadirDiSesiIni = kehadiranCache.filter(k => k.sesi_id === sesi.id);
       const card = document.createElement('div');
       card.className = 'session-card';
-      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><span class="count">${list.length}/${sesi.kapasitas}</span></div><div class="sesi-body"></div>`;
+      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><span class="count">${hadirDiSesiIni.length}/${sesi.kapasitas}</span></div><div class="sesi-body"></div>`;
       const body = card.querySelector('.sesi-body');
-      if (list.length === 0) {
-        body.innerHTML = '<div class="empty-state">Belum ada siswa</div>';
-      } else {
-        list.forEach(s => body.appendChild(buildSiswaRow(s)));
-      }
+      siswaCache.forEach(s => body.appendChild(buildKehadiranRow(s, sesi)));
       grid.appendChild(card);
     });
-
-    const cadangan = siswaCache.filter(s => !s.sesi || s.sesi === 'Batal');
-    document.getElementById('countCadangan').textContent = cadangan.length;
-    const cadEl = document.getElementById('listCadangan');
-    cadEl.innerHTML = '';
-    if (cadangan.length === 0) {
-      cadEl.innerHTML = '<div class="empty-state">Tidak ada</div>';
-    } else {
-      cadangan.forEach(s => cadEl.appendChild(buildSiswaRow(s)));
-    }
   }
 
-  function buildSiswaRow(s) {
+  function buildKehadiranRow(s, sesi) {
+    const kehadiran = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
     const row = document.createElement('div');
     row.className = 'siswa-row';
-    const options = sesiCache.map(sesi => `<option value="${escapeHtml(sesi.label)}" ${s.sesi === sesi.label ? 'selected' : ''}>${escapeHtml(sesi.label)}</option>`).join('');
     row.innerHTML = `
+      <input type="checkbox" data-siswa="${s.id}" data-sesi="${sesi.id}" ${kehadiran ? 'checked' : ''} style="width:auto;">
       ${avatarHtml(s)}
       <span class="nama">${escapeHtml(s.nama)}</span>
-      <select data-id="${s.id}">
-        <option value="" ${!s.sesi ? 'selected' : ''}>Belum dijadwal</option>
-        ${options}
-        <option value="Batal" ${s.sesi === 'Batal' ? 'selected' : ''}>Batal</option>
-      </select>
+      ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" style="width:auto;">
+        <option value="belum_bayar" ${kehadiran.status_bayar !== 'lunas' ? 'selected' : ''}>Belum bayar</option>
+        <option value="lunas" ${kehadiran.status_bayar === 'lunas' ? 'selected' : ''}>Lunas</option>
+      </select>` : ''}
     `;
-    row.querySelector('select').addEventListener('change', async (e) => {
-      const id = e.target.getAttribute('data-id');
-      const newSesi = e.target.value;
-      await db.collection(SISWA_COL).doc(id).update({ sesi: newSesi });
+    row.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
+      const checked = e.target.checked;
+      if (checked) {
+        await db.collection(HADIR_COL).add({
+          siswa_id: s.id, siswa_nama: s.nama,
+          sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
+          status_bayar: 'belum_bayar', metode_bayar: null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        const existing = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
+        if (existing) await db.collection(HADIR_COL).doc(existing.id).delete();
+      }
       await loadAll();
     });
+    const select = row.querySelector('select[data-hadir-id]');
+    if (select) {
+      select.addEventListener('change', async (e) => {
+        await db.collection(HADIR_COL).doc(e.target.getAttribute('data-hadir-id')).update({ status_bayar: e.target.value });
+        await loadAll();
+      });
+    }
     return row;
   }
 
@@ -594,28 +603,37 @@
     if (sesiCache.length === 0) { status.textContent = 'Tambahkan minimal satu sesi dulu.'; return; }
     btn.disabled = true; btn.textContent = 'Memproses...';
 
-    const belumDijadwal = siswaCache.filter(s => !s.sesi);
-    if (belumDijadwal.length === 0) {
-      status.textContent = 'Semua siswa sudah punya jadwal.';
-      btn.disabled = false; btn.textContent = 'Generate Jadwal';
+    const idsSudahIkutSesuatu = new Set(kehadiranCache.map(k => k.siswa_id));
+    const belumIkutApaapa = siswaCache.filter(s => !idsSudahIkutSesuatu.has(s.id));
+    if (belumIkutApaapa.length === 0) {
+      status.textContent = 'Semua siswa sudah tercatat di minimal satu sesi.';
+      btn.disabled = false; btn.textContent = 'Generate Otomatis';
       return;
     }
 
     const slot = {};
     sesiCache.forEach(sesi => {
-      const terisi = siswaCache.filter(s => s.sesi === sesi.label).length;
-      slot[sesi.label] = sesi.kapasitas - terisi;
+      const terisi = kehadiranCache.filter(k => k.sesi_id === sesi.id).length;
+      slot[sesi.id] = sesi.kapasitas - terisi;
     });
 
     const batch = db.batch();
     let hasil = {}; sesiCache.forEach(s => hasil[s.label] = 0);
     let sisa = 0;
 
-    belumDijadwal.forEach(s => {
-      const target = Object.keys(slot).reduce((best, key) => (slot[key] > (slot[best] || 0) ? key : best), Object.keys(slot)[0]);
-      if (slot[target] > 0) {
-        slot[target]--; hasil[target]++;
-        batch.update(db.collection(SISWA_COL).doc(s.id), { sesi: target });
+    belumIkutApaapa.forEach(s => {
+      const targetId = Object.keys(slot).reduce((best, key) => (slot[key] > (slot[best] || 0) ? key : best), Object.keys(slot)[0]);
+      if (slot[targetId] > 0) {
+        slot[targetId]--;
+        const sesi = sesiCache.find(x => x.id === targetId);
+        hasil[sesi.label]++;
+        const ref = db.collection(HADIR_COL).doc();
+        batch.set(ref, {
+          siswa_id: s.id, siswa_nama: s.nama,
+          sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
+          status_bayar: 'belum_bayar', metode_bayar: null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
       } else {
         sisa++;
       }
@@ -625,9 +643,48 @@
     await loadAll();
 
     const ringkasan = Object.entries(hasil).filter(([k, v]) => v > 0).map(([k, v]) => `${v} ke ${k}`).join(', ');
-    status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} masuk cadangan (semua sesi penuh)` : '.');
-    btn.disabled = false; btn.textContent = 'Generate Jadwal';
+    status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} tidak kebagian (semua sesi penuh)` : '.');
+    btn.disabled = false; btn.textContent = 'Generate Otomatis';
   });
+
+  // ---------- LAPORAN KEUANGAN ----------
+  document.getElementById('btnMuatLaporan').addEventListener('click', muatLaporan);
+
+  async function muatLaporan() {
+    const bulan = document.getElementById('laporanBulan').value; // format YYYY-MM
+    let filtered = kehadiranCache;
+    if (bulan) {
+      filtered = kehadiranCache.filter(k => k.sesi_tanggal && k.sesi_tanggal.startsWith(bulan));
+    }
+    const lunas = filtered.filter(k => k.status_bayar === 'lunas');
+    const belum = filtered.filter(k => k.status_bayar !== 'lunas');
+
+    document.getElementById('lapTotal').textContent = filtered.length;
+    document.getElementById('lapLunas').textContent = lunas.length;
+    document.getElementById('lapBelum').textContent = belum.length;
+    document.getElementById('lapPendapatan').textContent = 'Rp' + (lunas.length * 15000).toLocaleString('id-ID');
+
+    const perSesi = {};
+    filtered.forEach(k => {
+      if (!perSesi[k.sesi_label]) perSesi[k.sesi_label] = { total: 0, lunas: 0 };
+      perSesi[k.sesi_label].total++;
+      if (k.status_bayar === 'lunas') perSesi[k.sesi_label].lunas++;
+    });
+
+    const el = document.getElementById('lapPerSesi');
+    el.innerHTML = '';
+    const keys = Object.keys(perSesi);
+    if (keys.length === 0) {
+      el.innerHTML = '<div class="empty-state">Tidak ada data di periode ini</div>';
+    } else {
+      keys.forEach(label => {
+        const row = document.createElement('div');
+        row.className = 'siswa-row';
+        row.innerHTML = `<span class="nama">${escapeHtml(label)}</span><span style="color:var(--text-secondary);font-size:12px;">${perSesi[label].lunas}/${perSesi[label].total} lunas</span>`;
+        el.appendChild(row);
+      });
+    }
+  }
 </script>
 </body>
 </html>
