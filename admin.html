@@ -8,8 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#10131f; --surface:#1b2036; --surface-2:#232a45; --line:#2c3355;
-    --amber:#f5a623; --chalk:#f2f3f5; --text-secondary:#8b90a8;
+    --bg:#120e0c; --surface:#1d1613; --surface-2:#261c17; --line:#3a2b23;
+    --amber:#e8b923; --red:#c8272d; --chalk:#f5f1e8; --text-secondary:#a89586;
     --success:#34d399; --danger:#f26b6b;
   }
   *{box-sizing:border-box;}
@@ -167,13 +167,30 @@
     </div>
 
     <div class="section-head">
-      <h2>Generate Kehadiran</h2>
+      <h2>Rencana Jadwal <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— buat di-share ke grup</span></h2>
       <button class="btn" id="generateBtn">Generate Otomatis</button>
     </div>
-    <p style="color:var(--text-secondary);font-size:12px;margin:-8px 0 16px;">Isi siswa yang belum ikut sesi manapun minggu ini ke sesi yang masih ada slot kosong</p>
     <div class="status-line" id="generateStatus"></div>
+    <div class="siswa-table" id="rencanaTable" style="margin-top:14px;margin-bottom:28px;"></div>
 
-    <div class="session-grid" id="sessionGrid" style="margin-top:16px;"></div>
+    <div class="section-head">
+      <h2>Kehadiran Hari-H <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— centang yang beneran datang</span></h2>
+    </div>
+    <div class="session-grid" id="sessionGrid" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="overlay" id="walkinModalOverlay">
+    <div class="modal">
+      <h2>Tambah Peserta Dadakan</h2>
+      <div class="field">
+        <label>Pilih siswa</label>
+        <select id="walkinSiswaSelect"></select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btnBatalWalkin">Batal</button>
+        <button class="btn" id="btnSimpanWalkin">Tambahkan</button>
+      </div>
+    </div>
   </div>
 
   <div class="tab-panel" id="laporanTab">
@@ -188,9 +205,12 @@
     </div>
     <div class="stats-row">
       <div class="stat-card"><div class="label">Total kehadiran</div><div class="value" id="lapTotal">-</div></div>
-      <div class="stat-card"><div class="label">Sudah bayar</div><div class="value" id="lapLunas">-</div></div>
+      <div class="stat-card"><div class="label">Cash</div><div class="value" id="lapCash">-</div></div>
+      <div class="stat-card"><div class="label">QRIS</div><div class="value" id="lapQris">-</div></div>
       <div class="stat-card"><div class="label">Belum bayar</div><div class="value" id="lapBelum">-</div></div>
-      <div class="stat-card"><div class="label">Pendapatan</div><div class="value" id="lapPendapatan" style="font-size:18px;">-</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Total pendapatan</div><div class="value" id="lapPendapatan" style="font-size:22px;">-</div></div>
     </div>
     <div class="session-card">
       <div class="head"><h2>Rekap per Sesi</h2></div>
@@ -232,11 +252,9 @@
     <div class="field"><label>Tempat, tanggal lahir</label><input type="text" id="modalTtl"></div>
     <div class="field"><label>Kelas (opsional)</label><input type="text" id="modalKelas"></div>
     <div class="field"><label>Asal sekolah (opsional)</label><input type="text" id="modalSekolah"></div>
-    <div class="field"><label>Status bayar</label>
-      <select id="modalStatusBayar">
-        <option value="belum_bayar">Belum bayar</option>
-        <option value="lunas">Lunas</option>
-      </select>
+    <div class="field">
+      <label>Riwayat Kehadiran</label>
+      <div id="modalRiwayat" style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;max-height:150px;overflow-y:auto;font-size:12px;color:var(--text-secondary);"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" id="btnBatalSiswa">Batal</button>
@@ -302,7 +320,9 @@
   let siswaCache = [];
   let sesiCache = [];
   let kehadiranCache = [];
+  let rencanaCache = [];
   const HADIR_COL = "kehadiran";
+  const JADWAL_COL = "jadwal_rencana";
 
   async function loadAll() {
     const [siswaSnap, sesiSnap] = await Promise.all([
@@ -318,6 +338,14 @@
     } catch (err) {
       console.error('Gagal memuat kehadiran (cek rules Firestore untuk collection kehadiran):', err);
       kehadiranCache = [];
+    }
+
+    try {
+      const rencanaSnap = await db.collection(JADWAL_COL).get();
+      rencanaCache = rencanaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.error('Gagal memuat rencana jadwal (cek rules Firestore untuk collection jadwal_rencana):', err);
+      rencanaCache = [];
     }
 
     renderSiswaTab();
@@ -370,8 +398,8 @@
   }
 
   function renderSiswaTab() {
-    const idsIkutMingguIni = new Set(kehadiranCache.map(k => k.siswa_id));
-    const dijadwal = siswaCache.filter(s => idsIkutMingguIni.has(s.id)).length;
+    const idsSudahDirencanakan = new Set(rencanaCache.map(r => r.siswa_id));
+    const dijadwal = siswaCache.filter(s => idsSudahDirencanakan.has(s.id)).length;
     document.getElementById('statTotal').textContent = siswaCache.length;
     document.getElementById('statDijadwal').textContent = dijadwal;
     document.getElementById('statBelum').textContent = siswaCache.length - dijadwal;
@@ -419,10 +447,25 @@
     document.getElementById('modalTtl').value = s ? s.tempat_tanggal_lahir || '' : '';
     document.getElementById('modalKelas').value = s ? s.kelas || '' : '';
     document.getElementById('modalSekolah').value = s ? s.sekolah || '' : '';
-    document.getElementById('modalStatusBayar').value = s ? (s.status_bayar || 'belum_bayar') : 'belum_bayar';
     modalFotoBase64 = s ? (s.foto || null) : null;
     const preview = document.getElementById('modalPhotoPreview');
     preview.innerHTML = modalFotoBase64 ? `<img src="${modalFotoBase64}">` : 'Belum ada foto';
+
+    const riwayatEl = document.getElementById('modalRiwayat');
+    if (!id) {
+      riwayatEl.innerHTML = '<em>Belum ada riwayat (siswa baru)</em>';
+    } else {
+      const riwayat = kehadiranCache.filter(k => k.siswa_id === id)
+        .sort((a, b) => (b.sesi_tanggal || '').localeCompare(a.sesi_tanggal || ''));
+      if (riwayat.length === 0) {
+        riwayatEl.innerHTML = '<em>Belum pernah tercatat hadir</em>';
+      } else {
+        const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar' };
+        riwayatEl.innerHTML = riwayat.map(k =>
+          `<div style="padding:4px 0;border-bottom:1px solid var(--line);">${escapeHtml(k.sesi_label)} — ${labelBayar[k.status_bayar] || 'Belum bayar'}</div>`
+        ).join('');
+      }
+    }
     overlay.classList.add('active');
   }
   function closeSiswaModal() { overlay.classList.remove('active'); editingId = null; }
@@ -456,7 +499,6 @@
       tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
       kelas: document.getElementById('modalKelas').value.trim() || null,
       sekolah: document.getElementById('modalSekolah').value.trim() || null,
-      status_bayar: document.getElementById('modalStatusBayar').value,
       foto: modalFotoBase64
     };
     if (!data.nama) { alert('Nama wajib diisi'); return; }
@@ -464,8 +506,6 @@
     if (editingId) {
       await db.collection(SISWA_COL).doc(editingId).update(data);
     } else {
-      data.sesi = null;
-      data.metode_bayar = null;
       data.tanggal_daftar = firebase.firestore.FieldValue.serverTimestamp();
       await db.collection(SISWA_COL).add(data);
     }
@@ -533,7 +573,7 @@
       sesiListEl.innerHTML = '<div class="empty-state">Belum ada sesi ditambahkan</div>';
     } else {
       sesiCache.forEach(sesi => {
-        const terisi = kehadiranCache.filter(k => k.sesi_id === sesi.id).length;
+        const terisi = rencanaCache.filter(r => r.sesi_id === sesi.id).length;
         const row = document.createElement('div');
         row.className = 'sesi-list-row';
         row.innerHTML = `
@@ -546,15 +586,120 @@
       sesiListEl.querySelectorAll('[data-hapus-sesi]').forEach(b => b.addEventListener('click', () => hapusSesi(b.dataset.hapusSesi)));
     }
 
+    renderRencanaTable();
+    renderKehadiranGrid();
+  }
+
+  // ---------- RENCANA JADWAL (sebelum di-share ke grup) ----------
+  function renderRencanaTable() {
+    const table = document.getElementById('rencanaTable');
+    table.innerHTML = '';
+    if (siswaCache.length === 0) {
+      table.innerHTML = '<div class="empty-state">Belum ada siswa terdaftar</div>';
+      return;
+    }
+    siswaCache.forEach(s => {
+      const rencana = rencanaCache.find(r => r.siswa_id === s.id);
+      const options = sesiCache.map(sesi => `<option value="${sesi.id}" ${rencana && rencana.sesi_id === sesi.id ? 'selected' : ''}>${escapeHtml(sesi.label)}</option>`).join('');
+      const row = document.createElement('div');
+      row.className = 'siswa-item';
+      row.innerHTML = `
+        ${avatarHtml(s)}
+        <div class="info"><div class="nama">${escapeHtml(s.nama)}</div></div>
+        <select data-siswa-id="${s.id}" style="width:auto;">
+          <option value="" ${!rencana ? 'selected' : ''}>Belum direncanakan</option>
+          ${options}
+        </select>
+      `;
+      row.querySelector('select').addEventListener('change', async (e) => {
+        const sesiId = e.target.value;
+        if (sesiId) {
+          const sesi = sesiCache.find(x => x.id === sesiId);
+          await db.collection(JADWAL_COL).doc(s.id).set({ siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
+        } else {
+          await db.collection(JADWAL_COL).doc(s.id).delete().catch(() => {});
+        }
+        await loadAll();
+      });
+      table.appendChild(row);
+    });
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('generateBtn');
+    const status = document.getElementById('generateStatus');
+    if (sesiCache.length === 0) { status.textContent = 'Tambahkan minimal satu sesi dulu.'; return; }
+    btn.disabled = true; btn.textContent = 'Memproses...';
+
+    const idsSudahDirencanakan = new Set(rencanaCache.map(r => r.siswa_id));
+    const belumDirencanakan = siswaCache.filter(s => !idsSudahDirencanakan.has(s.id));
+    if (belumDirencanakan.length === 0) {
+      status.textContent = 'Semua siswa sudah punya rencana jadwal.';
+      btn.disabled = false; btn.textContent = 'Generate Otomatis';
+      return;
+    }
+
+    const slot = {};
+    sesiCache.forEach(sesi => {
+      const terisi = rencanaCache.filter(r => r.sesi_id === sesi.id).length;
+      slot[sesi.id] = sesi.kapasitas - terisi;
+    });
+
+    const batch = db.batch();
+    let hasil = {}; sesiCache.forEach(s => hasil[s.label] = 0);
+    let sisa = 0;
+
+    belumDirencanakan.forEach(s => {
+      const targetId = Object.keys(slot).reduce((best, key) => (slot[key] > (slot[best] || 0) ? key : best), Object.keys(slot)[0]);
+      if (slot[targetId] > 0) {
+        slot[targetId]--;
+        const sesi = sesiCache.find(x => x.id === targetId);
+        hasil[sesi.label]++;
+        batch.set(db.collection(JADWAL_COL).doc(s.id), { siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
+      } else {
+        sisa++;
+      }
+    });
+
+    await batch.commit();
+    await loadAll();
+
+    const ringkasan = Object.entries(hasil).filter(([k, v]) => v > 0).map(([k, v]) => `${v} ke ${k}`).join(', ');
+    status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} tidak kebagian (semua sesi penuh)` : '.');
+    btn.disabled = false; btn.textContent = 'Generate Otomatis';
+  });
+
+  // ---------- KEHADIRAN HARI-H ----------
+  const PAYMENT_OPTIONS = `
+    <option value="belum_bayar">Belum bayar</option>
+    <option value="cash">Cash</option>
+    <option value="qris">QRIS</option>
+  `;
+
+  function renderKehadiranGrid() {
     const grid = document.getElementById('sessionGrid');
     grid.innerHTML = '';
     sesiCache.forEach(sesi => {
-      const hadirDiSesiIni = kehadiranCache.filter(k => k.sesi_id === sesi.id);
+      const direncanakan = rencanaCache.filter(r => r.sesi_id === sesi.id).map(r => r.siswa_id);
+      const sudahHadir = kehadiranCache.filter(k => k.sesi_id === sesi.id).map(k => k.siswa_id);
+      const idsDitampilkan = Array.from(new Set([...direncanakan, ...sudahHadir]));
+      const daftarSiswa = idsDitampilkan.map(id => siswaCache.find(s => s.id === id)).filter(Boolean);
+
       const card = document.createElement('div');
       card.className = 'session-card';
-      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><span class="count">${hadirDiSesiIni.length}/${sesi.kapasitas}</span></div><div class="sesi-body"></div>`;
+      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><span class="count">${sudahHadir.length}/${sesi.kapasitas}</span></div><div class="sesi-body"></div>`;
       const body = card.querySelector('.sesi-body');
-      siswaCache.forEach(s => body.appendChild(buildKehadiranRow(s, sesi)));
+      if (daftarSiswa.length === 0) {
+        body.innerHTML = '<div class="empty-state">Belum ada rencana untuk sesi ini</div>';
+      } else {
+        daftarSiswa.forEach(s => body.appendChild(buildKehadiranRow(s, sesi)));
+      }
+      const walkinBtn = document.createElement('button');
+      walkinBtn.className = 'icon-btn';
+      walkinBtn.style.margin = '10px 16px 14px';
+      walkinBtn.textContent = '+ Tambah Peserta Dadakan';
+      walkinBtn.addEventListener('click', () => openWalkinModal(sesi));
+      card.appendChild(walkinBtn);
       grid.appendChild(card);
     });
   }
@@ -567,18 +712,18 @@
       <input type="checkbox" data-siswa="${s.id}" data-sesi="${sesi.id}" ${kehadiran ? 'checked' : ''} style="width:auto;">
       ${avatarHtml(s)}
       <span class="nama">${escapeHtml(s.nama)}</span>
-      ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" style="width:auto;">
-        <option value="belum_bayar" ${kehadiran.status_bayar !== 'lunas' ? 'selected' : ''}>Belum bayar</option>
-        <option value="lunas" ${kehadiran.status_bayar === 'lunas' ? 'selected' : ''}>Lunas</option>
-      </select>` : ''}
+      ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" style="width:auto;">${PAYMENT_OPTIONS}</select>` : ''}
     `;
+    if (kehadiran) {
+      row.querySelector('select').value = kehadiran.status_bayar || 'belum_bayar';
+    }
     row.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
       const checked = e.target.checked;
       if (checked) {
         await db.collection(HADIR_COL).add({
           siswa_id: s.id, siswa_nama: s.nama,
           sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
-          status_bayar: 'belum_bayar', metode_bayar: null,
+          status_bayar: 'belum_bayar', walk_in: false,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
       } else {
@@ -597,54 +742,31 @@
     return row;
   }
 
-  document.getElementById('generateBtn').addEventListener('click', async () => {
-    const btn = document.getElementById('generateBtn');
-    const status = document.getElementById('generateStatus');
-    if (sesiCache.length === 0) { status.textContent = 'Tambahkan minimal satu sesi dulu.'; return; }
-    btn.disabled = true; btn.textContent = 'Memproses...';
+  // ---------- WALK-IN ----------
+  const walkinOverlay = document.getElementById('walkinModalOverlay');
+  let walkinSesi = null;
 
-    const idsSudahIkutSesuatu = new Set(kehadiranCache.map(k => k.siswa_id));
-    const belumIkutApaapa = siswaCache.filter(s => !idsSudahIkutSesuatu.has(s.id));
-    if (belumIkutApaapa.length === 0) {
-      status.textContent = 'Semua siswa sudah tercatat di minimal satu sesi.';
-      btn.disabled = false; btn.textContent = 'Generate Otomatis';
-      return;
-    }
-
-    const slot = {};
-    sesiCache.forEach(sesi => {
-      const terisi = kehadiranCache.filter(k => k.sesi_id === sesi.id).length;
-      slot[sesi.id] = sesi.kapasitas - terisi;
+  function openWalkinModal(sesi) {
+    walkinSesi = sesi;
+    const sudahAda = new Set(kehadiranCache.filter(k => k.sesi_id === sesi.id).map(k => k.siswa_id));
+    const select = document.getElementById('walkinSiswaSelect');
+    select.innerHTML = siswaCache.filter(s => !sudahAda.has(s.id)).map(s => `<option value="${s.id}">${escapeHtml(s.nama)}</option>`).join('');
+    if (select.options.length === 0) select.innerHTML = '<option value="">Semua siswa sudah tercatat di sesi ini</option>';
+    walkinOverlay.classList.add('active');
+  }
+  document.getElementById('btnBatalWalkin').addEventListener('click', () => walkinOverlay.classList.remove('active'));
+  document.getElementById('btnSimpanWalkin').addEventListener('click', async () => {
+    const siswaId = document.getElementById('walkinSiswaSelect').value;
+    if (!siswaId || !walkinSesi) { walkinOverlay.classList.remove('active'); return; }
+    const s = siswaCache.find(x => x.id === siswaId);
+    await db.collection(HADIR_COL).add({
+      siswa_id: s.id, siswa_nama: s.nama,
+      sesi_id: walkinSesi.id, sesi_label: walkinSesi.label, sesi_tanggal: walkinSesi.tanggal || null,
+      status_bayar: 'belum_bayar', walk_in: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-
-    const batch = db.batch();
-    let hasil = {}; sesiCache.forEach(s => hasil[s.label] = 0);
-    let sisa = 0;
-
-    belumIkutApaapa.forEach(s => {
-      const targetId = Object.keys(slot).reduce((best, key) => (slot[key] > (slot[best] || 0) ? key : best), Object.keys(slot)[0]);
-      if (slot[targetId] > 0) {
-        slot[targetId]--;
-        const sesi = sesiCache.find(x => x.id === targetId);
-        hasil[sesi.label]++;
-        const ref = db.collection(HADIR_COL).doc();
-        batch.set(ref, {
-          siswa_id: s.id, siswa_nama: s.nama,
-          sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
-          status_bayar: 'belum_bayar', metode_bayar: null,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } else {
-        sisa++;
-      }
-    });
-
-    await batch.commit();
+    walkinOverlay.classList.remove('active');
     await loadAll();
-
-    const ringkasan = Object.entries(hasil).filter(([k, v]) => v > 0).map(([k, v]) => `${v} ke ${k}`).join(', ');
-    status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} tidak kebagian (semua sesi penuh)` : '.');
-    btn.disabled = false; btn.textContent = 'Generate Otomatis';
   });
 
   // ---------- LAPORAN KEUANGAN ----------
@@ -656,19 +778,22 @@
     if (bulan) {
       filtered = kehadiranCache.filter(k => k.sesi_tanggal && k.sesi_tanggal.startsWith(bulan));
     }
-    const lunas = filtered.filter(k => k.status_bayar === 'lunas');
-    const belum = filtered.filter(k => k.status_bayar !== 'lunas');
+    const cash = filtered.filter(k => k.status_bayar === 'cash');
+    const qris = filtered.filter(k => k.status_bayar === 'qris');
+    const belum = filtered.filter(k => k.status_bayar !== 'cash' && k.status_bayar !== 'qris');
+    const totalLunas = cash.length + qris.length;
 
     document.getElementById('lapTotal').textContent = filtered.length;
-    document.getElementById('lapLunas').textContent = lunas.length;
+    document.getElementById('lapCash').textContent = cash.length;
+    document.getElementById('lapQris').textContent = qris.length;
     document.getElementById('lapBelum').textContent = belum.length;
-    document.getElementById('lapPendapatan').textContent = 'Rp' + (lunas.length * 15000).toLocaleString('id-ID');
+    document.getElementById('lapPendapatan').textContent = 'Rp' + (totalLunas * 15000).toLocaleString('id-ID');
 
     const perSesi = {};
     filtered.forEach(k => {
       if (!perSesi[k.sesi_label]) perSesi[k.sesi_label] = { total: 0, lunas: 0 };
       perSesi[k.sesi_label].total++;
-      if (k.status_bayar === 'lunas') perSesi[k.sesi_label].lunas++;
+      if (k.status_bayar === 'cash' || k.status_bayar === 'qris') perSesi[k.sesi_label].lunas++;
     });
 
     const el = document.getElementById('lapPerSesi');
