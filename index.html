@@ -24,6 +24,7 @@
   p{line-height:1.6;}
   .wrap{max-width:520px;margin:0 auto;padding:0 16px;}
 
+  /* HERO */
   .hero{
     position:relative;text-align:center;padding:52px 16px 32px;
     background:
@@ -41,7 +42,6 @@
   .hero h1{font-size:clamp(28px,7vw,38px);letter-spacing:1px;line-height:1.05;}
   .hero h1 span{color:var(--amber);}
   .hero .sub{color:var(--text-secondary);font-size:14px;margin-top:10px;}
-
   .badge-row{display:flex;justify-content:center;margin-top:16px;}
   .badge{background:var(--surface-2);border:1px solid var(--red);color:var(--red);border-radius:20px;padding:6px 14px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;}
 
@@ -49,6 +49,7 @@
   .about-card p{color:var(--text-secondary);font-size:13px;margin:0;}
   .about-card p strong{color:var(--chalk);}
 
+  /* STATS */
   .stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px;}
   .stat-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 12px;text-align:center;}
   .stat-num{font-family:'Oswald',sans-serif;font-size:26px;color:var(--amber);line-height:1;}
@@ -66,7 +67,9 @@
   .vm-card li{margin-bottom:6px;}
   .vm-card li:last-child{margin-bottom:0;}
 
-  .sesi-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px;cursor:pointer;}
+  /* SESI LATIHAN */
+  .sesi-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px;cursor:pointer;transition:transform .15s ease, border-color .15s ease;}
+  .sesi-card:hover{transform:translateY(-2px);border-color:var(--amber);}
   .sesi-card .head{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;}
   .sesi-card .head h3{font-size:16px;}
   .sesi-card .head-right{display:flex;align-items:center;gap:10px;}
@@ -86,14 +89,20 @@
   .player-initial{font-family:'Oswald',sans-serif;font-size:15px;color:var(--amber);}
   .player-name{font-size:10px;color:var(--chalk);line-height:1.2;word-break:break-word;max-width:64px;}
   .empty-sesi{padding:16px 18px;color:var(--text-secondary);font-size:13px;}
-
   .loading, .no-sesi{text-align:center;color:var(--text-secondary);font-size:13px;padding:30px 16px;}
 
-  .social-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:6px;}
-  .social-link{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;text-decoration:none;color:var(--chalk);font-size:13px;font-weight:600;}
-  .social-link:hover{border-color:var(--amber);}
-  .social-link svg{width:16px;height:16px;color:var(--amber);flex-shrink:0;}
+  /* SOSIAL MEDIA — ikon saja, tanpa teks */
+  .social-row{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:6px;}
+  .social-link{
+    display:flex;align-items:center;justify-content:center;
+    width:48px;height:48px;border-radius:50%;
+    background:var(--surface);border:1px solid var(--line);
+    transition:border-color .15s ease, transform .15s ease;
+  }
+  .social-link:hover{border-color:var(--amber);transform:translateY(-2px);}
+  .social-link svg{width:20px;height:20px;color:var(--amber);flex-shrink:0;}
 
+  /* RANKING */
   .ranking-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px;cursor:pointer;}
   .ranking-card.rank-1{border-color:#f2c14e;box-shadow:0 0 0 1px rgba(242,193,78,0.3);}
   .ranking-card.rank-2{border-color:#c9c9c9;}
@@ -118,11 +127,11 @@
 
   .cta-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;text-align:center;margin-top:30px;}
   .cta-box p{color:var(--text-secondary);font-size:13px;margin:0 0 14px;}
-  .cta-btn{display:inline-block;background:var(--amber);color:#1a1200;text-decoration:none;border-radius:8px;padding:13px 24px;font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:1px;}
-  .cta-btn:hover{filter:brightness(1.08);}
-
+  .cta-btn{display:inline-block;background:var(--amber);color:#1a1200;text-decoration:none;border-radius:8px;padding:13px 24px;font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:1px;transition:filter .15s, transform .1s;}
+  .cta-btn:hover{filter:brightness(1.08);transform:translateY(-1px);}
   .footer-note{text-align:center;color:var(--text-secondary);font-size:11px;font-family:'Space Mono',monospace;margin-top:36px;letter-spacing:1px;}
 
+  /* STICKY CTA MOBILE */
   .sticky-cta{position:fixed;left:0;right:0;bottom:-100px;background:rgba(29,22,19,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:bottom .3s ease;z-index:50;}
   .sticky-cta.show{bottom:0;}
   .sticky-cta p{margin:0;font-size:12px;color:var(--text-secondary);line-height:1.3;}
@@ -132,7 +141,6 @@
 </style>
 </head>
 <body>
-
 <div class="wrap">
   <div class="hero" id="hero">
     <img class="logo" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
@@ -143,7 +151,7 @@
   </div>
 
   <div class="about-card">
-    <p><strong>AKA Futsal Camp</strong> adalah program latihan futsal untuk anak & remaja di Probolinggo, sekaligus proses awal pencarian bakat sebelum resmi menjadi <strong>AKA Futsal Club</strong>. Tiap peserta dilatih rutin dan dinilai lewat musim seleksi bulanan menuju skuad inti.</p>
+    <p><strong>AKA Futsal Camp</strong> adalah program latihan futsal untuk anak &amp; remaja di Probolinggo, sekaligus proses awal pencarian bakat sebelum resmi menjadi <strong>AKA Futsal Club</strong>. Tiap peserta dilatih rutin dan dinilai lewat musim seleksi bulanan menuju skuad inti.</p>
   </div>
 
   <div class="stats-row" id="statsRow">
@@ -151,7 +159,7 @@
     <div class="stat-box"><div class="stat-num" id="statSesi">–</div><div class="stat-label">Sesi Aktif</div></div>
   </div>
 
-  <div class="section-title"><h2>Visi & Misi</h2><div class="line"></div></div>
+  <div class="section-title"><h2>Visi &amp; Misi</h2><div class="line"></div></div>
   <div class="vm-grid" id="visiMisiContainer">
     <div class="loading">Memuat...</div>
   </div>
@@ -202,13 +210,13 @@
     return div.innerHTML;
   }
 
+  // Ikon sosial media — cuma logo, tanpa label teks
   const SOCIAL_ICONS = {
     instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg>',
     tiktok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V4l8 2v3.2a5 5 0 0 1-4-1.4V15a4 4 0 1 1-4-4"/></svg>',
     facebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h-2a2 2 0 0 0-2 2v3H9v3h2v6h3v-6h2.2l.8-3H14v-2.2c0-.5.3-.8.8-.8H16V8z"/></svg>',
     youtube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5.5" width="20" height="13" rx="4"/><polygon points="10,9.5 16,12 10,14.5" fill="currentColor" stroke="none"/></svg>'
   };
-
   const SOCIAL_META = {
     instagram: { label: 'Instagram', icon: SOCIAL_ICONS.instagram },
     tiktok: { label: 'TikTok', icon: SOCIAL_ICONS.tiktok },
@@ -254,7 +262,9 @@
           a.target = '_blank';
           a.rel = 'noopener';
           a.className = 'social-link';
-          a.innerHTML = `${meta.icon}<span>${meta.label}</span>`;
+          a.setAttribute('aria-label', meta.label);
+          a.title = meta.label;
+          a.innerHTML = meta.icon;
           socialContainer.appendChild(a);
         }
       });
@@ -276,11 +286,9 @@
         db.collection('jadwal_rencana').get(),
         db.collection('futsal_siswa').get()
       ]);
-
       const sesiList = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const rencanaList = rencanaSnap.docs.map(d => d.data());
-      const fotoMap = {};
-      siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
+      const fotoMap = {}; siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
 
       const statPeserta = document.getElementById('statPeserta');
       const statSesi = document.getElementById('statSesi');
@@ -291,10 +299,15 @@
         container.innerHTML = '<div class="no-sesi">Jadwal belum diumumkan, pantau terus ya.</div>';
         return;
       }
-
       container.innerHTML = '';
       sesiList.forEach(sesi => {
         const anggota = rencanaList.filter(r => r.sesi_id === sesi.id);
+        const kap = sesi.kapasitas || 1;
+        const pct = Math.min(100, Math.round((anggota.length / kap) * 100));
+        let fillClass = '';
+        if (pct >= 100) fillClass = 'full';
+        else if (pct >= 75) fillClass = 'almost';
+
         const card = document.createElement('div');
         card.className = 'sesi-card';
         card.innerHTML = `
@@ -305,6 +318,7 @@
               <span class="chevron">▾</span>
             </div>
           </div>
+          <div class="kap-track"><div class="kap-fill ${fillClass}" style="width:${pct}%"></div></div>
           <div class="names"><div class="names-inner"></div></div>
         `;
         const namesInner = card.querySelector('.names-inner');
@@ -401,6 +415,13 @@
       container.innerHTML = '<div class="no-sesi">Gagal memuat ranking, coba refresh halaman.</div>';
     }
   }
+
+  // Sticky CTA muncul setelah scroll melewati hero
+  window.addEventListener('scroll', () => {
+    const sticky = document.getElementById('stickyCta');
+    if (window.scrollY > 320) sticky.classList.add('show');
+    else sticky.classList.remove('show');
+  });
 
   loadPengaturan();
   loadJadwal();
