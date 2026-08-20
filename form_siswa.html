@@ -233,10 +233,10 @@
       <div class="error-msg">Nama wajib diisi</div>
     </div>
 
-    <div class="field" data-field="Nomer WA">
-      <label>Nomer Whatsapp</label>
-      <input type="number" id="Nomer WA" placeholder="cth. 08xxxx" autocomplete="Nomer WA">
-      <div class="error-msg">Nama wajib diisi</div>
+    <div class="field" data-field="wa">
+      <label>Nomor WhatsApp</label>
+      <input type="tel" id="wa" placeholder="cth. 081234567890" inputmode="numeric" autocomplete="tel">
+      <div class="error-msg">Nomor WhatsApp wajib diisi</div>
     </div>
 
     <div class="field" data-field="usia">
@@ -352,11 +352,13 @@
 
   function validate() {
     const nama = document.getElementById('nama').value.trim();
+    const wa = document.getElementById('wa').value.trim();
     const usia = document.getElementById('usia').value.trim();
     const ttl = document.getElementById('ttl').value.trim();
 
     let valid = true;
     if (!nama) { setFieldError('nama', true); valid = false; } else clearFieldError('nama');
+    if (!wa) { setFieldError('wa', true); valid = false; } else clearFieldError('wa');
     if (!usia) { setFieldError('usia', true); valid = false; } else clearFieldError('usia');
     if (!ttl) { setFieldError('ttl', true); valid = false; } else clearFieldError('ttl');
     if (!fotoBase64) { setFieldError('foto', true); valid = false; } else clearFieldError('foto');
@@ -377,6 +379,7 @@
 
     const data = {
       nama: document.getElementById('nama').value.trim(),
+      nomor_wa: document.getElementById('wa').value.trim(),
       usia: Number(document.getElementById('usia').value.trim()),
       tempat_tanggal_lahir: document.getElementById('ttl').value.trim(),
       foto: fotoBase64,
