@@ -130,6 +130,8 @@
     <button class="logout-btn" id="logoutBtn">Keluar</button>
   </div>
 
+  <div id="globalError" style="display:none;background:rgba(242,107,107,0.12);border:1px solid var(--danger);color:var(--danger);font-size:13px;padding:12px 20px;margin:14px 20px 0;border-radius:10px;max-width:920px;margin-left:auto;margin-right:auto;"></div>
+
   <div class="tabs">
     <button class="tab-btn active" data-tab="siswaTab">Kelola Siswa</button>
     <button class="tab-btn" data-tab="jadwalTab">Jadwal Latihan</button>
@@ -248,6 +250,7 @@
       <input type="file" id="modalFotoInput" accept="image/*" style="display:none;">
     </div>
     <div class="field"><label>Nama lengkap</label><input type="text" id="modalNama"></div>
+    <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="modalWa" placeholder="cth. 081234567890"></div>
     <div class="field"><label>Usia</label><input type="number" id="modalUsia" min="1"></div>
     <div class="field"><label>Tempat, tanggal lahir</label><input type="text" id="modalTtl"></div>
     <div class="field"><label>Kelas (opsional)</label><input type="text" id="modalKelas"></div>
@@ -324,13 +327,27 @@
   const HADIR_COL = "kehadiran";
   const JADWAL_COL = "jadwal_rencana";
 
+  function showGlobalError(msg) {
+    const el = document.getElementById('globalError');
+    if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+    el.style.display = 'block';
+    el.textContent = msg;
+  }
+
   async function loadAll() {
-    const [siswaSnap, sesiSnap] = await Promise.all([
-      db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
-      db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
-    ]);
-    siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    try {
+      const [siswaSnap, sesiSnap] = await Promise.all([
+        db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
+        db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
+      ]);
+      siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      showGlobalError(null);
+    } catch (err) {
+      console.error('Gagal memuat data siswa/sesi:', err);
+      showGlobalError('Gagal memuat data siswa/sesi: ' + err.message + ' — cek security rules Firestore untuk koleksi "futsal_siswa" dan "sesi_latihan".');
+      return;
+    }
 
     try {
       const hadirSnap = await db.collection(HADIR_COL).get();
@@ -338,6 +355,7 @@
     } catch (err) {
       console.error('Gagal memuat kehadiran (cek rules Firestore untuk collection kehadiran):', err);
       kehadiranCache = [];
+      showGlobalError('Gagal memuat data kehadiran: ' + err.message + ' — cek security rules Firestore untuk koleksi "kehadiran".');
     }
 
     try {
@@ -346,6 +364,7 @@
     } catch (err) {
       console.error('Gagal memuat rencana jadwal (cek rules Firestore untuk collection jadwal_rencana):', err);
       rencanaCache = [];
+      showGlobalError('Gagal memuat rencana jadwal: ' + err.message + ' — cek security rules Firestore untuk koleksi "jadwal_rencana".');
     }
 
     renderSiswaTab();
@@ -418,7 +437,7 @@
         ${avatarHtml(s)}
         <div class="info">
           <div class="nama">${escapeHtml(s.nama)}</div>
-          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''} · ${jumlahHadir} sesi tercatat</div>
+          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.nomor_wa ? ' · ' + escapeHtml(s.nomor_wa) : ''} · ${jumlahHadir} sesi tercatat</div>
         </div>
         <div class="actions">
           <button class="icon-btn" data-edit="${s.id}">Edit</button>
@@ -443,6 +462,7 @@
     const s = id ? siswaCache.find(x => x.id === id) : null;
     document.getElementById('siswaModalTitle').textContent = id ? 'Edit Siswa' : 'Tambah Siswa';
     document.getElementById('modalNama').value = s ? s.nama || '' : '';
+    document.getElementById('modalWa').value = s ? s.nomor_wa || '' : '';
     document.getElementById('modalUsia').value = s ? s.usia || '' : '';
     document.getElementById('modalTtl').value = s ? s.tempat_tanggal_lahir || '' : '';
     document.getElementById('modalKelas').value = s ? s.kelas || '' : '';
@@ -495,6 +515,7 @@
   document.getElementById('btnSimpanSiswa').addEventListener('click', async () => {
     const data = {
       nama: document.getElementById('modalNama').value.trim(),
+      nomor_wa: document.getElementById('modalWa').value.trim() || null,
       usia: Number(document.getElementById('modalUsia').value) || null,
       tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
       kelas: document.getElementById('modalKelas').value.trim() || null,
@@ -503,20 +524,30 @@
     };
     if (!data.nama) { alert('Nama wajib diisi'); return; }
 
-    if (editingId) {
-      await db.collection(SISWA_COL).doc(editingId).update(data);
-    } else {
-      data.tanggal_daftar = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection(SISWA_COL).add(data);
+    try {
+      if (editingId) {
+        await db.collection(SISWA_COL).doc(editingId).update(data);
+      } else {
+        data.tanggal_daftar = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection(SISWA_COL).add(data);
+      }
+      closeSiswaModal();
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal menyimpan siswa:', err);
+      alert('Gagal menyimpan data siswa: ' + err.message);
     }
-    closeSiswaModal();
-    await loadAll();
   });
 
   async function hapusSiswa(id) {
     if (!confirm('Yakin hapus data siswa ini?')) return;
-    await db.collection(SISWA_COL).doc(id).delete();
-    await loadAll();
+    try {
+      await db.collection(SISWA_COL).doc(id).delete();
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal menghapus siswa:', err);
+      alert('Gagal menghapus siswa: ' + err.message);
+    }
   }
 
   const NAMA_HARI = ['Minggu','Senin','Selasa','Rabu','Kamis',"Jum'at",'Sabtu'];
@@ -538,6 +569,7 @@
     sesiPreview.textContent = formatted ? ('Label sesi: ' + formatted + (ket ? ' (' + ket + ')' : '')) : '';
   }
   sesiTanggalInput.addEventListener('change', updateSesiPreview);
+  sesiTanggalInput.addEventListener('input', updateSesiPreview);
   sesiKeteranganInput.addEventListener('input', updateSesiPreview);
 
   document.getElementById('btnTambahSesi').addEventListener('click', async () => {
@@ -546,12 +578,17 @@
     const kap = Number(document.getElementById('sesiKapasitas').value) || 25;
     if (!tanggal) { alert('Pilih tanggal sesi dulu'); return; }
     const label = formatTanggalIndo(tanggal) + (ket ? ' (' + ket + ')' : '');
-    await db.collection(SESI_COL).add({ label, tanggal, kapasitas: kap, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    sesiTanggalInput.value = '';
-    sesiKeteranganInput.value = '';
-    document.getElementById('sesiKapasitas').value = 25;
-    sesiPreview.textContent = '';
-    await loadAll();
+    try {
+      await db.collection(SESI_COL).add({ label, tanggal, kapasitas: kap, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      sesiTanggalInput.value = '';
+      sesiKeteranganInput.value = '';
+      document.getElementById('sesiKapasitas').value = 25;
+      sesiPreview.textContent = '';
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal tambah sesi:', err);
+      alert('Gagal menambah sesi: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "sesi_latihan".');
+    }
   });
 
   async function hapusSesi(id) {
@@ -613,11 +650,16 @@
       `;
       row.querySelector('select').addEventListener('change', async (e) => {
         const sesiId = e.target.value;
-        if (sesiId) {
-          const sesi = sesiCache.find(x => x.id === sesiId);
-          await db.collection(JADWAL_COL).doc(s.id).set({ siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
-        } else {
-          await db.collection(JADWAL_COL).doc(s.id).delete().catch(() => {});
+        try {
+          if (sesiId) {
+            const sesi = sesiCache.find(x => x.id === sesiId);
+            await db.collection(JADWAL_COL).doc(s.id).set({ siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
+          } else {
+            await db.collection(JADWAL_COL).doc(s.id).delete();
+          }
+        } catch (err) {
+          console.error('Gagal simpan rencana jadwal:', err);
+          alert('Gagal menyimpan perubahan jadwal: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "jadwal_rencana".');
         }
         await loadAll();
       });
@@ -661,12 +703,17 @@
       }
     });
 
-    await batch.commit();
-    await loadAll();
-
-    const ringkasan = Object.entries(hasil).filter(([k, v]) => v > 0).map(([k, v]) => `${v} ke ${k}`).join(', ');
-    status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} tidak kebagian (semua sesi penuh)` : '.');
-    btn.disabled = false; btn.textContent = 'Generate Otomatis';
+    try {
+      await batch.commit();
+      await loadAll();
+      const ringkasan = Object.entries(hasil).filter(([k, v]) => v > 0).map(([k, v]) => `${v} ke ${k}`).join(', ');
+      status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} tidak kebagian (semua sesi penuh)` : '.');
+    } catch (err) {
+      console.error('Gagal generate jadwal:', err);
+      status.textContent = 'Gagal generate: ' + err.message + ' — cek security rules Firestore untuk koleksi "jadwal_rencana".';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Generate Otomatis';
+    }
   });
 
   // ---------- KEHADIRAN HARI-H ----------
