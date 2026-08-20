@@ -8,8 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#10131f; --surface:#1b2036; --surface-2:#232a45; --line:#2c3355;
-    --amber:#f5a623; --chalk:#f2f3f5; --text-secondary:#8b90a8; --success:#34d399;
+    --bg:#120e0c; --surface:#1d1613; --surface-2:#261c17; --line:#3a2b23;
+    --amber:#e8b923; --red:#c8272d; --chalk:#f5f1e8; --text-secondary:#a89586; --success:#34d399;
   }
   *{box-sizing:border-box;}
   body{
@@ -32,7 +32,7 @@
   .hero .sub{color:var(--text-secondary);font-size:14px;margin-top:10px;}
 
   .badge-row{display:flex;justify-content:center;margin-top:16px;}
-  .badge{background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:6px 14px;font-family:'Space Mono',monospace;font-size:11px;color:var(--amber);letter-spacing:1px;}
+  .badge{background:var(--surface-2);border:1px solid var(--red);color:var(--red);border-radius:20px;padding:6px 14px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;}
 
   .about-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:24px;}
   .about-card p{color:var(--text-secondary);font-size:13px;margin:0;}
@@ -187,13 +187,13 @@
   async function loadJadwal() {
     const container = document.getElementById('sesiContainer');
     try {
-      const [sesiSnap, hadirSnap] = await Promise.all([
+      const [sesiSnap, rencanaSnap] = await Promise.all([
         db.collection('sesi_latihan').orderBy('createdAt', 'asc').get(),
-        db.collection('kehadiran').get()
+        db.collection('jadwal_rencana').get()
       ]);
 
       const sesiList = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const hadirList = hadirSnap.docs.map(d => d.data());
+      const rencanaList = rencanaSnap.docs.map(d => d.data());
 
       if (sesiList.length === 0) {
         container.innerHTML = '<div class="no-sesi">Jadwal belum diumumkan, pantau terus ya.</div>';
@@ -202,7 +202,7 @@
 
       container.innerHTML = '';
       sesiList.forEach(sesi => {
-        const anggota = hadirList.filter(k => k.sesi_id === sesi.id);
+        const anggota = rencanaList.filter(r => r.sesi_id === sesi.id);
         const card = document.createElement('div');
         card.className = 'sesi-card';
         card.innerHTML = `
@@ -219,10 +219,10 @@
         if (anggota.length === 0) {
           namesInner.outerHTML = '<div class="empty-sesi">Belum ada peserta</div>';
         } else {
-          anggota.forEach(k => {
+          anggota.forEach(r => {
             const pill = document.createElement('span');
             pill.className = 'name-pill';
-            pill.textContent = k.siswa_nama || '(tanpa nama)';
+            pill.textContent = r.siswa_nama || '(tanpa nama)';
             namesInner.appendChild(pill);
           });
         }
