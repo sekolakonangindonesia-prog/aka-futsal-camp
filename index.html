@@ -57,15 +57,14 @@
   .sesi-card .kap{font-family:'Space Mono',monospace;font-size:12px;color:var(--amber);}
   .sesi-card .chevron{color:var(--text-secondary);font-size:12px;transition:transform .2s;}
   .sesi-card.open .chevron{transform:rotate(180deg);}
-  .sesi-card .names{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease;}
-  .sesi-card .names > *{overflow:hidden;}
-  .sesi-card.open .names{grid-template-rows:1fr;border-top:1px solid var(--line);}
-  .names-inner{padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:14px 8px;}
-  .player-card{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;}
-  .player-photo{width:52px;height:52px;border-radius:50%;background:var(--surface-2);border:2px solid var(--amber);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .sesi-card .names{max-height:0;overflow:hidden;transition:max-height .3s ease;}
+  .sesi-card.open .names{border-top:1px solid var(--line);}
+  .names-inner{padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:12px 8px;}
+  .player-card{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;}
+  .player-photo{width:42px;height:42px;border-radius:50%;background:var(--surface-2);border:2px solid var(--amber);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
   .player-photo img{width:100%;height:100%;object-fit:cover;}
-  .player-initial{font-family:'Oswald',sans-serif;font-size:18px;color:var(--amber);}
-  .player-name{font-size:10.5px;color:var(--chalk);line-height:1.25;word-break:break-word;max-width:70px;}
+  .player-initial{font-family:'Oswald',sans-serif;font-size:15px;color:var(--amber);}
+  .player-name{font-size:10px;color:var(--chalk);line-height:1.2;word-break:break-word;max-width:64px;}
   .empty-sesi{padding:16px 18px;color:var(--text-secondary);font-size:13px;}
 
   .loading, .no-sesi{text-align:center;color:var(--text-secondary);font-size:13px;padding:30px 16px;}
@@ -74,6 +73,28 @@
   .social-link{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;text-decoration:none;color:var(--chalk);font-size:13px;font-weight:600;}
   .social-link:hover{border-color:var(--amber);}
   .social-link svg{width:16px;height:16px;color:var(--amber);flex-shrink:0;}
+
+  .ranking-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px;cursor:pointer;}
+  .ranking-card.rank-1{border-color:#f2c14e;box-shadow:0 0 0 1px rgba(242,193,78,0.3);}
+  .ranking-card.rank-2{border-color:#c9c9c9;}
+  .ranking-card.rank-3{border-color:#cd7f32;}
+  .rank-head{display:flex;align-items:center;gap:12px;padding:14px 16px;}
+  .rank-num{font-family:'Oswald',sans-serif;font-size:16px;color:var(--text-secondary);width:26px;flex-shrink:0;}
+  .ranking-card.rank-1 .rank-num{color:#f2c14e;}
+  .ranking-card.rank-2 .rank-num{color:#c9c9c9;}
+  .ranking-card.rank-3 .rank-num{color:#cd7f32;}
+  .rank-photo{width:44px;height:44px;border-radius:50%;overflow:hidden;background:var(--surface-2);border:2px solid var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .rank-photo img{width:100%;height:100%;object-fit:cover;}
+  .rank-info{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .rank-name{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rank-total{font-size:12px;color:var(--amber);font-family:'Space Mono',monospace;}
+  .rank-head .chevron{color:var(--text-secondary);font-size:12px;transition:transform .2s;flex-shrink:0;}
+  .ranking-card.open .chevron{transform:rotate(180deg);}
+  .rank-detail{max-height:0;overflow:hidden;transition:max-height .3s ease;}
+  .ranking-card.open .rank-detail{border-top:1px solid var(--line);}
+  .rank-detail-inner{padding:12px 16px;display:flex;flex-direction:column;gap:7px;}
+  .kategori-bar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);}
+  .kategori-bar-row span:last-child{color:var(--chalk);font-family:'Space Mono',monospace;}
 
   .cta-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;text-align:center;margin-top:30px;}
   .cta-box p{color:var(--text-secondary);font-size:13px;margin:0 0 14px;}
@@ -106,6 +127,11 @@
   <div class="section-title"><h2>Sesi Latihan</h2><div class="line"></div></div>
   <div id="sesiContainer">
     <div class="loading">Memuat jadwal...</div>
+  </div>
+
+  <div class="section-title"><h2>Ranking 14 Besar</h2><div class="line"></div></div>
+  <div id="rankingContainer">
+    <div class="loading">Memuat ranking...</div>
   </div>
 
   <div class="section-title"><h2>Ikuti Kami</h2><div class="line"></div></div>
@@ -247,7 +273,11 @@
             namesInner.appendChild(pcard);
           });
         }
-        card.querySelector('.head').addEventListener('click', () => card.classList.toggle('open'));
+        const namesEl = card.querySelector('.names');
+        card.querySelector('.head').addEventListener('click', () => {
+          const isOpen = card.classList.toggle('open');
+          namesEl.style.maxHeight = isOpen ? namesEl.scrollHeight + 'px' : '0px';
+        });
         container.appendChild(card);
       });
     } catch (err) {
@@ -256,8 +286,75 @@
     }
   }
 
+  function currentBulanStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  async function loadRanking() {
+    const container = document.getElementById('rankingContainer');
+    try {
+      const bulan = currentBulanStr();
+      const [penilaianSnap, siswaSnap] = await Promise.all([
+        db.collection('penilaian').where('bulan', '==', bulan).get(),
+        db.collection('futsal_siswa').get()
+      ]);
+      const fotoMap = {};
+      siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
+
+      let list = penilaianSnap.docs.map(d => d.data());
+      list.sort((a, b) => (b.total || 0) - (a.total || 0));
+      list = list.slice(0, 14);
+
+      if (list.length === 0) {
+        container.innerHTML = '<div class="no-sesi">Musim seleksi bulan ini belum ada hasil.</div>';
+        return;
+      }
+
+      const labelMap = { teknik: 'Teknik', fisik: 'Fisik', decision_making: 'Decision Making', taktik: 'Taktik', mental: 'Mental' };
+      container.innerHTML = '';
+      list.forEach((p, idx) => {
+        const rank = idx + 1;
+        const foto = fotoMap[p.siswa_id];
+        const nama = p.siswa_nama || '-';
+        const card = document.createElement('div');
+        card.className = 'ranking-card' + (rank <= 3 ? ' rank-' + rank : '');
+        card.innerHTML = `
+          <div class="rank-head">
+            <span class="rank-num">#${rank}</span>
+            <div class="rank-photo">${foto ? `<img src="${foto}" alt="">` : `<span class="player-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</span>`}</div>
+            <div class="rank-info">
+              <span class="rank-name">${escapeHtml(nama)}</span>
+              <span class="rank-total">${p.total || 0} poin</span>
+            </div>
+            <span class="chevron">▾</span>
+          </div>
+          <div class="rank-detail"><div class="rank-detail-inner"></div></div>
+        `;
+        const detailInner = card.querySelector('.rank-detail-inner');
+        const kategoriTotal = p.kategoriTotal || {};
+        Object.keys(labelMap).forEach(key => {
+          const row = document.createElement('div');
+          row.className = 'kategori-bar-row';
+          row.innerHTML = `<span>${labelMap[key]}</span><span>${kategoriTotal[key] || 0}</span>`;
+          detailInner.appendChild(row);
+        });
+        const detailEl = card.querySelector('.rank-detail');
+        card.querySelector('.rank-head').addEventListener('click', () => {
+          const isOpen = card.classList.toggle('open');
+          detailEl.style.maxHeight = isOpen ? detailEl.scrollHeight + 'px' : '0px';
+        });
+        container.appendChild(card);
+      });
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = '<div class="no-sesi">Gagal memuat ranking, coba refresh halaman.</div>';
+    }
+  }
+
   loadPengaturan();
   loadJadwal();
+  loadRanking();
 </script>
 </body>
 </html>
