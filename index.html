@@ -57,17 +57,23 @@
   .sesi-card .kap{font-family:'Space Mono',monospace;font-size:12px;color:var(--amber);}
   .sesi-card .chevron{color:var(--text-secondary);font-size:12px;transition:transform .2s;}
   .sesi-card.open .chevron{transform:rotate(180deg);}
-  .sesi-card .names{max-height:0;overflow:hidden;transition:max-height .25s ease;border-top:0 solid var(--line);}
-  .sesi-card.open .names{max-height:500px;border-top-width:1px;}
-  .names-inner{padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px;}
-  .name-pill{background:var(--surface-2);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12px;color:var(--chalk);}
-  .empty-sesi{padding:14px 18px;color:var(--text-secondary);font-size:13px;}
+  .sesi-card .names{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease;}
+  .sesi-card .names > *{overflow:hidden;}
+  .sesi-card.open .names{grid-template-rows:1fr;border-top:1px solid var(--line);}
+  .names-inner{padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:14px 8px;}
+  .player-card{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;}
+  .player-photo{width:52px;height:52px;border-radius:50%;background:var(--surface-2);border:2px solid var(--amber);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .player-photo img{width:100%;height:100%;object-fit:cover;}
+  .player-initial{font-family:'Oswald',sans-serif;font-size:18px;color:var(--amber);}
+  .player-name{font-size:10.5px;color:var(--chalk);line-height:1.25;word-break:break-word;max-width:70px;}
+  .empty-sesi{padding:16px 18px;color:var(--text-secondary);font-size:13px;}
 
   .loading, .no-sesi{text-align:center;color:var(--text-secondary);font-size:13px;padding:30px 16px;}
 
   .social-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:6px;}
   .social-link{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;text-decoration:none;color:var(--chalk);font-size:13px;font-weight:600;}
   .social-link:hover{border-color:var(--amber);}
+  .social-link svg{width:16px;height:16px;color:var(--amber);flex-shrink:0;}
 
   .cta-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;text-align:center;margin-top:30px;}
   .cta-box p{color:var(--text-secondary);font-size:13px;margin:0 0 14px;}
@@ -133,11 +139,18 @@
     return div.innerHTML;
   }
 
+  const SOCIAL_ICONS = {
+    instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg>',
+    tiktok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V4l8 2v3.2a5 5 0 0 1-4-1.4V15a4 4 0 1 1-4-4"/></svg>',
+    facebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h-2a2 2 0 0 0-2 2v3H9v3h2v6h3v-6h2.2l.8-3H14v-2.2c0-.5.3-.8.8-.8H16V8z"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5.5" width="20" height="13" rx="4"/><polygon points="10,9.5 16,12 10,14.5" fill="currentColor" stroke="none"/></svg>'
+  };
+
   const SOCIAL_META = {
-    instagram: { label: 'Instagram', icon: 'IG' },
-    tiktok: { label: 'TikTok', icon: 'TT' },
-    facebook: { label: 'Facebook', icon: 'FB' },
-    youtube: { label: 'YouTube', icon: 'YT' }
+    instagram: { label: 'Instagram', icon: SOCIAL_ICONS.instagram },
+    tiktok: { label: 'TikTok', icon: SOCIAL_ICONS.tiktok },
+    facebook: { label: 'Facebook', icon: SOCIAL_ICONS.facebook },
+    youtube: { label: 'YouTube', icon: SOCIAL_ICONS.youtube }
   };
 
   async function loadPengaturan() {
@@ -170,7 +183,7 @@
           a.target = '_blank';
           a.rel = 'noopener';
           a.className = 'social-link';
-          a.innerHTML = `<span>${meta.icon}</span><span>${meta.label}</span>`;
+          a.innerHTML = `${meta.icon}<span>${meta.label}</span>`;
           socialContainer.appendChild(a);
         }
       });
@@ -187,13 +200,16 @@
   async function loadJadwal() {
     const container = document.getElementById('sesiContainer');
     try {
-      const [sesiSnap, rencanaSnap] = await Promise.all([
+      const [sesiSnap, rencanaSnap, siswaSnap] = await Promise.all([
         db.collection('sesi_latihan').orderBy('createdAt', 'asc').get(),
-        db.collection('jadwal_rencana').get()
+        db.collection('jadwal_rencana').get(),
+        db.collection('futsal_siswa').get()
       ]);
 
       const sesiList = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const rencanaList = rencanaSnap.docs.map(d => d.data());
+      const fotoMap = {};
+      siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
 
       if (sesiList.length === 0) {
         container.innerHTML = '<div class="no-sesi">Jadwal belum diumumkan, pantau terus ya.</div>';
@@ -220,10 +236,15 @@
           namesInner.outerHTML = '<div class="empty-sesi">Belum ada peserta</div>';
         } else {
           anggota.forEach(r => {
-            const pill = document.createElement('span');
-            pill.className = 'name-pill';
-            pill.textContent = r.siswa_nama || '(tanpa nama)';
-            namesInner.appendChild(pill);
+            const foto = fotoMap[r.siswa_id];
+            const nama = r.siswa_nama || '(tanpa nama)';
+            const pcard = document.createElement('div');
+            pcard.className = 'player-card';
+            pcard.innerHTML = `
+              <div class="player-photo">${foto ? `<img src="${foto}" alt="">` : `<span class="player-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</span>`}</div>
+              <span class="player-name">${escapeHtml(nama)}</span>
+            `;
+            namesInner.appendChild(pcard);
           });
         }
         card.querySelector('.head').addEventListener('click', () => card.classList.toggle('open'));
