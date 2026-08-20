@@ -3,19 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Daftar Aka Futsal Camp</title>
+<title>Daftar AKA Futsal Camp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#10131f;
-    --surface:#1b2036;
-    --surface-2:#232a45;
-    --line:#2c3355;
-    --amber:#f5a623;
-    --amber-dim:#c98a1e;
-    --chalk:#f2f3f5;
-    --text-secondary:#8b90a8;
+    --bg:#120e0c;
+    --surface:#1d1613;
+    --surface-2:#261c17;
+    --line:#3a2b23;
+    --amber:#e8b923;
+    --amber-dim:#c99b1e;
+    --red:#c8272d;
+    --chalk:#f5f1e8;
+    --text-secondary:#a89586;
     --success:#34d399;
     --danger:#f26b6b;
   }
@@ -218,7 +219,7 @@
 <div class="wrap">
 
   <div class="hero">
-    <img src="aka%20futsal%20camp.png" alt="AK Futsal Camp" style="width:96px;height:auto;margin-bottom:14px;">
+    <img src="aka%20futsal%20camp.png" alt="AKA Futsal Camp" style="width:96px;height:auto;margin-bottom:14px;">
     <span class="eyebrow">Sesi Terbuka</span>
     <h1>Daftar <span>AKA Futsal Camp</span></h1>
     <p class="sub">Isi data kamu di bawah — jadwal latihan akan diumumkan di grup WA</p>
@@ -229,6 +230,12 @@
     <div class="field" data-field="nama">
       <label>Nama lengkap</label>
       <input type="text" id="nama" placeholder="cth. Andi Saputra" autocomplete="name">
+      <div class="error-msg">Nama wajib diisi</div>
+    </div>
+
+    <div class="field" data-field="Nomer WA">
+      <label>Nomer Whatsapp</label>
+      <input type="number" id="Nomer WA" placeholder="cth. 08xxxx" autocomplete="Nomer WA">
       <div class="error-msg">Nama wajib diisi</div>
     </div>
 
