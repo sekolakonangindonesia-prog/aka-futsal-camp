@@ -24,8 +24,19 @@
   p{line-height:1.6;}
   .wrap{max-width:520px;margin:0 auto;padding:0 16px;}
 
-  .hero{text-align:center;padding:40px 16px 28px;}
-  .hero img.logo{width:88px;margin-bottom:14px;}
+  .hero{
+    position:relative;text-align:center;padding:52px 16px 32px;
+    background:
+      radial-gradient(circle at 18% -10%, rgba(200,39,45,0.20), transparent 45%),
+      radial-gradient(circle at 88% 8%, rgba(232,185,35,0.16), transparent 50%),
+      repeating-linear-gradient(135deg, rgba(232,185,35,0.045) 0 2px, transparent 2px 26px),
+      var(--surface);
+    background-size:cover;background-position:center;
+    border-bottom:1px solid var(--line);
+    transition:background-image .3s ease;
+  }
+  .hero.has-image{background-color:var(--bg);}
+  .hero img.logo{width:84px;margin-bottom:14px;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.4));}
   .hero .eyebrow{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:3px;color:var(--amber);text-transform:uppercase;display:block;margin-bottom:8px;}
   .hero h1{font-size:clamp(28px,7vw,38px);letter-spacing:1px;line-height:1.05;}
   .hero h1 span{color:var(--amber);}
@@ -37,6 +48,11 @@
   .about-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:24px;}
   .about-card p{color:var(--text-secondary);font-size:13px;margin:0;}
   .about-card p strong{color:var(--chalk);}
+
+  .stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px;}
+  .stat-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 12px;text-align:center;}
+  .stat-num{font-family:'Oswald',sans-serif;font-size:26px;color:var(--amber);line-height:1;}
+  .stat-label{font-size:10.5px;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase;margin-top:6px;font-family:'Space Mono',monospace;}
 
   .section-title{display:flex;align-items:center;gap:10px;margin:28px 0 14px;}
   .section-title h2{font-size:15px;color:var(--text-secondary);letter-spacing:2px;}
@@ -57,6 +73,10 @@
   .sesi-card .kap{font-family:'Space Mono',monospace;font-size:12px;color:var(--amber);}
   .sesi-card .chevron{color:var(--text-secondary);font-size:12px;transition:transform .2s;}
   .sesi-card.open .chevron{transform:rotate(180deg);}
+  .kap-track{height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin:0 18px 16px;}
+  .kap-fill{height:100%;border-radius:3px;background:var(--amber);transition:width .5s ease;}
+  .kap-fill.almost{background:linear-gradient(90deg,var(--amber),var(--red));}
+  .kap-fill.full{background:var(--red);}
   .sesi-card .names{max-height:0;overflow:hidden;transition:max-height .3s ease;}
   .sesi-card.open .names{border-top:1px solid var(--line);}
   .names-inner{padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:12px 8px;}
@@ -102,12 +122,19 @@
   .cta-btn:hover{filter:brightness(1.08);}
 
   .footer-note{text-align:center;color:var(--text-secondary);font-size:11px;font-family:'Space Mono',monospace;margin-top:36px;letter-spacing:1px;}
+
+  .sticky-cta{position:fixed;left:0;right:0;bottom:-100px;background:rgba(29,22,19,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:bottom .3s ease;z-index:50;}
+  .sticky-cta.show{bottom:0;}
+  .sticky-cta p{margin:0;font-size:12px;color:var(--text-secondary);line-height:1.3;}
+  .sticky-cta .cta-btn{padding:11px 18px;font-size:13px;white-space:nowrap;flex-shrink:0;}
+  @media(min-width:560px){.sticky-cta{display:none;}}
+  @media(max-width:559px){body{padding-bottom:88px;}}
 </style>
 </head>
 <body>
 
 <div class="wrap">
-  <div class="hero">
+  <div class="hero" id="hero">
     <img class="logo" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
     <span class="eyebrow">Program Pembinaan</span>
     <h1>AKA <span>Futsal Camp</span></h1>
@@ -117,6 +144,11 @@
 
   <div class="about-card">
     <p><strong>AKA Futsal Camp</strong> adalah program latihan futsal untuk anak & remaja di Probolinggo, sekaligus proses awal pencarian bakat sebelum resmi menjadi <strong>AKA Futsal Club</strong>. Tiap peserta dilatih rutin dan dinilai lewat musim seleksi bulanan menuju skuad inti.</p>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-box"><div class="stat-num" id="statPeserta">–</div><div class="stat-label">Peserta Terdaftar</div></div>
+    <div class="stat-box"><div class="stat-num" id="statSesi">–</div><div class="stat-label">Sesi Aktif</div></div>
   </div>
 
   <div class="section-title"><h2>Visi & Misi</h2><div class="line"></div></div>
@@ -143,6 +175,11 @@
   </div>
 
   <div class="footer-note">AKA FUTSAL CAMP · UPDATE OTOMATIS</div>
+</div>
+
+<div class="sticky-cta" id="stickyCta">
+  <p>Kuota terbatas<br>per sesi latihan</p>
+  <a class="cta-btn" href="form_siswa.html">Daftar Sekarang</a>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -185,6 +222,14 @@
     try {
       const doc = await db.collection('pengaturan').doc('umum').get();
       const data = doc.exists ? doc.data() : {};
+
+      // Opsional: kalau ada field "heroImage" (URL foto) di dokumen pengaturan/umum,
+      // foto itu dipakai sebagai background hero. Kalau kosong, tetap pakai pattern default.
+      if (data.heroImage) {
+        const heroEl = document.getElementById('hero');
+        heroEl.style.backgroundImage = `linear-gradient(180deg, rgba(18,14,12,.55), rgba(18,14,12,.92) 88%), url('${data.heroImage}')`;
+        heroEl.classList.add('has-image');
+      }
 
       vmContainer.innerHTML = '';
       if (data.visi) {
@@ -236,6 +281,11 @@
       const rencanaList = rencanaSnap.docs.map(d => d.data());
       const fotoMap = {};
       siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
+
+      const statPeserta = document.getElementById('statPeserta');
+      const statSesi = document.getElementById('statSesi');
+      if (statPeserta) statPeserta.textContent = rencanaList.length;
+      if (statSesi) statSesi.textContent = sesiList.length;
 
       if (sesiList.length === 0) {
         container.innerHTML = '<div class="no-sesi">Jadwal belum diumumkan, pantau terus ya.</div>';
