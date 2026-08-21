@@ -214,12 +214,26 @@
         <label style="width:auto;font-size:12px;color:var(--text-secondary);white-space:nowrap;">Musim seleksi bulan:</label>
         <input type="month" id="penilaianBulan">
         <input type="text" id="penilaianSearch" placeholder="Cari nama siswa..." style="flex:2;min-width:160px;">
+        <button class="icon-btn" id="btnAturKriteria">⚙ Atur Kriteria Penilaian</button>
       </div>
     </div>
     <div class="section-head">
       <h2>Ranking Musim Ini <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— 14 besar otomatis ditandai</span></h2>
     </div>
     <div class="siswa-table" id="penilaianTable" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="overlay" id="kriteriaModalOverlay">
+    <div class="modal" style="max-width:640px;max-height:85vh;overflow-y:auto;">
+      <h2>Atur Kriteria Penilaian</h2>
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:-6px;margin-bottom:14px;">Ubah nama kategori/sub-kriteria dan poin maksimal masing-masing. Berlaku untuk penilaian baru maupun yang sudah tersimpan.</p>
+      <div id="kriteriaEditorBody"></div>
+      <button class="icon-btn" id="btnTambahKategori" style="margin-top:12px;">+ Tambah Kategori</button>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btnBatalKriteria">Batal</button>
+        <button class="btn" id="btnSimpanKriteria">Simpan Kriteria</button>
+      </div>
+    </div>
   </div>
 
   <div class="overlay" id="penilaianModalOverlay">
@@ -368,13 +382,130 @@
   const HADIR_COL = "kehadiran";
   const JADWAL_COL = "jadwal_rencana";
   const PENILAIAN_COL = "penilaian";
-  const KATEGORI_PENILAIAN = [
-    { key: 'teknik', label: 'Teknik', subs: ['a', 'b', 'c', 'd'] },
-    { key: 'fisik', label: 'Fisik', subs: ['a', 'b', 'c', 'd', 'e'] },
-    { key: 'decision_making', label: 'Decision Making', subs: ['a'] },
-    { key: 'taktik', label: 'Taktik', subs: ['a', 'b', 'c'] },
-    { key: 'mental', label: 'Mental', subs: ['a'] }
-  ];
+  const KRITERIA_DOC = "penilaian_kriteria";
+  let kriteriaCache = null;
+  const DEFAULT_KRITERIA = {
+    kategori: [
+      { key: 'teknik', label: 'Teknik', subs: [
+        { key: 'a', label: 'Sub A', max: 10 }, { key: 'b', label: 'Sub B', max: 10 },
+        { key: 'c', label: 'Sub C', max: 10 }, { key: 'd', label: 'Sub D', max: 10 }
+      ]},
+      { key: 'fisik', label: 'Fisik', subs: [
+        { key: 'a', label: 'Sub A', max: 10 }, { key: 'b', label: 'Sub B', max: 10 },
+        { key: 'c', label: 'Sub C', max: 10 }, { key: 'd', label: 'Sub D', max: 10 }, { key: 'e', label: 'Sub E', max: 10 }
+      ]},
+      { key: 'decision_making', label: 'Decision Making', subs: [{ key: 'a', label: 'Sub A', max: 10 }] },
+      { key: 'taktik', label: 'Taktik', subs: [
+        { key: 'a', label: 'Sub A', max: 10 }, { key: 'b', label: 'Sub B', max: 10 }, { key: 'c', label: 'Sub C', max: 10 }
+      ]},
+      { key: 'mental', label: 'Mental', subs: [{ key: 'a', label: 'Sub A', max: 10 }] }
+    ]
+  };
+
+  function escapeAttr(str) {
+    return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  async function loadKriteria() {
+    try {
+      const doc = await db.collection(KRITERIA_DOC).doc('config').get();
+      kriteriaCache = doc.exists ? doc.data() : JSON.parse(JSON.stringify(DEFAULT_KRITERIA));
+    } catch (err) {
+      console.error('Gagal memuat kriteria penilaian:', err);
+      kriteriaCache = JSON.parse(JSON.stringify(DEFAULT_KRITERIA));
+      showGlobalError('Gagal memuat kriteria penilaian: ' + err.message + ' — cek security rules Firestore untuk koleksi "penilaian_kriteria".');
+    }
+  }
+
+  function renderKriteriaEditor() {
+    const body = document.getElementById('kriteriaEditorBody');
+    body.innerHTML = '';
+    kriteriaCache.kategori.forEach((kat, ki) => {
+      const group = document.createElement('div');
+      group.className = 'kategori-group';
+      group.innerHTML = `
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+          <input type="text" class="kat-label-input" data-ki="${ki}" value="${escapeAttr(kat.label)}" style="flex:1;font-family:'Oswald',sans-serif;font-size:14px;">
+          <button class="icon-btn btn-hapus-kat" data-ki="${ki}" style="padding:8px 10px;font-size:11px;">Hapus Kategori</button>
+        </div>
+        <div class="sub-list" data-ki="${ki}"></div>
+        <button class="icon-btn btn-tambah-sub" data-ki="${ki}" style="margin-top:6px;font-size:11px;">+ Tambah Sub</button>
+      `;
+      const subList = group.querySelector('.sub-list');
+      kat.subs.forEach((sub, si) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
+        row.innerHTML = `
+          <input type="text" class="sub-label-input" data-ki="${ki}" data-si="${si}" value="${escapeAttr(sub.label)}" placeholder="Nama sub-kriteria" style="flex:2;">
+          <input type="number" class="sub-max-input" data-ki="${ki}" data-si="${si}" value="${sub.max}" min="1" placeholder="Maks poin" style="flex:1;">
+          <button class="icon-btn btn-hapus-sub" data-ki="${ki}" data-si="${si}" style="padding:6px 8px;">✕</button>
+        `;
+        subList.appendChild(row);
+      });
+      body.appendChild(group);
+    });
+
+    body.querySelectorAll('.kat-label-input').forEach(inp => inp.addEventListener('input', e => {
+      kriteriaCache.kategori[Number(e.target.dataset.ki)].label = e.target.value;
+    }));
+    body.querySelectorAll('.sub-label-input').forEach(inp => inp.addEventListener('input', e => {
+      kriteriaCache.kategori[Number(e.target.dataset.ki)].subs[Number(e.target.dataset.si)].label = e.target.value;
+    }));
+    body.querySelectorAll('.sub-max-input').forEach(inp => inp.addEventListener('input', e => {
+      kriteriaCache.kategori[Number(e.target.dataset.ki)].subs[Number(e.target.dataset.si)].max = Number(e.target.value) || 0;
+    }));
+    body.querySelectorAll('.btn-hapus-kat').forEach(btn => btn.addEventListener('click', e => {
+      if (kriteriaCache.kategori.length <= 1) { alert('Minimal harus ada 1 kategori.'); return; }
+      if (!confirm('Hapus kategori ini beserta semua sub-kriterianya?')) return;
+      kriteriaCache.kategori.splice(Number(e.target.dataset.ki), 1);
+      renderKriteriaEditor();
+    }));
+    body.querySelectorAll('.btn-tambah-sub').forEach(btn => btn.addEventListener('click', e => {
+      const ki = Number(e.target.dataset.ki);
+      kriteriaCache.kategori[ki].subs.push({ key: 'sub_' + Date.now(), label: '', max: 10 });
+      renderKriteriaEditor();
+    }));
+    body.querySelectorAll('.btn-hapus-sub').forEach(btn => btn.addEventListener('click', e => {
+      const ki = Number(e.target.dataset.ki), si = Number(e.target.dataset.si);
+      if (kriteriaCache.kategori[ki].subs.length <= 1) { alert('Minimal harus ada 1 sub-kriteria per kategori.'); return; }
+      kriteriaCache.kategori[ki].subs.splice(si, 1);
+      renderKriteriaEditor();
+    }));
+  }
+
+  document.getElementById('btnAturKriteria').addEventListener('click', async () => {
+    if (!kriteriaCache) await loadKriteria();
+    renderKriteriaEditor();
+    document.getElementById('kriteriaModalOverlay').classList.add('active');
+  });
+
+  document.getElementById('btnTambahKategori').addEventListener('click', () => {
+    kriteriaCache.kategori.push({ key: 'kat_' + Date.now(), label: 'Kategori Baru', subs: [{ key: 'sub_' + Date.now(), label: 'Sub A', max: 10 }] });
+    renderKriteriaEditor();
+  });
+
+  document.getElementById('btnBatalKriteria').addEventListener('click', async () => {
+    document.getElementById('kriteriaModalOverlay').classList.remove('active');
+    await loadKriteria();
+  });
+
+  document.getElementById('btnSimpanKriteria').addEventListener('click', async () => {
+    for (const kat of kriteriaCache.kategori) {
+      if (!kat.label.trim()) { alert('Nama kategori tidak boleh kosong.'); return; }
+      for (const sub of kat.subs) {
+        if (!sub.label.trim()) { alert('Nama sub-kriteria tidak boleh kosong (kategori "' + kat.label + '").'); return; }
+        if (!sub.max || sub.max <= 0) { alert('Poin maksimal harus lebih dari 0 (sub "' + sub.label + '").'); return; }
+      }
+    }
+    try {
+      await db.collection(KRITERIA_DOC).doc('config').set(kriteriaCache);
+      document.getElementById('kriteriaModalOverlay').classList.remove('active');
+      renderPenilaianTable();
+    } catch (err) {
+      console.error('Gagal menyimpan kriteria:', err);
+      alert('Gagal menyimpan kriteria: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "penilaian_kriteria".');
+    }
+  });
 
   function showGlobalError(msg) {
     const el = document.getElementById('globalError');
@@ -973,6 +1104,7 @@
   document.getElementById('penilaianSearch').addEventListener('input', renderPenilaianTable);
 
   async function loadAndRenderPenilaian() {
+    if (!kriteriaCache) await loadKriteria();
     const bulan = penilaianBulanInput.value || currentBulanStr();
     const table = document.getElementById('penilaianTable');
     table.innerHTML = '<div class="empty-state">Memuat...</div>';
@@ -1036,21 +1168,31 @@
     document.getElementById('penilaianModalTitle').textContent = 'Input Penilaian — ' + siswa.nama;
     const body = document.getElementById('penilaianModalBody');
     body.innerHTML = '';
-    KATEGORI_PENILAIAN.forEach(kat => {
+    kriteriaCache.kategori.forEach(kat => {
       const group = document.createElement('div');
       group.className = 'kategori-group';
-      group.innerHTML = `<h4>${kat.label}</h4><div class="kategori-subs"></div>`;
+      group.innerHTML = `<h4>${escapeHtml(kat.label)}</h4><div class="kategori-subs"></div>`;
       const subsEl = group.querySelector('.kategori-subs');
       kat.subs.forEach(sub => {
-        const val = existing && existing.detail && existing.detail[kat.key] ? (existing.detail[kat.key][sub] ?? '') : '';
+        const val = existing && existing.detail && existing.detail[kat.key] ? (existing.detail[kat.key][sub.key] ?? '') : '';
         const field = document.createElement('div');
         field.className = 'kategori-sub-field';
-        field.innerHTML = `<label>${sub.toUpperCase()}</label><input type="number" step="0.5" min="0" data-kat="${kat.key}" data-sub="${sub}" value="${val}">`;
+        field.innerHTML = `<label>${escapeHtml(sub.label)} (maks ${sub.max})</label><input type="number" step="0.5" min="0" max="${sub.max}" data-kat="${kat.key}" data-sub="${sub.key}" value="${val}">`;
         subsEl.appendChild(field);
       });
       body.appendChild(group);
     });
-    body.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updatePenilaianTotalPreview));
+    body.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('input', updatePenilaianTotalPreview);
+      inp.addEventListener('change', () => {
+        let v = Number(inp.value) || 0;
+        const max = Number(inp.getAttribute('max'));
+        if (v < 0) v = 0;
+        if (max && v > max) v = max;
+        inp.value = v;
+        updatePenilaianTotalPreview();
+      });
+    });
     updatePenilaianTotalPreview();
     penilaianOverlay.classList.add('active');
   }
@@ -1071,13 +1213,15 @@
     const detail = {};
     const kategoriTotal = {};
     let total = 0;
-    KATEGORI_PENILAIAN.forEach(kat => {
+    kriteriaCache.kategori.forEach(kat => {
       detail[kat.key] = {};
       let subTotal = 0;
       kat.subs.forEach(sub => {
-        const inp = document.querySelector(`#penilaianModalBody input[data-kat="${kat.key}"][data-sub="${sub}"]`);
-        const val = Number(inp.value) || 0;
-        detail[kat.key][sub] = val;
+        const inp = document.querySelector(`#penilaianModalBody input[data-kat="${kat.key}"][data-sub="${sub.key}"]`);
+        let val = Number(inp.value) || 0;
+        if (val < 0) val = 0;
+        if (sub.max && val > sub.max) val = sub.max;
+        detail[kat.key][sub.key] = val;
         subTotal += val;
       });
       kategoriTotal[kat.key] = subTotal;
