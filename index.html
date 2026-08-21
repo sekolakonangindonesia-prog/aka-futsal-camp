@@ -353,12 +353,17 @@
  }
  try {
  const bulan = currentBulanStr();
- const [penilaianSnap, siswaSnap] = await Promise.all([
+ const [penilaianSnap, siswaSnap, kriteriaDoc] = await Promise.all([
  db.collection('penilaian').where('bulan', '==', bulan).get(),
- db.collection('futsal_siswa').get()
+ db.collection('futsal_siswa').get(),
+ db.collection('penilaian_kriteria').doc('config').get()
  ]);
  const fotoMap = {};
  siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
+ const labelMap = {};
+ if (kriteriaDoc.exists) {
+ (kriteriaDoc.data().kategori || []).forEach(kat => { labelMap[kat.key] = kat.label; });
+ }
  let list = penilaianSnap.docs.map(d => d.data());
  list.sort((a, b) => (b.total || 0) - (a.total || 0));
  list = list.slice(0, 14);
@@ -366,7 +371,6 @@
  container.innerHTML = '<div class="no-sesi">Musim seleksi bulan ini belum ada hasil.</div>';
  return;
  }
- const labelMap = { teknik: 'Teknik', fisik: 'Fisik', decision_making: 'Decision Making', taktik: 'Taktik', mental: 'Mental' };
  container.innerHTML = '';
  list.forEach((p, idx) => {
  const rank = idx + 1;
@@ -390,10 +394,10 @@
  `;
  const detailInner = card.querySelector('.rank-detail-inner');
  const kategoriTotal = p.kategoriTotal || {};
- Object.keys(labelMap).forEach(key => {
+ Object.keys(kategoriTotal).forEach(key => {
  const row = document.createElement('div');
  row.className = 'kategori-bar-row';
- row.innerHTML = `<span>${labelMap[key]}</span><span>${kategoriTotal[key] || 0}</span>`;
+ row.innerHTML = `<span>${escapeHtml(labelMap[key] || key)}</span><span>${kategoriTotal[key] || 0}</span>`;
  detailInner.appendChild(row);
  });
  const detailEl = card.querySelector('.rank-detail');
