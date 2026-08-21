@@ -125,6 +125,9 @@
  .rank-detail-inner{padding:12px 16px;display:flex;flex-direction:column;gap:7px;}
  .kategori-bar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);}
  .kategori-bar-row span:last-child{color:var(--chalk);font-family:'Space Mono',monospace;}
+ .lihat-profil-link{display:block;margin-top:12px;color:var(--amber);font-size:12.5px;font-weight:700;text-decoration:none;}
+ .lihat-profil-link:hover{text-decoration:underline;}
+ .rank-photo{cursor:pointer;}
  .cta-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;text-align:center;margin-top:30px;}
  .cta-box p{color:var(--text-secondary);font-size:13px;margin:0 0 14px;}
  .cta-btn{display:inline-block;background:var(--amber);color:#1a1200;text-decoration:none;border-radius:8px;padding:13px 24px;font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:1px;}
@@ -400,7 +403,16 @@
  row.innerHTML = `<span>${escapeHtml(labelMap[key] || key)}</span><span>${kategoriTotal[key] || 0}</span>`;
  detailInner.appendChild(row);
  });
+ const profilLink = document.createElement('a');
+ profilLink.href = 'profil.html?id=' + encodeURIComponent(p.siswa_id);
+ profilLink.className = 'lihat-profil-link';
+ profilLink.textContent = 'Lihat Profil Lengkap →';
+ detailInner.appendChild(profilLink);
  const detailEl = card.querySelector('.rank-detail');
+ card.querySelector('.rank-photo').addEventListener('click', (e) => {
+ e.stopPropagation();
+ window.location.href = 'profil.html?id=' + encodeURIComponent(p.siswa_id);
+ });
  card.querySelector('.rank-head').addEventListener('click', () => {
  const isOpen = card.classList.toggle('open');
  detailEl.style.maxHeight = isOpen ? detailEl.scrollHeight + 'px' : '0px';
