@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin - Futsal Camp</title>
+<title>Admin - AKA Futsal Camp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -98,15 +98,27 @@
   .siswa-row .nama{flex:1;}
   .siswa-row select{width:auto;padding:5px 8px;font-size:12px;}
   .status-line{text-align:center;font-size:12px;color:var(--text-secondary);margin-top:10px;}
+  .badge-selesai{background:rgba(52,211,153,0.15);color:var(--success);border:1px solid var(--success);border-radius:6px;padding:2px 8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;}
+  .session-card.selesai{opacity:0.85;}
+  .laporan-row{cursor:pointer;}
+  .laporan-detail{display:none;padding:8px 16px 12px;background:var(--surface-2);}
+  .laporan-detail.open{display:block;}
+  .rank-badge{font-family:'Oswald',sans-serif;font-size:12px;color:var(--text-secondary);width:22px;text-align:center;flex-shrink:0;}
+  .rank-badge.top14{color:var(--amber);font-weight:700;}
+  .kategori-group{margin-bottom:14px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px;}
+  .kategori-group h4{font-size:12px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-family:'Oswald',sans-serif;}
+  .kategori-subs{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px;}
+  .kategori-sub-field label{font-size:10px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:3px;}
+  .kategori-sub-field input{padding:8px;font-size:13px;}
 </style>
 </head>
 <body>
 
 <div id="loginScreen">
   <div class="login-box">
-    <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
+    <img class="logo" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
     <span class="eyebrow">Akses Terbatas</span>
-    <h1>Admin Futsal Camp</h1>
+    <h1>Admin AKA Futsal Camp</h1>
     <div class="field">
       <label>Email</label>
       <input type="email" id="loginEmail" placeholder="admin@email.com" autocomplete="username">
@@ -122,17 +134,20 @@
 
 <div id="dashboard">
   <div class="topbar">
-    <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
+    <img class="logo" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
     <div class="titles">
       <span class="eyebrow">Admin Panel</span>
-      <h1>AK Futsal Camp</h1>
+      <h1>AKA Futsal Camp</h1>
     </div>
     <button class="logout-btn" id="logoutBtn">Keluar</button>
   </div>
 
+  <div id="globalError" style="display:none;background:rgba(242,107,107,0.12);border:1px solid var(--danger);color:var(--danger);font-size:13px;padding:12px 20px;margin:14px 20px 0;border-radius:10px;max-width:920px;margin-left:auto;margin-right:auto;"></div>
+
   <div class="tabs">
     <button class="tab-btn active" data-tab="siswaTab">Kelola Siswa</button>
     <button class="tab-btn" data-tab="jadwalTab">Jadwal Latihan</button>
+    <button class="tab-btn" data-tab="penilaianTab">Penilaian</button>
     <button class="tab-btn" data-tab="laporanTab">Laporan Keuangan</button>
     <button class="tab-btn" data-tab="pengaturanTab">Pengaturan</button>
   </div>
@@ -193,6 +208,32 @@
     </div>
   </div>
 
+  <div class="tab-panel" id="penilaianTab">
+    <div class="sesi-config" style="margin-bottom:20px;">
+      <div class="add-sesi-form" style="margin-top:0;align-items:center;">
+        <label style="width:auto;font-size:12px;color:var(--text-secondary);white-space:nowrap;">Musim seleksi bulan:</label>
+        <input type="month" id="penilaianBulan">
+        <input type="text" id="penilaianSearch" placeholder="Cari nama siswa..." style="flex:2;min-width:160px;">
+      </div>
+    </div>
+    <div class="section-head">
+      <h2>Ranking Musim Ini <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— 14 besar otomatis ditandai</span></h2>
+    </div>
+    <div class="siswa-table" id="penilaianTable" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="overlay" id="penilaianModalOverlay">
+    <div class="modal" style="max-width:480px;">
+      <h2 id="penilaianModalTitle">Input Penilaian</h2>
+      <div id="penilaianModalBody"></div>
+      <div class="status-line" id="penilaianTotalPreview" style="font-size:15px;color:var(--amber);font-family:'Oswald',sans-serif;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btnBatalPenilaian">Batal</button>
+        <button class="btn" id="btnSimpanPenilaian">Simpan</button>
+      </div>
+    </div>
+  </div>
+
   <div class="tab-panel" id="laporanTab">
     <div class="section-head">
       <h2>Laporan Keuangan</h2>
@@ -248,9 +289,9 @@
       <input type="file" id="modalFotoInput" accept="image/*" style="display:none;">
     </div>
     <div class="field"><label>Nama lengkap</label><input type="text" id="modalNama"></div>
+    <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="modalWa" placeholder="cth. 081234567890"></div>
     <div class="field"><label>Usia</label><input type="number" id="modalUsia" min="1"></div>
     <div class="field"><label>Tempat, tanggal lahir</label><input type="text" id="modalTtl"></div>
-    <div class="field"><label>Nomor WhatsApp</label><input type="text" id="modalNoWa"></div>
     <div class="field"><label>Kelas (opsional)</label><input type="text" id="modalKelas"></div>
     <div class="field"><label>Asal sekolah (opsional)</label><input type="text" id="modalSekolah"></div>
     <div class="field">
@@ -315,6 +356,7 @@
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById(btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'penilaianTab') loadAndRenderPenilaian();
     });
   });
 
@@ -322,16 +364,39 @@
   let sesiCache = [];
   let kehadiranCache = [];
   let rencanaCache = [];
+  let penilaianCache = [];
   const HADIR_COL = "kehadiran";
   const JADWAL_COL = "jadwal_rencana";
+  const PENILAIAN_COL = "penilaian";
+  const KATEGORI_PENILAIAN = [
+    { key: 'teknik', label: 'Teknik', subs: ['a', 'b', 'c', 'd'] },
+    { key: 'fisik', label: 'Fisik', subs: ['a', 'b', 'c', 'd', 'e'] },
+    { key: 'decision_making', label: 'Decision Making', subs: ['a'] },
+    { key: 'taktik', label: 'Taktik', subs: ['a', 'b', 'c'] },
+    { key: 'mental', label: 'Mental', subs: ['a'] }
+  ];
+
+  function showGlobalError(msg) {
+    const el = document.getElementById('globalError');
+    if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+    el.style.display = 'block';
+    el.textContent = msg;
+  }
 
   async function loadAll() {
-    const [siswaSnap, sesiSnap] = await Promise.all([
-      db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
-      db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
-    ]);
-    siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    try {
+      const [siswaSnap, sesiSnap] = await Promise.all([
+        db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
+        db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
+      ]);
+      siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      showGlobalError(null);
+    } catch (err) {
+      console.error('Gagal memuat data siswa/sesi:', err);
+      showGlobalError('Gagal memuat data siswa/sesi: ' + err.message + ' — cek security rules Firestore untuk koleksi "futsal_siswa" dan "sesi_latihan".');
+      return;
+    }
 
     try {
       const hadirSnap = await db.collection(HADIR_COL).get();
@@ -339,6 +404,7 @@
     } catch (err) {
       console.error('Gagal memuat kehadiran (cek rules Firestore untuk collection kehadiran):', err);
       kehadiranCache = [];
+      showGlobalError('Gagal memuat data kehadiran: ' + err.message + ' — cek security rules Firestore untuk koleksi "kehadiran".');
     }
 
     try {
@@ -347,6 +413,7 @@
     } catch (err) {
       console.error('Gagal memuat rencana jadwal (cek rules Firestore untuk collection jadwal_rencana):', err);
       rencanaCache = [];
+      showGlobalError('Gagal memuat rencana jadwal: ' + err.message + ' — cek security rules Firestore untuk koleksi "jadwal_rencana".');
     }
 
     renderSiswaTab();
@@ -419,7 +486,7 @@
         ${avatarHtml(s)}
         <div class="info">
           <div class="nama">${escapeHtml(s.nama)}</div>
-          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.no_wa ? ' · ' + escapeHtml(s.no_wa) : ''} · ${jumlahHadir} sesi tercatat</div>
+          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.nomor_wa ? ' · ' + escapeHtml(s.nomor_wa) : ''} · ${jumlahHadir} sesi tercatat</div>
         </div>
         <div class="actions">
           <button class="icon-btn" data-edit="${s.id}">Edit</button>
@@ -444,9 +511,9 @@
     const s = id ? siswaCache.find(x => x.id === id) : null;
     document.getElementById('siswaModalTitle').textContent = id ? 'Edit Siswa' : 'Tambah Siswa';
     document.getElementById('modalNama').value = s ? s.nama || '' : '';
+    document.getElementById('modalWa').value = s ? s.nomor_wa || '' : '';
     document.getElementById('modalUsia').value = s ? s.usia || '' : '';
     document.getElementById('modalTtl').value = s ? s.tempat_tanggal_lahir || '' : '';
-    document.getElementById('modalNoWa').value = s ? s.no_wa || '' : '';
     document.getElementById('modalKelas').value = s ? s.kelas || '' : '';
     document.getElementById('modalSekolah').value = s ? s.sekolah || '' : '';
     modalFotoBase64 = s ? (s.foto || null) : null;
@@ -497,29 +564,39 @@
   document.getElementById('btnSimpanSiswa').addEventListener('click', async () => {
     const data = {
       nama: document.getElementById('modalNama').value.trim(),
+      nomor_wa: document.getElementById('modalWa').value.trim() || null,
       usia: Number(document.getElementById('modalUsia').value) || null,
       tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
-      no_wa: document.getElementById('modalNoWa').value.trim() || null,
       kelas: document.getElementById('modalKelas').value.trim() || null,
       sekolah: document.getElementById('modalSekolah').value.trim() || null,
       foto: modalFotoBase64
     };
     if (!data.nama) { alert('Nama wajib diisi'); return; }
 
-    if (editingId) {
-      await db.collection(SISWA_COL).doc(editingId).update(data);
-    } else {
-      data.tanggal_daftar = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection(SISWA_COL).add(data);
+    try {
+      if (editingId) {
+        await db.collection(SISWA_COL).doc(editingId).update(data);
+      } else {
+        data.tanggal_daftar = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection(SISWA_COL).add(data);
+      }
+      closeSiswaModal();
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal menyimpan siswa:', err);
+      alert('Gagal menyimpan data siswa: ' + err.message);
     }
-    closeSiswaModal();
-    await loadAll();
   });
 
   async function hapusSiswa(id) {
     if (!confirm('Yakin hapus data siswa ini?')) return;
-    await db.collection(SISWA_COL).doc(id).delete();
-    await loadAll();
+    try {
+      await db.collection(SISWA_COL).doc(id).delete();
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal menghapus siswa:', err);
+      alert('Gagal menghapus siswa: ' + err.message);
+    }
   }
 
   const NAMA_HARI = ['Minggu','Senin','Selasa','Rabu','Kamis',"Jum'at",'Sabtu'];
@@ -541,6 +618,7 @@
     sesiPreview.textContent = formatted ? ('Label sesi: ' + formatted + (ket ? ' (' + ket + ')' : '')) : '';
   }
   sesiTanggalInput.addEventListener('change', updateSesiPreview);
+  sesiTanggalInput.addEventListener('input', updateSesiPreview);
   sesiKeteranganInput.addEventListener('input', updateSesiPreview);
 
   document.getElementById('btnTambahSesi').addEventListener('click', async () => {
@@ -549,12 +627,17 @@
     const kap = Number(document.getElementById('sesiKapasitas').value) || 25;
     if (!tanggal) { alert('Pilih tanggal sesi dulu'); return; }
     const label = formatTanggalIndo(tanggal) + (ket ? ' (' + ket + ')' : '');
-    await db.collection(SESI_COL).add({ label, tanggal, kapasitas: kap, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    sesiTanggalInput.value = '';
-    sesiKeteranganInput.value = '';
-    document.getElementById('sesiKapasitas').value = 25;
-    sesiPreview.textContent = '';
-    await loadAll();
+    try {
+      await db.collection(SESI_COL).add({ label, tanggal, kapasitas: kap, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      sesiTanggalInput.value = '';
+      sesiKeteranganInput.value = '';
+      document.getElementById('sesiKapasitas').value = 25;
+      sesiPreview.textContent = '';
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal tambah sesi:', err);
+      alert('Gagal menambah sesi: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "sesi_latihan".');
+    }
   });
 
   async function hapusSesi(id) {
@@ -616,11 +699,16 @@
       `;
       row.querySelector('select').addEventListener('change', async (e) => {
         const sesiId = e.target.value;
-        if (sesiId) {
-          const sesi = sesiCache.find(x => x.id === sesiId);
-          await db.collection(JADWAL_COL).doc(s.id).set({ siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
-        } else {
-          await db.collection(JADWAL_COL).doc(s.id).delete().catch(() => {});
+        try {
+          if (sesiId) {
+            const sesi = sesiCache.find(x => x.id === sesiId);
+            await db.collection(JADWAL_COL).doc(s.id).set({ siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
+          } else {
+            await db.collection(JADWAL_COL).doc(s.id).delete();
+          }
+        } catch (err) {
+          console.error('Gagal simpan rencana jadwal:', err);
+          alert('Gagal menyimpan perubahan jadwal: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "jadwal_rencana".');
         }
         await loadAll();
       });
@@ -664,12 +752,17 @@
       }
     });
 
-    await batch.commit();
-    await loadAll();
-
-    const ringkasan = Object.entries(hasil).filter(([k, v]) => v > 0).map(([k, v]) => `${v} ke ${k}`).join(', ');
-    status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} tidak kebagian (semua sesi penuh)` : '.');
-    btn.disabled = false; btn.textContent = 'Generate Otomatis';
+    try {
+      await batch.commit();
+      await loadAll();
+      const ringkasan = Object.entries(hasil).filter(([k, v]) => v > 0).map(([k, v]) => `${v} ke ${k}`).join(', ');
+      status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} tidak kebagian (semua sesi penuh)` : '.');
+    } catch (err) {
+      console.error('Gagal generate jadwal:', err);
+      status.textContent = 'Gagal generate: ' + err.message + ' — cek security rules Firestore untuk koleksi "jadwal_rencana".';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Generate Otomatis';
+    }
   });
 
   // ---------- KEHADIRAN HARI-H ----------
@@ -687,58 +780,98 @@
       const sudahHadir = kehadiranCache.filter(k => k.sesi_id === sesi.id).map(k => k.siswa_id);
       const idsDitampilkan = Array.from(new Set([...direncanakan, ...sudahHadir]));
       const daftarSiswa = idsDitampilkan.map(id => siswaCache.find(s => s.id === id)).filter(Boolean);
+      const isSelesai = !!sesi.selesai;
 
       const card = document.createElement('div');
-      card.className = 'session-card';
-      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><span class="count">${sudahHadir.length}/${sesi.kapasitas}</span></div><div class="sesi-body"></div>`;
+      card.className = 'session-card' + (isSelesai ? ' selesai' : '');
+      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><div style="display:flex;align-items:center;gap:8px;">${isSelesai ? '<span class="badge-selesai">Selesai</span>' : ''}<span class="count">${sudahHadir.length}/${sesi.kapasitas}</span></div></div><div class="sesi-body"></div>`;
       const body = card.querySelector('.sesi-body');
       if (daftarSiswa.length === 0) {
         body.innerHTML = '<div class="empty-state">Belum ada rencana untuk sesi ini</div>';
       } else {
-        daftarSiswa.forEach(s => body.appendChild(buildKehadiranRow(s, sesi)));
+        daftarSiswa.forEach(s => body.appendChild(buildKehadiranRow(s, sesi, isSelesai)));
       }
-      const walkinBtn = document.createElement('button');
-      walkinBtn.className = 'icon-btn';
-      walkinBtn.style.margin = '10px 16px 14px';
-      walkinBtn.textContent = '+ Tambah Peserta Dadakan';
-      walkinBtn.addEventListener('click', () => openWalkinModal(sesi));
-      card.appendChild(walkinBtn);
+
+      const actionsRow = document.createElement('div');
+      actionsRow.style.cssText = 'display:flex;gap:8px;margin:10px 16px 14px;flex-wrap:wrap;';
+      if (isSelesai) {
+        const reopenBtn = document.createElement('button');
+        reopenBtn.className = 'icon-btn';
+        reopenBtn.textContent = 'Buka Kembali';
+        reopenBtn.addEventListener('click', () => toggleSelesaiSesi(sesi, false));
+        actionsRow.appendChild(reopenBtn);
+      } else {
+        const walkinBtn = document.createElement('button');
+        walkinBtn.className = 'icon-btn';
+        walkinBtn.textContent = '+ Tambah Peserta Dadakan';
+        walkinBtn.addEventListener('click', () => openWalkinModal(sesi));
+        actionsRow.appendChild(walkinBtn);
+
+        const selesaiBtn = document.createElement('button');
+        selesaiBtn.className = 'btn btn-secondary';
+        selesaiBtn.style.cssText = 'font-size:11px;padding:8px 14px;';
+        selesaiBtn.textContent = 'Tandai Selesai';
+        selesaiBtn.addEventListener('click', () => toggleSelesaiSesi(sesi, true));
+        actionsRow.appendChild(selesaiBtn);
+      }
+      card.appendChild(actionsRow);
       grid.appendChild(card);
     });
   }
 
-  function buildKehadiranRow(s, sesi) {
+  async function toggleSelesaiSesi(sesi, selesai) {
+    if (selesai && !confirm('Tandai sesi "' + sesi.label + '" selesai?\n\nKehadiran & status bayar yang sudah dicentang akan terkunci sebagai riwayat final (nggak bisa diubah lagi sampai kamu buka kembali).')) return;
+    try {
+      await db.collection(SESI_COL).doc(sesi.id).update({ selesai: selesai });
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal update status sesi:', err);
+      alert('Gagal menandai sesi: ' + err.message);
+    }
+  }
+
+  function buildKehadiranRow(s, sesi, isSelesai) {
     const kehadiran = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
     const row = document.createElement('div');
     row.className = 'siswa-row';
     row.innerHTML = `
-      <input type="checkbox" data-siswa="${s.id}" data-sesi="${sesi.id}" ${kehadiran ? 'checked' : ''} style="width:auto;">
+      <input type="checkbox" data-siswa="${s.id}" data-sesi="${sesi.id}" ${kehadiran ? 'checked' : ''} ${isSelesai ? 'disabled' : ''} style="width:auto;">
       ${avatarHtml(s)}
       <span class="nama">${escapeHtml(s.nama)}</span>
-      ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" style="width:auto;">${PAYMENT_OPTIONS}</select>` : ''}
+      ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" ${isSelesai ? 'disabled' : ''} style="width:auto;">${PAYMENT_OPTIONS}</select>` : ''}
     `;
     if (kehadiran) {
       row.querySelector('select').value = kehadiran.status_bayar || 'belum_bayar';
     }
     row.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
       const checked = e.target.checked;
-      if (checked) {
-        await db.collection(HADIR_COL).add({
-          siswa_id: s.id, siswa_nama: s.nama,
-          sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
-          status_bayar: 'belum_bayar', walk_in: false,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } else {
-        const existing = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
-        if (existing) await db.collection(HADIR_COL).doc(existing.id).delete();
+      try {
+        if (checked) {
+          await db.collection(HADIR_COL).add({
+            siswa_id: s.id, siswa_nama: s.nama,
+            sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
+            status_bayar: 'belum_bayar', walk_in: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } else {
+          const existing = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
+          if (existing) await db.collection(HADIR_COL).doc(existing.id).delete();
+        }
+      } catch (err) {
+        console.error('Gagal update kehadiran:', err);
+        alert('Gagal menyimpan kehadiran: ' + err.message);
       }
       await loadAll();
     });
     const select = row.querySelector('select[data-hadir-id]');
     if (select) {
       select.addEventListener('change', async (e) => {
-        await db.collection(HADIR_COL).doc(e.target.getAttribute('data-hadir-id')).update({ status_bayar: e.target.value });
+        try {
+          await db.collection(HADIR_COL).doc(e.target.getAttribute('data-hadir-id')).update({ status_bayar: e.target.value });
+        } catch (err) {
+          console.error('Gagal update status bayar:', err);
+          alert('Gagal menyimpan status bayar: ' + err.message);
+        }
         await loadAll();
       });
     }
@@ -805,14 +938,166 @@
     if (keys.length === 0) {
       el.innerHTML = '<div class="empty-state">Tidak ada data di periode ini</div>';
     } else {
+      const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar' };
       keys.forEach(label => {
         const row = document.createElement('div');
-        row.className = 'siswa-row';
-        row.innerHTML = `<span class="nama">${escapeHtml(label)}</span><span style="color:var(--text-secondary);font-size:12px;">${perSesi[label].lunas}/${perSesi[label].total} lunas</span>`;
+        row.className = 'siswa-row laporan-row';
+        row.innerHTML = `<span class="nama">${escapeHtml(label)}</span><span style="color:var(--text-secondary);font-size:12px;">${perSesi[label].lunas}/${perSesi[label].total} lunas &#9662;</span>`;
+
+        const anggota = filtered.filter(k => k.sesi_label === label);
+        const detail = document.createElement('div');
+        detail.className = 'laporan-detail';
+        detail.innerHTML = anggota.map(k =>
+          `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--line);">
+             <span>${escapeHtml(k.siswa_nama)}${k.walk_in ? ' <span style="color:var(--amber);">(dadakan)</span>' : ''}</span>
+             <span style="color:var(--text-secondary);">${labelBayar[k.status_bayar] || 'Belum bayar'}</span>
+           </div>`
+        ).join('');
+
+        row.addEventListener('click', () => detail.classList.toggle('open'));
         el.appendChild(row);
+        el.appendChild(detail);
       });
     }
   }
+
+  // ===== PENILAIAN (musim seleksi) =====
+  function currentBulanStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  const penilaianBulanInput = document.getElementById('penilaianBulan');
+  penilaianBulanInput.value = currentBulanStr();
+  penilaianBulanInput.addEventListener('change', loadAndRenderPenilaian);
+  document.getElementById('penilaianSearch').addEventListener('input', renderPenilaianTable);
+
+  async function loadAndRenderPenilaian() {
+    const bulan = penilaianBulanInput.value || currentBulanStr();
+    const table = document.getElementById('penilaianTable');
+    table.innerHTML = '<div class="empty-state">Memuat...</div>';
+    try {
+      const snap = await db.collection(PENILAIAN_COL).where('bulan', '==', bulan).get();
+      penilaianCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.error('Gagal memuat penilaian:', err);
+      table.innerHTML = '<div class="empty-state">Gagal memuat data: ' + err.message + ' — cek security rules Firestore untuk koleksi "penilaian".</div>';
+      penilaianCache = [];
+      return;
+    }
+    renderPenilaianTable();
+  }
+
+  function renderPenilaianTable() {
+    const table = document.getElementById('penilaianTable');
+    const keyword = document.getElementById('penilaianSearch').value.trim().toLowerCase();
+    table.innerHTML = '';
+
+    const gabungan = siswaCache
+      .filter(s => !keyword || (s.nama || '').toLowerCase().includes(keyword))
+      .map(s => {
+        const nilai = penilaianCache.find(p => p.siswa_id === s.id);
+        return { siswa: s, nilai, total: nilai ? nilai.total : null };
+      })
+      .sort((a, b) => (b.total ?? -1) - (a.total ?? -1));
+
+    if (gabungan.length === 0) {
+      table.innerHTML = '<div class="empty-state">Tidak ada siswa yang cocok</div>';
+      return;
+    }
+
+    let rank = 0;
+    gabungan.forEach(item => {
+      if (item.total !== null) rank++;
+      const isTop14 = item.total !== null && rank <= 14;
+      const row = document.createElement('div');
+      row.className = 'siswa-row';
+      row.innerHTML = `
+        <span class="rank-badge${isTop14 ? ' top14' : ''}">${item.total !== null ? rank : '-'}</span>
+        ${avatarHtml(item.siswa)}
+        <span class="nama">${escapeHtml(item.siswa.nama)}${isTop14 ? ' <span class="badge-selesai" style="margin-left:6px;">14 Besar</span>' : ''}</span>
+        <span style="color:var(--text-secondary);font-size:12px;min-width:60px;text-align:right;">${item.total !== null ? item.total + ' poin' : 'Belum dinilai'}</span>
+      `;
+      const btn = document.createElement('button');
+      btn.className = 'icon-btn';
+      btn.style.marginLeft = '10px';
+      btn.textContent = item.nilai ? 'Edit Nilai' : 'Isi Nilai';
+      btn.addEventListener('click', () => openPenilaianModal(item.siswa, item.nilai));
+      row.appendChild(btn);
+      table.appendChild(row);
+    });
+  }
+
+  let editingPenilaianSiswaId = null;
+  const penilaianOverlay = document.getElementById('penilaianModalOverlay');
+
+  function openPenilaianModal(siswa, existing) {
+    editingPenilaianSiswaId = siswa.id;
+    document.getElementById('penilaianModalTitle').textContent = 'Input Penilaian — ' + siswa.nama;
+    const body = document.getElementById('penilaianModalBody');
+    body.innerHTML = '';
+    KATEGORI_PENILAIAN.forEach(kat => {
+      const group = document.createElement('div');
+      group.className = 'kategori-group';
+      group.innerHTML = `<h4>${kat.label}</h4><div class="kategori-subs"></div>`;
+      const subsEl = group.querySelector('.kategori-subs');
+      kat.subs.forEach(sub => {
+        const val = existing && existing.detail && existing.detail[kat.key] ? (existing.detail[kat.key][sub] ?? '') : '';
+        const field = document.createElement('div');
+        field.className = 'kategori-sub-field';
+        field.innerHTML = `<label>${sub.toUpperCase()}</label><input type="number" step="0.5" min="0" data-kat="${kat.key}" data-sub="${sub}" value="${val}">`;
+        subsEl.appendChild(field);
+      });
+      body.appendChild(group);
+    });
+    body.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updatePenilaianTotalPreview));
+    updatePenilaianTotalPreview();
+    penilaianOverlay.classList.add('active');
+  }
+
+  function updatePenilaianTotalPreview() {
+    const body = document.getElementById('penilaianModalBody');
+    let total = 0;
+    body.querySelectorAll('input').forEach(inp => { total += Number(inp.value) || 0; });
+    document.getElementById('penilaianTotalPreview').textContent = 'Total: ' + total + ' poin';
+  }
+
+  document.getElementById('btnBatalPenilaian').addEventListener('click', () => penilaianOverlay.classList.remove('active'));
+
+  document.getElementById('btnSimpanPenilaian').addEventListener('click', async () => {
+    const siswa = siswaCache.find(s => s.id === editingPenilaianSiswaId);
+    if (!siswa) return;
+    const bulan = penilaianBulanInput.value || currentBulanStr();
+    const detail = {};
+    const kategoriTotal = {};
+    let total = 0;
+    KATEGORI_PENILAIAN.forEach(kat => {
+      detail[kat.key] = {};
+      let subTotal = 0;
+      kat.subs.forEach(sub => {
+        const inp = document.querySelector(`#penilaianModalBody input[data-kat="${kat.key}"][data-sub="${sub}"]`);
+        const val = Number(inp.value) || 0;
+        detail[kat.key][sub] = val;
+        subTotal += val;
+      });
+      kategoriTotal[kat.key] = subTotal;
+      total += subTotal;
+    });
+
+    const docId = bulan + '_' + siswa.id;
+    try {
+      await db.collection(PENILAIAN_COL).doc(docId).set({
+        bulan, siswa_id: siswa.id, siswa_nama: siswa.nama,
+        detail, kategoriTotal, total,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      penilaianOverlay.classList.remove('active');
+      await loadAndRenderPenilaian();
+    } catch (err) {
+      console.error('Gagal menyimpan penilaian:', err);
+      alert('Gagal menyimpan penilaian: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "penilaian".');
+    }
+  });
 </script>
 </body>
 </html>
