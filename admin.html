@@ -309,9 +309,16 @@
   <div class="modal">
     <h2 id="siswaModalTitle">Tambah Siswa</h2>
     <div class="field">
+      <label>Foto Pendaftaran</label>
       <div class="photo-preview" id="modalPhotoPreview">Belum ada foto</div>
       <label for="modalFotoInput" class="btn btn-secondary" style="display:inline-block;font-size:12px;padding:8px 14px;">Pilih foto</label>
       <input type="file" id="modalFotoInput" accept="image/*" style="display:none;">
+    </div>
+    <div class="field">
+      <label>Foto Kartu Profil <span style="font-weight:400;color:var(--text-secondary);text-transform:none;">(muncul di profil.html, boleh beda dari foto pendaftaran)</span></label>
+      <div class="photo-preview" id="modalKartuPreview" style="width:90px;height:120px;">Belum ada foto</div>
+      <label for="modalKartuFotoInput" class="btn btn-secondary" style="display:inline-block;font-size:12px;padding:8px 14px;">Pilih foto kartu</label>
+      <input type="file" id="modalKartuFotoInput" accept="image/*" style="display:none;">
     </div>
     <div class="field"><label>Nama lengkap</label><input type="text" id="modalNama"></div>
     <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="modalWa" placeholder="cth. 081234567890"></div>
@@ -677,6 +684,7 @@
   const overlay = document.getElementById('siswaModalOverlay');
   let editingId = null;
   let modalFotoBase64 = null;
+  let modalKartuFotoBase64 = null;
 
   document.getElementById('btnTambahSiswa').addEventListener('click', () => openSiswaModal(null));
   document.getElementById('btnBatalSiswa').addEventListener('click', closeSiswaModal);
@@ -694,6 +702,9 @@
     modalFotoBase64 = s ? (s.foto || null) : null;
     const preview = document.getElementById('modalPhotoPreview');
     preview.innerHTML = modalFotoBase64 ? `<img src="${modalFotoBase64}">` : 'Belum ada foto';
+    modalKartuFotoBase64 = s ? (s.foto_profil || null) : null;
+    const kartuPreview = document.getElementById('modalKartuPreview');
+    kartuPreview.innerHTML = modalKartuFotoBase64 ? `<img src="${modalKartuFotoBase64}">` : 'Belum ada foto';
 
     const riwayatEl = document.getElementById('modalRiwayat');
     if (!id) {
@@ -736,6 +747,28 @@
     reader.readAsDataURL(file);
   });
 
+  document.getElementById('modalKartuFotoInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 800;
+        let { width, height } = img;
+        if (width > height && width > MAX_DIM) { height = Math.round(height * (MAX_DIM / width)); width = MAX_DIM; }
+        else if (height > MAX_DIM) { width = Math.round(width * (MAX_DIM / height)); height = MAX_DIM; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        modalKartuFotoBase64 = canvas.toDataURL('image/jpeg', 0.82);
+        document.getElementById('modalKartuPreview').innerHTML = `<img src="${modalKartuFotoBase64}">`;
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
   document.getElementById('btnSimpanSiswa').addEventListener('click', async () => {
     const data = {
       nama: document.getElementById('modalNama').value.trim(),
@@ -744,7 +777,8 @@
       tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
       kelas: document.getElementById('modalKelas').value.trim() || null,
       sekolah: document.getElementById('modalSekolah').value.trim() || null,
-      foto: modalFotoBase64
+      foto: modalFotoBase64,
+      foto_profil: modalKartuFotoBase64
     };
     if (!data.nama) { alert('Nama wajib diisi'); return; }
 
