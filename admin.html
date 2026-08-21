@@ -282,6 +282,17 @@
       <div class="status-line" id="tentangStatus"></div>
     </div>
 
+    <div class="section-head"><h2>Gambar Hero</h2></div>
+    <div class="sesi-config">
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:-6px;margin-bottom:12px;">Gambar ini muncul di paling atas halaman utama (index.html), menggantikan logo default. Format lanskap/potret bebas — tampil utuh, tidak dipotong.</p>
+      <div class="photo-preview" id="heroPhotoPreview" style="width:120px;height:120px;">Belum ada gambar</div>
+      <label for="heroFotoInput" class="btn btn-secondary" style="display:inline-block;font-size:12px;padding:8px 14px;margin-top:8px;">Pilih gambar</label>
+      <input type="file" id="heroFotoInput" accept="image/*" style="display:none;">
+      <br>
+      <button class="btn" id="btnSimpanHero" style="margin-top:14px;">Simpan Gambar Hero</button>
+      <div class="status-line" id="heroStatus"></div>
+    </div>
+
     <div class="section-head"><h2>Sosial Media</h2></div>
     <div class="sesi-config">
       <div class="field"><label>Instagram (link lengkap)</label><input type="text" id="settingIg" placeholder="https://instagram.com/..."></div>
@@ -560,11 +571,44 @@
         document.getElementById('settingTiktok').value = s.tiktok || '';
         document.getElementById('settingFb').value = s.facebook || '';
         document.getElementById('settingYt').value = s.youtube || '';
+        heroFotoBase64 = s.heroImage || null;
+        const heroPreview = document.getElementById('heroPhotoPreview');
+        heroPreview.innerHTML = heroFotoBase64 ? `<img src="${heroFotoBase64}">` : 'Belum ada gambar';
       }
     } catch (err) {
       console.error('Gagal memuat pengaturan:', err);
     }
   }
+
+  let heroFotoBase64 = null;
+  document.getElementById('heroFotoInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 1000;
+        let { width, height } = img;
+        if (width > height && width > MAX_DIM) { height = Math.round(height * (MAX_DIM / width)); width = MAX_DIM; }
+        else if (height > MAX_DIM) { width = Math.round(width * (MAX_DIM / height)); height = MAX_DIM; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        heroFotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        document.getElementById('heroPhotoPreview').innerHTML = `<img src="${heroFotoBase64}">`;
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('btnSimpanHero').addEventListener('click', async () => {
+    if (!heroFotoBase64) { alert('Pilih gambar dulu.'); return; }
+    await db.collection('pengaturan').doc('umum').set({ heroImage: heroFotoBase64 }, { merge: true });
+    document.getElementById('heroStatus').textContent = 'Tersimpan.';
+    setTimeout(() => document.getElementById('heroStatus').textContent = '', 2000);
+  });
 
   document.getElementById('btnSimpanTentang').addEventListener('click', async () => {
     const visi = document.getElementById('settingVisi').value.trim();
