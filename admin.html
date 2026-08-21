@@ -190,8 +190,13 @@
  messagingSenderId: "721774551002",
  appId: "1:721774551002:web:bcd2e47b06d61daf626ae3"
  };
+ let db = null;
+ try {
  firebase.initializeApp(firebaseConfig);
- const db = firebase.firestore();
+ db = firebase.firestore();
+ } catch (err) {
+ console.error('Firebase gagal dimuat (SDK diblokir/offline):', err);
+ }
  function escapeHtml(str) {
  const div = document.createElement('div');
  div.textContent = str || '';
@@ -212,6 +217,11 @@
  async function loadPengaturan() {
  const vmContainer = document.getElementById('visiMisiContainer');
  const socialContainer = document.getElementById('socialContainer');
+ if (!db) {
+ vmContainer.innerHTML = '<div class="loading">Koneksi data tidak tersedia di preview ini.</div>';
+ socialContainer.innerHTML = '';
+ return;
+ }
  try {
  const doc = await db.collection('pengaturan').doc('umum').get();
  const data = doc.exists ? doc.data() : {};
@@ -258,6 +268,10 @@
  }
  async function loadJadwal() {
  const container = document.getElementById('sesiContainer');
+ if (!db) {
+ container.innerHTML = '<div class="no-sesi">Koneksi data tidak tersedia di preview ini.</div>';
+ return;
+ }
  try {
  const [sesiSnap, rencanaSnap, siswaSnap] = await Promise.all([
  db.collection('sesi_latihan').orderBy('createdAt', 'asc').get(),
@@ -333,6 +347,10 @@
  }
  async function loadRanking() {
  const container = document.getElementById('rankingContainer');
+ if (!db) {
+ container.innerHTML = '<div class="no-sesi">Koneksi data tidak tersedia di preview ini.</div>';
+ return;
+ }
  try {
  const bulan = currentBulanStr();
  const [penilaianSnap, siswaSnap] = await Promise.all([
@@ -493,9 +511,8 @@
  if (window.scrollY > 260) sticky.classList.add('show'); else sticky.classList.remove('show');
  });
 </script>
-<script type="module">
- import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
- window.THREE = THREE;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
  if (typeof initHeroBall === 'function') initHeroBall();
 </script>
 </body>
