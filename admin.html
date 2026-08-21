@@ -1156,6 +1156,25 @@
       btn.textContent = item.nilai ? 'Edit Nilai' : 'Isi Nilai';
       btn.addEventListener('click', () => openPenilaianModal(item.siswa, item.nilai));
       row.appendChild(btn);
+
+      if (item.nilai) {
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-btn';
+        delBtn.style.cssText = 'margin-left:8px;color:var(--danger);border-color:var(--danger);';
+        delBtn.textContent = 'Hapus';
+        delBtn.addEventListener('click', async () => {
+          if (!confirm('Hapus nilai ' + item.siswa.nama + ' untuk bulan ini? Aksi ini nggak bisa dibatalkan.')) return;
+          try {
+            await db.collection(PENILAIAN_COL).doc(item.nilai.id).delete();
+            await loadAndRenderPenilaian();
+          } catch (err) {
+            console.error('Gagal menghapus nilai:', err);
+            alert('Gagal menghapus nilai: ' + err.message);
+          }
+        });
+        row.appendChild(delBtn);
+      }
+
       table.appendChild(row);
     });
   }
