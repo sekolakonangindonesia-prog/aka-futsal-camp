@@ -27,39 +27,43 @@
     border-radius:20px;
     overflow:hidden;
     position:relative;
+    display:flex;
+    min-height:340px;
   }
-  .card-badge{position:absolute;top:16px;left:18px;display:flex;align-items:center;gap:8px;z-index:3;}
-  .card-badge img{width:26px;height:26px;object-fit:contain;}
-  .card-badge span{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--amber);text-transform:uppercase;}
-  .rank-flag{position:absolute;top:16px;right:16px;background:rgba(232,185,35,0.15);border:1px solid var(--amber);color:var(--amber);font-family:'Space Mono',monospace;font-size:11px;padding:4px 11px;border-radius:20px;z-index:3;}
+  .card-badge{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:6px;z-index:3;}
+  .card-badge img{width:22px;height:22px;object-fit:contain;}
+  .card-badge span{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--amber);text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
+  .rank-flag{position:absolute;top:12px;right:12px;background:rgba(232,185,35,0.15);border:1px solid var(--amber);color:var(--amber);font-family:'Space Mono',monospace;font-size:10px;padding:4px 9px;border-radius:20px;z-index:3;}
 
-  .photo-stage{perspective:900px;display:flex;justify-content:center;padding:58px 20px 18px;}
-  .photo-frame{
-    width:140px;height:140px;border-radius:50%;
-    border:3px solid var(--amber);
-    overflow:hidden;background:var(--surface-2);
-    display:flex;align-items:center;justify-content:center;
-    animation: flipIn .9s ease-out, idleTilt 5s ease-in-out .9s infinite;
-    transform-style:preserve-3d;
-    box-shadow:0 0 30px rgba(232,185,35,0.15);
+  .photo-col{
+    width:38%;flex-shrink:0;position:relative;background:var(--surface-2);
+    animation: fadeInLeft .7s ease-out;
   }
-  .photo-frame img{width:100%;height:100%;object-fit:cover;}
-  .photo-initial{font-family:'Oswald',sans-serif;font-size:52px;color:var(--amber);}
-  @keyframes flipIn{ from{transform:rotateY(-110deg);opacity:0;} to{transform:rotateY(0deg);opacity:1;} }
-  @keyframes idleTilt{ 0%,100%{transform:rotateY(-7deg);} 50%{transform:rotateY(7deg);} }
+  .photo-col img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;}
+  .photo-initial{
+    width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    font-family:'Oswald',sans-serif;font-size:52px;color:var(--amber);
+  }
+  .photo-col::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg, transparent 70%, var(--surface) 100%);pointer-events:none;}
+  @keyframes fadeInLeft{ from{opacity:0;transform:translateX(-14px);} to{opacity:1;transform:translateX(0);} }
 
-  .name-block{text-align:center;padding:0 20px 20px;}
-  .name-block h1{font-size:23px;letter-spacing:.5px;}
-  .name-block .sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-secondary);margin-top:5px;letter-spacing:1px;text-transform:uppercase;}
+  .info-col{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .name-block{padding:16px 16px 12px;}
+  .name-block h1{font-size:19px;letter-spacing:.3px;line-height:1.1;}
+  .name-block .sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-secondary);margin-top:6px;letter-spacing:.5px;text-transform:uppercase;}
 
-  .total-band{background:var(--amber);color:#1a1310;text-align:center;padding:11px;font-family:'Oswald',sans-serif;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;}
-  .total-band strong{font-size:20px;margin-left:6px;}
+  .total-band{background:var(--amber);color:#1a1310;padding:10px 16px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
+  .total-band strong{font-size:18px;}
 
-  .stat-list{padding:4px 0;}
-  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:13px 22px;font-size:13px;}
+  .stat-list{padding:2px 0;flex:1;}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;font-size:12px;}
   .stat-row:nth-child(odd){background:rgba(232,185,35,0.05);}
-  .stat-row .label{color:var(--text-secondary);text-transform:uppercase;font-size:11.5px;letter-spacing:.5px;}
-  .stat-row .value{font-family:'Space Mono',monospace;font-weight:700;color:var(--chalk);font-size:15px;}
+  .stat-row .label{color:var(--text-secondary);text-transform:uppercase;font-size:10.5px;letter-spacing:.4px;}
+  .stat-row .value{font-family:'Space Mono',monospace;font-weight:700;color:var(--chalk);font-size:14px;}
+  @media (max-width:380px){
+    .name-block h1{font-size:16px;}
+    .stat-row{padding:8px 12px;font-size:11px;}
+  }
 
   .bulan-picker{display:flex;justify-content:center;margin-top:18px;}
   .bulan-picker select{background:var(--surface);border:1px solid var(--line);color:var(--chalk);border-radius:8px;padding:9px 14px;font-family:'Manrope',sans-serif;font-size:12px;}
@@ -134,7 +138,7 @@
 
   async function renderProfile(nilai) {
     const content = document.getElementById('content');
-    const foto = siswaData.foto;
+    const foto = siswaData.foto_profil || siswaData.foto;
     const nama = siswaData.nama || '-';
     let rank = nilai ? await computeRank(nilai.bulan) : null;
 
@@ -151,21 +155,23 @@
 
     content.innerHTML = `
       <div class="card">
-        <div class="card-badge"><img src="aka%20futsal%20camp.png" alt=""><span>AKA Futsal Camp</span></div>
-        ${rank ? `<div class="rank-flag">#${rank} musim ini</div>` : ''}
-        <div class="photo-stage">
-          <div class="photo-frame">${foto ? `<img src="${foto}" alt="">` : `<span class="photo-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</span>`}</div>
+        <div class="photo-col">
+          ${foto ? `<img src="${foto}" alt="">` : `<div class="photo-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</div>`}
+          <div class="card-badge"><img src="aka%20futsal%20camp.png" alt=""><span>AKA</span></div>
+          ${rank ? `<div class="rank-flag">#${rank}</div>` : ''}
         </div>
-        <div class="name-block">
-          <h1>${escapeHtml(nama)}</h1>
-          <div class="sub">${siswaData.usia ? siswaData.usia + ' Tahun' : ''}${siswaData.kelas ? ' &middot; ' + escapeHtml(siswaData.kelas) : ''}${siswaData.sekolah ? ' &middot; ' + escapeHtml(siswaData.sekolah) : ''}</div>
+        <div class="info-col">
+          <div class="name-block">
+            <h1>${escapeHtml(nama)}</h1>
+            <div class="sub">${siswaData.usia ? siswaData.usia + ' Tahun' : ''}${siswaData.kelas ? ' &middot; ' + escapeHtml(siswaData.kelas) : ''}${siswaData.sekolah ? ' &middot; ' + escapeHtml(siswaData.sekolah) : ''}</div>
+          </div>
+          ${nilai ? `
+            <div class="total-band"><span>Total Poin</span><strong>${nilai.total || 0}</strong></div>
+            <div class="stat-list">${statRows}</div>
+          ` : `
+            <div class="total-band" style="background:var(--surface-2);color:var(--text-secondary);"><span>Belum ada penilaian</span></div>
+          `}
         </div>
-        ${nilai ? `
-          <div class="total-band">Total Poin <strong>${nilai.total || 0}</strong></div>
-          <div class="stat-list">${statRows}</div>
-        ` : `
-          <div class="total-band" style="background:var(--surface-2);color:var(--text-secondary);">Belum ada penilaian</div>
-        `}
       </div>
       ${penilaianList.length > 1 ? `<div class="bulan-picker"><select id="bulanSelect">${bulanOptions}</select></div>` : ''}
     `;
