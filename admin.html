@@ -3,523 +3,816 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AKA Futsal Camp</title>
+<title>Admin - Futsal Camp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
- :root{
- --bg:#120e0c; --surface:#1d1613; --surface-2:#261c17; --line:#3a2b23;
- --amber:#e8b923; --red:#c8272d; --chalk:#f5f1e8; --text-secondary:#a89586; --success:#34d399;
- }
- *{box-sizing:border-box;}
- body{
- margin:0;
- background:radial-gradient(circle at 50% 0%, rgba(245,166,35,0.08), transparent 55%),var(--bg);
- color:var(--chalk);
- font-family:'Manrope',sans-serif;
- min-height:100vh;
- padding:0 0 60px;
- }
- h1,h2,h3{font-family:'Oswald',sans-serif;text-transform:uppercase;margin:0;}
- p{line-height:1.6;}
- .wrap{max-width:520px;margin:0 auto;padding:0 16px;}
- .hero{
- position:relative;text-align:center;padding:52px 16px 32px;
- background:
- radial-gradient(circle at 18% -10%, rgba(200,39,45,0.20), transparent 45%),
- radial-gradient(circle at 88% 8%, rgba(232,185,35,0.16), transparent 50%),
- repeating-linear-gradient(135deg, rgba(232,185,35,0.045) 0 2px, transparent 2px 26px),
- var(--surface);
- background-size:cover;background-position:center;
- border-bottom:1px solid var(--line);
- transition:background-image .3s ease;
- overflow:hidden;
- }
- .hero.has-image{background-color:var(--bg);}
- .hero-canvas{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity 1s ease;}
- .hero-canvas.ready{opacity:1;}
- .hero img.logo{width:84px;margin-bottom:14px;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.4));position:relative;z-index:2;}
- /* ---- 3D tilt & depth (ringan, CSS-only, dipakai di semua halaman) ---- */
- .tilt-zone{perspective:900px;}
- .tilt{
- transform-style:preserve-3d;
- transition:transform .45s cubic-bezier(.2,.8,.2,1), box-shadow .45s ease, opacity .5s ease;
- will-change:transform;
- }
- .tilt.tilt-hidden{opacity:0;transform:rotateX(14deg) translateY(22px) scale(.97);}
- .tilt.tilt-visible{opacity:1;transform:rotateX(0deg) translateY(0) scale(1);}
- @media (hover:hover) and (pointer:fine){
- .tilt-hover:hover{box-shadow:0 18px 30px -12px rgba(0,0,0,0.55);}
- }
- .cta-btn, .submit-btn{transform:perspective(600px) translateZ(0);transition:transform .15s ease, filter .15s ease;}
- .cta-btn:active, .submit-btn:active{transform:perspective(600px) translateZ(-6px) scale(.97);}
- @media (prefers-reduced-motion: reduce){
- .tilt, .tilt.tilt-hidden, .tilt.tilt-visible{transition:none !important;transform:none !important;opacity:1 !important;}
- }
- .hero .eyebrow{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:3px;color:var(--amber);text-transform:uppercase;display:block;margin-bottom:8px;position:relative;z-index:2;}
- .hero h1{font-size:clamp(28px,7vw,38px);letter-spacing:1px;line-height:1.05;position:relative;z-index:2;}
- .hero h1 span{color:var(--amber);}
- .hero .sub{color:var(--text-secondary);font-size:14px;margin-top:10px;position:relative;z-index:2;}
- .badge-row{display:flex;justify-content:center;margin-top:16px;position:relative;z-index:2;}
- .badge{background:var(--surface-2);border:1px solid var(--red);color:var(--red);border-radius:20px;padding:6px 14px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;}
- .about-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:24px;}
- .about-card p{color:var(--text-secondary);font-size:13px;margin:0;}
- .about-card p strong{color:var(--chalk);}
- .stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px;}
- .stat-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 12px;text-align:center;}
- .stat-num{font-family:'Oswald',sans-serif;font-size:26px;color:var(--amber);line-height:1;}
- .stat-label{font-size:10.5px;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase;margin-top:6px;font-family:'Space Mono',monospace;}
- .section-title{display:flex;align-items:center;gap:10px;margin:28px 0 14px;}
- .section-title h2{font-size:15px;color:var(--text-secondary);letter-spacing:2px;}
- .section-title .line{flex:1;height:1px;background:var(--line);}
- .vm-grid{display:grid;grid-template-columns:1fr;gap:12px;}
- .vm-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;}
- .vm-card h3{font-size:14px;color:var(--amber);margin-bottom:8px;}
- .vm-card p{color:var(--text-secondary);font-size:13px;margin:0;}
- .vm-card ul{margin:0;padding-left:18px;color:var(--text-secondary);font-size:13px;}
- .vm-card li{margin-bottom:6px;}
- .vm-card li:last-child{margin-bottom:0;}
- .sesi-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px;cursor:pointer;}
- .sesi-card .head{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;}
- .sesi-card .head h3{font-size:16px;}
- .sesi-card .head-right{display:flex;align-items:center;gap:10px;}
- .sesi-card .kap{font-family:'Space Mono',monospace;font-size:12px;color:var(--amber);}
- .sesi-card .chevron{color:var(--text-secondary);font-size:12px;transition:transform .2s;}
- .sesi-card.open .chevron{transform:rotate(180deg);}
- .kap-track{height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin:0 18px 16px;}
- .kap-fill{height:100%;border-radius:3px;background:var(--amber);transition:width .5s ease;}
- .kap-fill.almost{background:linear-gradient(90deg,var(--amber),var(--red));}
- .kap-fill.full{background:var(--red);}
- .sesi-card .names{max-height:0;overflow:hidden;transition:max-height .3s ease;}
- .sesi-card.open .names{border-top:1px solid var(--line);}
- .names-inner{padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:12px 8px;}
- .player-card{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;}
- .player-photo{width:42px;height:42px;border-radius:50%;background:var(--surface-2);border:2px solid var(--amber);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
- .player-photo img{width:100%;height:100%;object-fit:cover;}
- .player-initial{font-family:'Oswald',sans-serif;font-size:15px;color:var(--amber);}
- .player-name{font-size:10px;color:var(--chalk);line-height:1.2;word-break:break-word;max-width:64px;}
- .empty-sesi{padding:16px 18px;color:var(--text-secondary);font-size:13px;}
- .loading, .no-sesi{text-align:center;color:var(--text-secondary);font-size:13px;padding:30px 16px;}
- .social-row{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:6px;}
- .social-link{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;text-decoration:none;color:var(--chalk);font-size:13px;font-weight:600;}
- .social-link:hover{border-color:var(--amber);}
- .social-link svg{width:16px;height:16px;color:var(--amber);flex-shrink:0;}
- .ranking-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px;cursor:pointer;}
- .ranking-card.rank-1{border-color:#f2c14e;box-shadow:0 0 0 1px rgba(242,193,78,0.3);}
- .ranking-card.rank-2{border-color:#c9c9c9;}
- .ranking-card.rank-3{border-color:#cd7f32;}
- .rank-head{display:flex;align-items:center;gap:12px;padding:14px 16px;}
- .rank-num{font-family:'Oswald',sans-serif;font-size:16px;color:var(--text-secondary);width:26px;flex-shrink:0;}
- .ranking-card.rank-1 .rank-num{color:#f2c14e;}
- .ranking-card.rank-2 .rank-num{color:#c9c9c9;}
- .ranking-card.rank-3 .rank-num{color:#cd7f32;}
- .rank-photo{width:44px;height:44px;border-radius:50%;overflow:hidden;background:var(--surface-2);border:2px solid var(--amber);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
- .rank-photo img{width:100%;height:100%;object-fit:cover;}
- .rank-info{flex:1;display:flex;flex-direction:column;min-width:0;}
- .rank-name{font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
- .rank-total{font-size:12px;color:var(--amber);font-family:'Space Mono',monospace;}
- .rank-head .chevron{color:var(--text-secondary);font-size:12px;transition:transform .2s;flex-shrink:0;}
- .ranking-card.open .chevron{transform:rotate(180deg);}
- .rank-detail{max-height:0;overflow:hidden;transition:max-height .3s ease;}
- .ranking-card.open .rank-detail{border-top:1px solid var(--line);}
- .rank-detail-inner{padding:12px 16px;display:flex;flex-direction:column;gap:7px;}
- .kategori-bar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);}
- .kategori-bar-row span:last-child{color:var(--chalk);font-family:'Space Mono',monospace;}
- .cta-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;text-align:center;margin-top:30px;}
- .cta-box p{color:var(--text-secondary);font-size:13px;margin:0 0 14px;}
- .cta-btn{display:inline-block;background:var(--amber);color:#1a1200;text-decoration:none;border-radius:8px;padding:13px 24px;font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:1px;}
- .cta-btn:hover{filter:brightness(1.08);}
- .footer-note{text-align:center;color:var(--text-secondary);font-size:11px;font-family:'Space Mono',monospace;margin-top:36px;letter-spacing:1px;}
- .sticky-cta{position:fixed;left:0;right:0;bottom:-100px;background:rgba(29,22,19,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:bottom .3s ease;z-index:50;}
- .sticky-cta.show{bottom:0;}
- .sticky-cta p{margin:0;font-size:12px;color:var(--text-secondary);line-height:1.3;}
- .sticky-cta .cta-btn{padding:11px 18px;font-size:13px;white-space:nowrap;flex-shrink:0;}
- @media(min-width:560px){.sticky-cta{display:none;}}
- @media(max-width:559px){body{padding-bottom:88px;}}
+  :root{
+    --bg:#120e0c; --surface:#1d1613; --surface-2:#261c17; --line:#3a2b23;
+    --amber:#e8b923; --red:#c8272d; --chalk:#f5f1e8; --text-secondary:#a89586;
+    --success:#34d399; --danger:#f26b6b;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:radial-gradient(circle at 50% 0%, rgba(245,166,35,0.06), transparent 55%),var(--bg);color:var(--chalk);font-family:'Manrope',sans-serif;min-height:100vh;}
+  h1,h2,h3{font-family:'Oswald',sans-serif;text-transform:uppercase;margin:0;}
+  img{max-width:100%;}
+
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .login-box{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 24px;text-align:center;}
+  .login-box img.logo{width:80px;margin:0 auto 14px;display:block;}
+  .login-box .eyebrow{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:3px;color:var(--amber);text-transform:uppercase;display:block;margin-bottom:8px;}
+  .login-box h1{font-size:24px;margin-bottom:20px;}
+  .field{margin-bottom:16px;text-align:left;}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;}
+  input,select,textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:11px 12px;color:var(--chalk);font-family:'Manrope',sans-serif;font-size:14px;outline:none;}
+  input:focus,select:focus{border-color:var(--amber);}
+  .btn{background:var(--amber);color:#1a1200;border:none;border-radius:8px;padding:12px 18px;font-family:'Oswald',sans-serif;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;}
+  .btn:hover{filter:brightness(1.08);}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-secondary{background:var(--surface-2);color:var(--chalk);border:1px solid var(--line);}
+  .btn-full{width:100%;}
+  #loginError{color:var(--danger);font-size:13px;margin-top:10px;display:none;}
+
+  #dashboard{display:none;}
+  .topbar{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:5;}
+  .topbar img.logo{width:36px;}
+  .topbar .titles{flex:1;}
+  .topbar .eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;display:block;}
+  .topbar h1{font-size:17px;}
+  .logout-btn{background:none;border:1px solid var(--line);color:var(--text-secondary);border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-family:'Manrope',sans-serif;}
+  .logout-btn:hover{color:var(--chalk);border-color:var(--amber);}
+
+  .tabs{display:flex;gap:8px;padding:14px 20px 0;max-width:960px;margin:0 auto;}
+  .tab-btn{background:none;border:none;color:var(--text-secondary);font-family:'Oswald',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:1px;padding:10px 4px;cursor:pointer;border-bottom:2px solid transparent;}
+  .tab-btn.active{color:var(--amber);border-bottom-color:var(--amber);}
+
+  .tab-panel{display:none;padding:20px;max-width:960px;margin:0 auto 60px;}
+  .tab-panel.active{display:block;}
+
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:12px;margin-bottom:20px;}
+  .stat-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+  .stat-card .label{font-size:12px;color:var(--text-secondary);}
+  .stat-card .value{font-family:'Oswald',sans-serif;font-size:24px;margin-top:2px;}
+
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap;}
+  .section-head h2{font-size:16px;}
+
+  .siswa-table{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .siswa-item{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);}
+  .siswa-item:last-child{border-bottom:none;}
+  .avatar{width:38px;height:38px;border-radius:8px;object-fit:cover;background:var(--surface-2);flex-shrink:0;}
+  .avatar-placeholder{width:38px;height:38px;border-radius:8px;background:var(--surface-2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-secondary);}
+  .siswa-item .info{flex:1;min-width:0;}
+  .siswa-item .nama{font-weight:600;font-size:14px;}
+  .siswa-item .meta{font-size:12px;color:var(--text-secondary);}
+  .siswa-item .actions{display:flex;gap:6px;}
+  .icon-btn{background:none;border:1px solid var(--line);color:var(--text-secondary);border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer;font-family:'Manrope',sans-serif;}
+  .icon-btn:hover{color:var(--chalk);border-color:var(--amber);}
+  .empty-state{padding:24px 16px;text-align:center;color:var(--text-secondary);font-size:13px;}
+
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:20;align-items:center;justify-content:center;padding:16px;}
+  .overlay.active{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;}
+  .modal h2{font-size:16px;margin-bottom:16px;}
+  .modal-actions{display:flex;gap:10px;margin-top:18px;}
+  .modal-actions .btn{flex:1;}
+  .photo-preview{width:64px;height:64px;border-radius:10px;background:var(--surface-2);border:1px dashed var(--line);margin-bottom:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-secondary);text-align:center;}
+  .photo-preview img{width:100%;height:100%;object-fit:cover;}
+
+  .sesi-config{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:20px;}
+  .sesi-list-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;}
+  .sesi-list-row:last-of-type{border-bottom:none;}
+  .sesi-list-row .label{flex:1;font-weight:600;}
+  .sesi-list-row .kap{color:var(--text-secondary);font-family:'Space Mono',monospace;font-size:12px;}
+  .add-sesi-form{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .add-sesi-form input{width:auto;flex:1;min-width:120px;}
+  .add-sesi-form input#sesiKapasitas{max-width:90px;}
+
+  .session-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:20px;}
+  .session-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .session-card .head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+  .session-card .head h2{font-size:14px;}
+  .session-card .head .count{font-family:'Space Mono',monospace;font-size:11px;color:var(--amber);}
+  .siswa-row{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13px;}
+  .siswa-row:last-child{border-bottom:none;}
+  .siswa-row .nama{flex:1;}
+  .siswa-row select{width:auto;padding:5px 8px;font-size:12px;}
+  .status-line{text-align:center;font-size:12px;color:var(--text-secondary);margin-top:10px;}
 </style>
 </head>
 <body>
-<div class="wrap">
- <div class="hero" id="hero">
- <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
- <img class="logo" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
- <span class="eyebrow">Program Pembinaan</span>
- <h1>AKA <span>Futsal Camp</span></h1>
- <p class="sub">Fase awal pencarian bakat — cikal bakal AKA Futsal Club</p>
- <div class="badge-row"><span class="badge">MUSIM SELEKSI SEDANG BERJALAN</span></div>
- </div>
- <div class="tilt-zone"><div class="about-card tilt tilt-hover">
- <p><strong>AKA Futsal Camp</strong> adalah program latihan futsal untuk anak & remaja di Probolinggo, sekaligus proses awal pencarian bakat sebelum resmi menjadi <strong>AKA Futsal Club</strong>. Tiap peserta dilatih rutin dan dinilai lewat musim seleksi bulanan menuju skuad inti.</p>
- </div></div>
- <div class="stats-row" id="statsRow">
- <div class="tilt-zone"><div class="stat-box tilt tilt-hover"><div class="stat-num" id="statPeserta">–</div><div class="stat-label">Peserta Terdaftar</div></div></div>
- <div class="tilt-zone"><div class="stat-box tilt tilt-hover"><div class="stat-num" id="statSesi">–</div><div class="stat-label">Sesi Aktif</div></div></div>
- </div>
- <div class="section-title"><h2>Visi & Misi</h2><div class="line"></div></div>
- <div class="vm-grid" id="visiMisiContainer">
- <div class="loading">Memuat...</div>
- </div>
- <div class="section-title"><h2>Sesi Latihan</h2><div class="line"></div></div>
- <div id="sesiContainer">
- <div class="loading">Memuat jadwal...</div>
- </div>
- <div class="section-title"><h2>Ranking 14 Besar</h2><div class="line"></div></div>
- <div id="rankingContainer">
- <div class="loading">Memuat ranking...</div>
- </div>
- <div class="section-title"><h2>Ikuti Kami</h2><div class="line"></div></div>
- <div class="social-row" id="socialContainer"></div>
- <div class="cta-box">
- <p>Belum terdaftar? Gabung sekarang, kuota terbatas per sesi.</p>
- <a class="cta-btn" href="form_siswa.html">Daftar Sekarang</a>
- </div>
- <div class="footer-note">AKA FUTSAL CAMP · UPDATE OTOMATIS</div>
+
+<div id="loginScreen">
+  <div class="login-box">
+    <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
+    <span class="eyebrow">Akses Terbatas</span>
+    <h1>Admin Futsal Camp</h1>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@email.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-full" id="loginBtn">Masuk</button>
+    <div id="loginError"></div>
+  </div>
 </div>
-<div class="sticky-cta" id="stickyCta">
- <p>Kuota terbatas<br>per sesi latihan</p>
- <a class="cta-btn" href="form_siswa.html">Daftar Sekarang</a>
+
+<div id="dashboard">
+  <div class="topbar">
+    <img class="logo" src="aka%20futsal%20camp.png" alt="AK Futsal Camp">
+    <div class="titles">
+      <span class="eyebrow">Admin Panel</span>
+      <h1>AK Futsal Camp</h1>
+    </div>
+    <button class="logout-btn" id="logoutBtn">Keluar</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="siswaTab">Kelola Siswa</button>
+    <button class="tab-btn" data-tab="jadwalTab">Jadwal Latihan</button>
+    <button class="tab-btn" data-tab="laporanTab">Laporan Keuangan</button>
+    <button class="tab-btn" data-tab="pengaturanTab">Pengaturan</button>
+  </div>
+
+  <div class="tab-panel active" id="siswaTab">
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Total siswa</div><div class="value" id="statTotal">-</div></div>
+      <div class="stat-card"><div class="label">Sudah dijadwal</div><div class="value" id="statDijadwal">-</div></div>
+      <div class="stat-card"><div class="label">Belum dijadwal</div><div class="value" id="statBelum">-</div></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Daftar Siswa</h2>
+      <button class="btn" id="btnTambahSiswa">+ Tambah Siswa</button>
+    </div>
+    <div class="siswa-table" id="siswaTable"></div>
+  </div>
+
+  <div class="tab-panel" id="jadwalTab">
+    <div class="sesi-config">
+      <div class="section-head" style="margin-bottom:8px;">
+        <h2>Sesi Latihan</h2>
+      </div>
+      <div id="sesiList"></div>
+      <div class="add-sesi-form">
+        <input type="date" id="sesiTanggal">
+        <input type="text" id="sesiKeterangan" placeholder="Keterangan (opsional, cth. Sore)">
+        <input type="number" id="sesiKapasitas" placeholder="Kapasitas" value="25" min="1">
+        <button class="btn btn-secondary" id="btnTambahSesi">+ Tambah Sesi</button>
+      </div>
+      <div class="status-line" id="sesiPreview" style="text-align:left;margin-top:8px;"></div>
+    </div>
+
+    <div class="section-head">
+      <h2>Rencana Jadwal <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— buat di-share ke grup</span></h2>
+      <button class="btn" id="generateBtn">Generate Otomatis</button>
+    </div>
+    <div class="status-line" id="generateStatus"></div>
+    <div class="siswa-table" id="rencanaTable" style="margin-top:14px;margin-bottom:28px;"></div>
+
+    <div class="section-head">
+      <h2>Kehadiran Hari-H <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— centang yang beneran datang</span></h2>
+    </div>
+    <div class="session-grid" id="sessionGrid" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="overlay" id="walkinModalOverlay">
+    <div class="modal">
+      <h2>Tambah Peserta Dadakan</h2>
+      <div class="field">
+        <label>Pilih siswa</label>
+        <select id="walkinSiswaSelect"></select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btnBatalWalkin">Batal</button>
+        <button class="btn" id="btnSimpanWalkin">Tambahkan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="laporanTab">
+    <div class="section-head">
+      <h2>Laporan Keuangan</h2>
+    </div>
+    <div class="sesi-config" style="margin-bottom:20px;">
+      <div class="add-sesi-form" style="margin-top:0;">
+        <input type="month" id="laporanBulan">
+        <button class="btn btn-secondary" id="btnMuatLaporan">Muat Laporan</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Total kehadiran</div><div class="value" id="lapTotal">-</div></div>
+      <div class="stat-card"><div class="label">Cash</div><div class="value" id="lapCash">-</div></div>
+      <div class="stat-card"><div class="label">QRIS</div><div class="value" id="lapQris">-</div></div>
+      <div class="stat-card"><div class="label">Belum bayar</div><div class="value" id="lapBelum">-</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="label">Total pendapatan</div><div class="value" id="lapPendapatan" style="font-size:22px;">-</div></div>
+    </div>
+    <div class="session-card">
+      <div class="head"><h2>Rekap per Sesi</h2></div>
+      <div id="lapPerSesi"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="pengaturanTab">
+    <div class="section-head"><h2>Tentang Camp</h2></div>
+    <div class="sesi-config">
+      <div class="field"><label>Visi</label><textarea id="settingVisi" rows="3"></textarea></div>
+      <div class="field"><label>Misi (satu baris = satu poin)</label><textarea id="settingMisi" rows="5"></textarea></div>
+      <button class="btn" id="btnSimpanTentang">Simpan Visi & Misi</button>
+      <div class="status-line" id="tentangStatus"></div>
+    </div>
+
+    <div class="section-head"><h2>Sosial Media</h2></div>
+    <div class="sesi-config">
+      <div class="field"><label>Instagram (link lengkap)</label><input type="text" id="settingIg" placeholder="https://instagram.com/..."></div>
+      <div class="field"><label>TikTok (link lengkap)</label><input type="text" id="settingTiktok" placeholder="https://tiktok.com/@..."></div>
+      <div class="field"><label>Facebook (link lengkap)</label><input type="text" id="settingFb" placeholder="https://facebook.com/..."></div>
+      <div class="field"><label>YouTube (link lengkap)</label><input type="text" id="settingYt" placeholder="https://youtube.com/@..."></div>
+      <button class="btn" id="btnSimpanSosial">Simpan Sosial Media</button>
+      <div class="status-line" id="sosialStatus"></div>
+    </div>
+  </div>
 </div>
+
+<div class="overlay" id="siswaModalOverlay">
+  <div class="modal">
+    <h2 id="siswaModalTitle">Tambah Siswa</h2>
+    <div class="field">
+      <div class="photo-preview" id="modalPhotoPreview">Belum ada foto</div>
+      <label for="modalFotoInput" class="btn btn-secondary" style="display:inline-block;font-size:12px;padding:8px 14px;">Pilih foto</label>
+      <input type="file" id="modalFotoInput" accept="image/*" style="display:none;">
+    </div>
+    <div class="field"><label>Nama lengkap</label><input type="text" id="modalNama"></div>
+    <div class="field"><label>Usia</label><input type="number" id="modalUsia" min="1"></div>
+    <div class="field"><label>Tempat, tanggal lahir</label><input type="text" id="modalTtl"></div>
+    <div class="field"><label>Nomor WhatsApp</label><input type="text" id="modalNoWa"></div>
+    <div class="field"><label>Kelas (opsional)</label><input type="text" id="modalKelas"></div>
+    <div class="field"><label>Asal sekolah (opsional)</label><input type="text" id="modalSekolah"></div>
+    <div class="field">
+      <label>Riwayat Kehadiran</label>
+      <div id="modalRiwayat" style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;max-height:150px;overflow-y:auto;font-size:12px;color:var(--text-secondary);"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnBatalSiswa">Batal</button>
+      <button class="btn" id="btnSimpanSiswa">Simpan</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
- const firebaseConfig = {
- apiKey: "AIzaSyCWg3d1qtHFEwsN-GLakSDIvb-Wjbo7cIQ",
- authDomain: "aka-futsal-camp.firebaseapp.com",
- projectId: "aka-futsal-camp",
- storageBucket: "aka-futsal-camp.firebasestorage.app",
- messagingSenderId: "721774551002",
- appId: "1:721774551002:web:bcd2e47b06d61daf626ae3"
- };
- let db = null;
- try {
- firebase.initializeApp(firebaseConfig);
- db = firebase.firestore();
- } catch (err) {
- console.error('Firebase gagal dimuat (SDK diblokir/offline):', err);
- }
- function escapeHtml(str) {
- const div = document.createElement('div');
- div.textContent = str || '';
- return div.innerHTML;
- }
- const SOCIAL_ICONS = {
- instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg>',
- tiktok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V4l8 2v3.2a5 5 0 0 1-4-1.4V15a4 4 0 1 1-4-4"/></svg>',
- facebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8h-2a2 2 0 0 0-2 2v3H9v3h2v6h3v-6h2.2l.8-3H14v-2.2c0-.5.3-.8.8-.8H16V8z"/></svg>',
- youtube: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5.5" width="20" height="13" rx="4"/><polygon points="10,9.5 16,12 10,14.5" fill="currentColor" stroke="none"/></svg>'
- };
- const SOCIAL_META = {
- instagram: { label: 'Instagram', icon: SOCIAL_ICONS.instagram },
- tiktok: { label: 'TikTok', icon: SOCIAL_ICONS.tiktok },
- facebook: { label: 'Facebook', icon: SOCIAL_ICONS.facebook },
- youtube: { label: 'YouTube', icon: SOCIAL_ICONS.youtube }
- };
- async function loadPengaturan() {
- const vmContainer = document.getElementById('visiMisiContainer');
- const socialContainer = document.getElementById('socialContainer');
- if (!db) {
- vmContainer.innerHTML = '<div class="loading">Koneksi data tidak tersedia di preview ini.</div>';
- socialContainer.innerHTML = '';
- return;
- }
- try {
- const doc = await db.collection('pengaturan').doc('umum').get();
- const data = doc.exists ? doc.data() : {};
- if (data.heroImage) {
- const heroEl = document.getElementById('hero');
- heroEl.style.backgroundImage = `linear-gradient(180deg, rgba(18,14,12,.55), rgba(18,14,12,.92) 88%), url('${data.heroImage}')`;
- heroEl.classList.add('has-image');
- }
- vmContainer.innerHTML = '';
- if (data.visi) {
- vmContainer.innerHTML += `<div class="tilt-zone"><div class="vm-card tilt tilt-hover"><h3>Visi</h3><p>${escapeHtml(data.visi)}</p></div></div>`;
- }
- if (data.misi && data.misi.length) {
- const items = data.misi.map(m => `<li>${escapeHtml(m)}</li>`).join('');
- vmContainer.innerHTML += `<div class="tilt-zone"><div class="vm-card tilt tilt-hover"><h3>Misi</h3><ul>${items}</ul></div></div>`;
- }
- if (!data.visi && !(data.misi && data.misi.length)) {
- vmContainer.innerHTML = '<div class="loading">Visi & misi belum ditambahkan.</div>';
- }
- observeTiltCards(vmContainer);
- socialContainer.innerHTML = '';
- let anySocial = false;
- Object.keys(SOCIAL_META).forEach(key => {
- if (data[key]) {
- anySocial = true;
- const meta = SOCIAL_META[key];
- const a = document.createElement('a');
- a.href = data[key];
- a.target = '_blank';
- a.rel = 'noopener';
- a.className = 'social-link';
- a.innerHTML = `${meta.icon}<span>${meta.label}</span>`;
- socialContainer.appendChild(a);
- }
- });
- if (!anySocial) {
- socialContainer.innerHTML = '<div class="loading">Sosial media segera hadir.</div>';
- }
- } catch (err) {
- console.error(err);
- vmContainer.innerHTML = '';
- socialContainer.innerHTML = '';
- }
- }
- async function loadJadwal() {
- const container = document.getElementById('sesiContainer');
- if (!db) {
- container.innerHTML = '<div class="no-sesi">Koneksi data tidak tersedia di preview ini.</div>';
- return;
- }
- try {
- const [sesiSnap, rencanaSnap, siswaSnap] = await Promise.all([
- db.collection('sesi_latihan').orderBy('createdAt', 'asc').get(),
- db.collection('jadwal_rencana').get(),
- db.collection('futsal_siswa').get()
- ]);
- const sesiList = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
- const rencanaList = rencanaSnap.docs.map(d => d.data());
- const fotoMap = {}; siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
- const statPeserta = document.getElementById('statPeserta');
- const statSesi = document.getElementById('statSesi');
- if (statPeserta) statPeserta.textContent = rencanaList.length;
- if (statSesi) statSesi.textContent = sesiList.length;
- if (sesiList.length === 0) {
- container.innerHTML = '<div class="no-sesi">Jadwal belum diumumkan, pantau terus ya.</div>';
- return;
- }
- container.innerHTML = '';
- sesiList.forEach(sesi => {
- const anggota = rencanaList.filter(r => r.sesi_id === sesi.id);
- const kap = sesi.kapasitas || 0;
- const ratio = kap > 0 ? anggota.length / kap : 0;
- let fillClass = '';
- if (ratio >= 1) fillClass = 'full'; else if (ratio >= 0.8) fillClass = 'almost';
- const zone = document.createElement('div');
- zone.className = 'tilt-zone';
- const card = document.createElement('div');
- card.className = 'sesi-card tilt tilt-hover';
- card.innerHTML = `
- <div class="head">
- <h3>${escapeHtml(sesi.label)}</h3>
- <div class="head-right">
- <span class="kap">${anggota.length}/${kap}</span>
- <span class="chevron">▾</span>
- </div>
- </div>
- <div class="kap-track"><div class="kap-fill ${fillClass}" style="width:${Math.min(ratio*100,100)}%"></div></div>
- <div class="names"><div class="names-inner"></div></div>
- `;
- const namesInner = card.querySelector('.names-inner');
- if (anggota.length === 0) {
- namesInner.outerHTML = '<div class="empty-sesi">Belum ada peserta</div>';
- } else {
- anggota.forEach(r => {
- const foto = fotoMap[r.siswa_id];
- const nama = r.siswa_nama || '(tanpa nama)';
- const pcard = document.createElement('div');
- pcard.className = 'player-card';
- pcard.innerHTML = `
- <div class="player-photo">${foto ? `<img src="${foto}" alt="">` : `<span class="player-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</span>`}</div>
- <span class="player-name">${escapeHtml(nama)}</span>
- `;
- namesInner.appendChild(pcard);
- });
- }
- const namesEl = card.querySelector('.names');
- card.querySelector('.head').addEventListener('click', () => {
- const isOpen = card.classList.toggle('open');
- namesEl.style.maxHeight = isOpen ? namesEl.scrollHeight + 'px' : '0px';
- });
- zone.appendChild(card);
- container.appendChild(zone);
- });
- observeTiltCards(container);
- } catch (err) {
- console.error(err);
- container.innerHTML = '<div class="no-sesi">Gagal memuat jadwal, coba refresh halaman.</div>';
- }
- }
- function currentBulanStr() {
- const d = new Date();
- return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
- }
- async function loadRanking() {
- const container = document.getElementById('rankingContainer');
- if (!db) {
- container.innerHTML = '<div class="no-sesi">Koneksi data tidak tersedia di preview ini.</div>';
- return;
- }
- try {
- const bulan = currentBulanStr();
- const [penilaianSnap, siswaSnap] = await Promise.all([
- db.collection('penilaian').where('bulan', '==', bulan).get(),
- db.collection('futsal_siswa').get()
- ]);
- const fotoMap = {};
- siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
- let list = penilaianSnap.docs.map(d => d.data());
- list.sort((a, b) => (b.total || 0) - (a.total || 0));
- list = list.slice(0, 14);
- if (list.length === 0) {
- container.innerHTML = '<div class="no-sesi">Musim seleksi bulan ini belum ada hasil.</div>';
- return;
- }
- const labelMap = { teknik: 'Teknik', fisik: 'Fisik', decision_making: 'Decision Making', taktik: 'Taktik', mental: 'Mental' };
- container.innerHTML = '';
- list.forEach((p, idx) => {
- const rank = idx + 1;
- const foto = fotoMap[p.siswa_id];
- const nama = p.siswa_nama || '-';
- const zone = document.createElement('div');
- zone.className = 'tilt-zone';
- const card = document.createElement('div');
- card.className = 'ranking-card tilt tilt-hover' + (rank <= 3 ? ' rank-' + rank : '');
- card.innerHTML = `
- <div class="rank-head">
- <span class="rank-num">#${rank}</span>
- <div class="rank-photo">${foto ? `<img src="${foto}" alt="">` : `<span class="player-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</span>`}</div>
- <div class="rank-info">
- <span class="rank-name">${escapeHtml(nama)}</span>
- <span class="rank-total">${p.total || 0} poin</span>
- </div>
- <span class="chevron">▾</span>
- </div>
- <div class="rank-detail"><div class="rank-detail-inner"></div></div>
- `;
- const detailInner = card.querySelector('.rank-detail-inner');
- const kategoriTotal = p.kategoriTotal || {};
- Object.keys(labelMap).forEach(key => {
- const row = document.createElement('div');
- row.className = 'kategori-bar-row';
- row.innerHTML = `<span>${labelMap[key]}</span><span>${kategoriTotal[key] || 0}</span>`;
- detailInner.appendChild(row);
- });
- const detailEl = card.querySelector('.rank-detail');
- card.querySelector('.rank-head').addEventListener('click', () => {
- const isOpen = card.classList.toggle('open');
- detailEl.style.maxHeight = isOpen ? detailEl.scrollHeight + 'px' : '0px';
- });
- zone.appendChild(card);
- container.appendChild(zone);
- });
- observeTiltCards(container);
- } catch (err) {
- console.error(err);
- container.innerHTML = '<div class="no-sesi">Gagal memuat ranking, coba refresh halaman.</div>';
- }
- }
- // ---- 3D tilt ringan: reveal saat masuk viewport + tilt saat hover (desktop) ----
- const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
- const hasFinePointer = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
- const tiltObserver = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
- entries.forEach(entry => {
- if (entry.isIntersecting) {
- entry.target.classList.remove('tilt-hidden');
- entry.target.classList.add('tilt-visible');
- tiltObserver.unobserve(entry.target);
- }
- });
- }, { threshold: 0.15 }) : null;
- function observeTiltCards(root) {
- if (prefersReducedMotion) return;
- const cards = root.querySelectorAll('.tilt:not(.tilt-hidden):not(.tilt-visible)');
- cards.forEach(card => {
- card.classList.add('tilt-hidden');
- if (tiltObserver) tiltObserver.observe(card);
- else card.classList.add('tilt-visible');
- if (hasFinePointer && card.classList.contains('tilt-hover')) {
- card.addEventListener('mousemove', onTiltMove);
- card.addEventListener('mouseleave', onTiltLeave);
- }
- });
- }
- function onTiltMove(e) {
- const el = e.currentTarget;
- const r = el.getBoundingClientRect();
- const px = (e.clientX - r.left) / r.width - 0.5;
- const py = (e.clientY - r.top) / r.height - 0.5;
- el.style.transform = `rotateX(${(-py * 8).toFixed(2)}deg) rotateY(${(px * 8).toFixed(2)}deg) translateY(0) scale(1.015)`;
- }
- function onTiltLeave(e) {
- e.currentTarget.style.transform = '';
- }
- // Kartu statis (about-card, 2 stat-box) yang sudah ada di HTML dari awal
- observeTiltCards(document);
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWg3d1qtHFEwsN-GLakSDIvb-Wjbo7cIQ",
+    authDomain: "aka-futsal-camp.firebaseapp.com",
+    projectId: "aka-futsal-camp",
+    storageBucket: "aka-futsal-camp.firebasestorage.app",
+    messagingSenderId: "721774551002",
+    appId: "1:721774551002:web:bcd2e47b06d61daf626ae3"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const SISWA_COL = "futsal_siswa";
+  const SESI_COL = "sesi_latihan";
 
- // ---- Hero 3D ball (Three.js), hanya di hero index.html ----
- function initHeroBall() {
- const canvas = document.getElementById('heroCanvas');
- if (!canvas) { console.warn('[hero3d] canvas #heroCanvas tidak ditemukan'); return; }
- if (prefersReducedMotion) { console.log('[hero3d] dilewati: prefers-reduced-motion aktif'); return; }
- if (typeof THREE === 'undefined') { console.error('[hero3d] THREE tidak terdefinisi — library three.js gagal dimuat dari CDN'); return; }
- const heroEl = document.getElementById('hero');
- let renderer;
- try {
- renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
- } catch (e) { console.error('[hero3d] WebGLRenderer gagal dibuat (WebGL mungkin tidak didukung/nonaktif di browser ini):', e); return; }
- const scene = new THREE.Scene();
- const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
- camera.position.z = 4.2;
+  const loginScreen = document.getElementById('loginScreen');
+  const dashboard = document.getElementById('dashboard');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginError = document.getElementById('loginError');
 
- const group = new THREE.Group();
- const geo = new THREE.IcosahedronGeometry(1.45, 1);
- const solid = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({
- color: 0xe8b923, transparent: true, opacity: 0.22, shininess: 30
- }));
- const wire = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
- color: 0xe8b923, wireframe: true, transparent: true, opacity: 0.7
- }));
- group.add(solid, wire);
- group.position.set(0, -0.1, 0);
- scene.add(group);
+  loginBtn.addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    loginError.style.display = 'none';
+    loginBtn.disabled = true; loginBtn.textContent = 'Memproses...';
+    try { await auth.signInWithEmailAndPassword(email, password); }
+    catch (err) { loginError.textContent = 'Login gagal: email atau password salah.'; loginError.style.display = 'block'; }
+    loginBtn.disabled = false; loginBtn.textContent = 'Masuk';
+  });
+  document.getElementById('logoutBtn').addEventListener('click', () => auth.signOut());
 
- const ambient = new THREE.AmbientLight(0xffffff, 0.6);
- const point = new THREE.PointLight(0xc8272d, 1.3, 12);
- point.position.set(2, 2, 3);
- scene.add(ambient, point);
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      loginScreen.style.display = 'none';
+      dashboard.style.display = 'block';
+      loadAll();
+    } else {
+      loginScreen.style.display = 'flex';
+      dashboard.style.display = 'none';
+    }
+  });
 
- function resize() {
- const w = heroEl.clientWidth, h = heroEl.clientHeight;
- if (!w || !h) { console.warn('[hero3d] ukuran hero 0x0, coba lagi frame berikutnya'); requestAnimationFrame(resize); return; }
- renderer.setSize(w, h, false);
- renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
- camera.aspect = w / h;
- camera.updateProjectionMatrix();
- }
- resize();
- window.addEventListener('resize', resize);
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
 
- let running = true;
- document.addEventListener('visibilitychange', () => { running = !document.hidden; });
+  let siswaCache = [];
+  let sesiCache = [];
+  let kehadiranCache = [];
+  let rencanaCache = [];
+  const HADIR_COL = "kehadiran";
+  const JADWAL_COL = "jadwal_rencana";
 
- function animate() {
- if (running) {
- group.rotation.y += 0.0045;
- group.rotation.x += 0.0015;
- renderer.render(scene, camera);
- }
- requestAnimationFrame(animate);
- }
- animate();
- requestAnimationFrame(() => canvas.classList.add('ready'));
- }
+  async function loadAll() {
+    const [siswaSnap, sesiSnap] = await Promise.all([
+      db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
+      db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
+    ]);
+    siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
- loadPengaturan();
- loadJadwal();
- loadRanking();
- window.addEventListener('scroll', () => {
- const sticky = document.getElementById('stickyCta');
- if (window.scrollY > 260) sticky.classList.add('show'); else sticky.classList.remove('show');
- });
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="console.error('[hero3d] gagal load three.js dari cdnjs, coba fallback jsdelivr'); var fb=document.createElement('script'); fb.src='https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'; fb.onload=function(){ console.log('[hero3d] three.js fallback jsdelivr berhasil'); if (typeof initHeroBall === 'function') initHeroBall(); }; fb.onerror=function(){ console.error('[hero3d] fallback jsdelivr juga gagal, bola 3D tidak akan tampil'); }; document.body.appendChild(fb);"></script>
-<script>
- if (typeof THREE !== 'undefined' && typeof initHeroBall === 'function') {
- console.log('[hero3d] three.js siap, menjalankan initHeroBall()');
- initHeroBall();
- }
+    try {
+      const hadirSnap = await db.collection(HADIR_COL).get();
+      kehadiranCache = hadirSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.error('Gagal memuat kehadiran (cek rules Firestore untuk collection kehadiran):', err);
+      kehadiranCache = [];
+    }
+
+    try {
+      const rencanaSnap = await db.collection(JADWAL_COL).get();
+      rencanaCache = rencanaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.error('Gagal memuat rencana jadwal (cek rules Firestore untuk collection jadwal_rencana):', err);
+      rencanaCache = [];
+    }
+
+    renderSiswaTab();
+    renderJadwalTab();
+
+    try {
+      const settingDoc = await db.collection('pengaturan').doc('umum').get();
+      if (settingDoc.exists) {
+        const s = settingDoc.data();
+        document.getElementById('settingVisi').value = s.visi || '';
+        document.getElementById('settingMisi').value = (s.misi || []).join('\n');
+        document.getElementById('settingIg').value = s.instagram || '';
+        document.getElementById('settingTiktok').value = s.tiktok || '';
+        document.getElementById('settingFb').value = s.facebook || '';
+        document.getElementById('settingYt').value = s.youtube || '';
+      }
+    } catch (err) {
+      console.error('Gagal memuat pengaturan:', err);
+    }
+  }
+
+  document.getElementById('btnSimpanTentang').addEventListener('click', async () => {
+    const visi = document.getElementById('settingVisi').value.trim();
+    const misi = document.getElementById('settingMisi').value.split('\n').map(s => s.trim()).filter(Boolean);
+    await db.collection('pengaturan').doc('umum').set({ visi, misi }, { merge: true });
+    document.getElementById('tentangStatus').textContent = 'Tersimpan.';
+    setTimeout(() => document.getElementById('tentangStatus').textContent = '', 2000);
+  });
+
+  document.getElementById('btnSimpanSosial').addEventListener('click', async () => {
+    const data = {
+      instagram: document.getElementById('settingIg').value.trim(),
+      tiktok: document.getElementById('settingTiktok').value.trim(),
+      facebook: document.getElementById('settingFb').value.trim(),
+      youtube: document.getElementById('settingYt').value.trim()
+    };
+    await db.collection('pengaturan').doc('umum').set(data, { merge: true });
+    document.getElementById('sosialStatus').textContent = 'Tersimpan.';
+    setTimeout(() => document.getElementById('sosialStatus').textContent = '', 2000);
+  });
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  function avatarHtml(s) {
+    return s.foto ? `<img class="avatar" src="${s.foto}" alt="">` : `<div class="avatar-placeholder">?</div>`;
+  }
+
+  function renderSiswaTab() {
+    const idsSudahDirencanakan = new Set(rencanaCache.map(r => r.siswa_id));
+    const dijadwal = siswaCache.filter(s => idsSudahDirencanakan.has(s.id)).length;
+    document.getElementById('statTotal').textContent = siswaCache.length;
+    document.getElementById('statDijadwal').textContent = dijadwal;
+    document.getElementById('statBelum').textContent = siswaCache.length - dijadwal;
+
+    const table = document.getElementById('siswaTable');
+    table.innerHTML = '';
+    if (siswaCache.length === 0) {
+      table.innerHTML = '<div class="empty-state">Belum ada siswa terdaftar</div>';
+      return;
+    }
+    siswaCache.forEach(s => {
+      const jumlahHadir = kehadiranCache.filter(k => k.siswa_id === s.id).length;
+      const row = document.createElement('div');
+      row.className = 'siswa-item';
+      row.innerHTML = `
+        ${avatarHtml(s)}
+        <div class="info">
+          <div class="nama">${escapeHtml(s.nama)}</div>
+          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.no_wa ? ' · ' + escapeHtml(s.no_wa) : ''} · ${jumlahHadir} sesi tercatat</div>
+        </div>
+        <div class="actions">
+          <button class="icon-btn" data-edit="${s.id}">Edit</button>
+          <button class="icon-btn" data-del="${s.id}">Hapus</button>
+        </div>
+      `;
+      table.appendChild(row);
+    });
+    table.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openSiswaModal(b.dataset.edit)));
+    table.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => hapusSiswa(b.dataset.del)));
+  }
+
+  const overlay = document.getElementById('siswaModalOverlay');
+  let editingId = null;
+  let modalFotoBase64 = null;
+
+  document.getElementById('btnTambahSiswa').addEventListener('click', () => openSiswaModal(null));
+  document.getElementById('btnBatalSiswa').addEventListener('click', closeSiswaModal);
+
+  function openSiswaModal(id) {
+    editingId = id;
+    const s = id ? siswaCache.find(x => x.id === id) : null;
+    document.getElementById('siswaModalTitle').textContent = id ? 'Edit Siswa' : 'Tambah Siswa';
+    document.getElementById('modalNama').value = s ? s.nama || '' : '';
+    document.getElementById('modalUsia').value = s ? s.usia || '' : '';
+    document.getElementById('modalTtl').value = s ? s.tempat_tanggal_lahir || '' : '';
+    document.getElementById('modalNoWa').value = s ? s.no_wa || '' : '';
+    document.getElementById('modalKelas').value = s ? s.kelas || '' : '';
+    document.getElementById('modalSekolah').value = s ? s.sekolah || '' : '';
+    modalFotoBase64 = s ? (s.foto || null) : null;
+    const preview = document.getElementById('modalPhotoPreview');
+    preview.innerHTML = modalFotoBase64 ? `<img src="${modalFotoBase64}">` : 'Belum ada foto';
+
+    const riwayatEl = document.getElementById('modalRiwayat');
+    if (!id) {
+      riwayatEl.innerHTML = '<em>Belum ada riwayat (siswa baru)</em>';
+    } else {
+      const riwayat = kehadiranCache.filter(k => k.siswa_id === id)
+        .sort((a, b) => (b.sesi_tanggal || '').localeCompare(a.sesi_tanggal || ''));
+      if (riwayat.length === 0) {
+        riwayatEl.innerHTML = '<em>Belum pernah tercatat hadir</em>';
+      } else {
+        const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar' };
+        riwayatEl.innerHTML = riwayat.map(k =>
+          `<div style="padding:4px 0;border-bottom:1px solid var(--line);">${escapeHtml(k.sesi_label)} — ${labelBayar[k.status_bayar] || 'Belum bayar'}</div>`
+        ).join('');
+      }
+    }
+    overlay.classList.add('active');
+  }
+  function closeSiswaModal() { overlay.classList.remove('active'); editingId = null; }
+
+  document.getElementById('modalFotoInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 640;
+        let { width, height } = img;
+        if (width > height && width > MAX_DIM) { height = Math.round(height * (MAX_DIM / width)); width = MAX_DIM; }
+        else if (height > MAX_DIM) { width = Math.round(width * (MAX_DIM / height)); height = MAX_DIM; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        modalFotoBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        document.getElementById('modalPhotoPreview').innerHTML = `<img src="${modalFotoBase64}">`;
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('btnSimpanSiswa').addEventListener('click', async () => {
+    const data = {
+      nama: document.getElementById('modalNama').value.trim(),
+      usia: Number(document.getElementById('modalUsia').value) || null,
+      tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
+      no_wa: document.getElementById('modalNoWa').value.trim() || null,
+      kelas: document.getElementById('modalKelas').value.trim() || null,
+      sekolah: document.getElementById('modalSekolah').value.trim() || null,
+      foto: modalFotoBase64
+    };
+    if (!data.nama) { alert('Nama wajib diisi'); return; }
+
+    if (editingId) {
+      await db.collection(SISWA_COL).doc(editingId).update(data);
+    } else {
+      data.tanggal_daftar = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection(SISWA_COL).add(data);
+    }
+    closeSiswaModal();
+    await loadAll();
+  });
+
+  async function hapusSiswa(id) {
+    if (!confirm('Yakin hapus data siswa ini?')) return;
+    await db.collection(SISWA_COL).doc(id).delete();
+    await loadAll();
+  }
+
+  const NAMA_HARI = ['Minggu','Senin','Selasa','Rabu','Kamis',"Jum'at",'Sabtu'];
+  const NAMA_BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+  function formatTanggalIndo(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return `${NAMA_HARI[d.getDay()]}, ${d.getDate()} ${NAMA_BULAN[d.getMonth()]}`;
+  }
+
+  const sesiTanggalInput = document.getElementById('sesiTanggal');
+  const sesiKeteranganInput = document.getElementById('sesiKeterangan');
+  const sesiPreview = document.getElementById('sesiPreview');
+
+  function updateSesiPreview() {
+    const formatted = formatTanggalIndo(sesiTanggalInput.value);
+    const ket = sesiKeteranganInput.value.trim();
+    sesiPreview.textContent = formatted ? ('Label sesi: ' + formatted + (ket ? ' (' + ket + ')' : '')) : '';
+  }
+  sesiTanggalInput.addEventListener('change', updateSesiPreview);
+  sesiKeteranganInput.addEventListener('input', updateSesiPreview);
+
+  document.getElementById('btnTambahSesi').addEventListener('click', async () => {
+    const tanggal = sesiTanggalInput.value;
+    const ket = sesiKeteranganInput.value.trim();
+    const kap = Number(document.getElementById('sesiKapasitas').value) || 25;
+    if (!tanggal) { alert('Pilih tanggal sesi dulu'); return; }
+    const label = formatTanggalIndo(tanggal) + (ket ? ' (' + ket + ')' : '');
+    await db.collection(SESI_COL).add({ label, tanggal, kapasitas: kap, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    sesiTanggalInput.value = '';
+    sesiKeteranganInput.value = '';
+    document.getElementById('sesiKapasitas').value = 25;
+    sesiPreview.textContent = '';
+    await loadAll();
+  });
+
+  async function hapusSesi(id) {
+    const terisi = kehadiranCache.filter(k => k.sesi_id === id).length;
+    if (terisi > 0) {
+      alert('Sesi ini masih ada ' + terisi + ' catatan kehadiran. Hapus dulu kehadirannya (uncheck siswa) sebelum hapus sesi.');
+      return;
+    }
+    const sesi = sesiCache.find(s => s.id === id);
+    if (!confirm('Hapus sesi "' + (sesi ? sesi.label : '') + '"?')) return;
+    await db.collection(SESI_COL).doc(id).delete();
+    await loadAll();
+  }
+
+  function renderJadwalTab() {
+    const sesiListEl = document.getElementById('sesiList');
+    sesiListEl.innerHTML = '';
+    if (sesiCache.length === 0) {
+      sesiListEl.innerHTML = '<div class="empty-state">Belum ada sesi ditambahkan</div>';
+    } else {
+      sesiCache.forEach(sesi => {
+        const terisi = rencanaCache.filter(r => r.sesi_id === sesi.id).length;
+        const row = document.createElement('div');
+        row.className = 'sesi-list-row';
+        row.innerHTML = `
+          <span class="label">${escapeHtml(sesi.label)}</span>
+          <span class="kap">${terisi}/${sesi.kapasitas}</span>
+          <button class="icon-btn" data-hapus-sesi="${sesi.id}">Hapus</button>
+        `;
+        sesiListEl.appendChild(row);
+      });
+      sesiListEl.querySelectorAll('[data-hapus-sesi]').forEach(b => b.addEventListener('click', () => hapusSesi(b.dataset.hapusSesi)));
+    }
+
+    renderRencanaTable();
+    renderKehadiranGrid();
+  }
+
+  // ---------- RENCANA JADWAL (sebelum di-share ke grup) ----------
+  function renderRencanaTable() {
+    const table = document.getElementById('rencanaTable');
+    table.innerHTML = '';
+    if (siswaCache.length === 0) {
+      table.innerHTML = '<div class="empty-state">Belum ada siswa terdaftar</div>';
+      return;
+    }
+    siswaCache.forEach(s => {
+      const rencana = rencanaCache.find(r => r.siswa_id === s.id);
+      const options = sesiCache.map(sesi => `<option value="${sesi.id}" ${rencana && rencana.sesi_id === sesi.id ? 'selected' : ''}>${escapeHtml(sesi.label)}</option>`).join('');
+      const row = document.createElement('div');
+      row.className = 'siswa-item';
+      row.innerHTML = `
+        ${avatarHtml(s)}
+        <div class="info"><div class="nama">${escapeHtml(s.nama)}</div></div>
+        <select data-siswa-id="${s.id}" style="width:auto;">
+          <option value="" ${!rencana ? 'selected' : ''}>Belum direncanakan</option>
+          ${options}
+        </select>
+      `;
+      row.querySelector('select').addEventListener('change', async (e) => {
+        const sesiId = e.target.value;
+        if (sesiId) {
+          const sesi = sesiCache.find(x => x.id === sesiId);
+          await db.collection(JADWAL_COL).doc(s.id).set({ siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
+        } else {
+          await db.collection(JADWAL_COL).doc(s.id).delete().catch(() => {});
+        }
+        await loadAll();
+      });
+      table.appendChild(row);
+    });
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('generateBtn');
+    const status = document.getElementById('generateStatus');
+    if (sesiCache.length === 0) { status.textContent = 'Tambahkan minimal satu sesi dulu.'; return; }
+    btn.disabled = true; btn.textContent = 'Memproses...';
+
+    const idsSudahDirencanakan = new Set(rencanaCache.map(r => r.siswa_id));
+    const belumDirencanakan = siswaCache.filter(s => !idsSudahDirencanakan.has(s.id));
+    if (belumDirencanakan.length === 0) {
+      status.textContent = 'Semua siswa sudah punya rencana jadwal.';
+      btn.disabled = false; btn.textContent = 'Generate Otomatis';
+      return;
+    }
+
+    const slot = {};
+    sesiCache.forEach(sesi => {
+      const terisi = rencanaCache.filter(r => r.sesi_id === sesi.id).length;
+      slot[sesi.id] = sesi.kapasitas - terisi;
+    });
+
+    const batch = db.batch();
+    let hasil = {}; sesiCache.forEach(s => hasil[s.label] = 0);
+    let sisa = 0;
+
+    belumDirencanakan.forEach(s => {
+      const targetId = Object.keys(slot).reduce((best, key) => (slot[key] > (slot[best] || 0) ? key : best), Object.keys(slot)[0]);
+      if (slot[targetId] > 0) {
+        slot[targetId]--;
+        const sesi = sesiCache.find(x => x.id === targetId);
+        hasil[sesi.label]++;
+        batch.set(db.collection(JADWAL_COL).doc(s.id), { siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
+      } else {
+        sisa++;
+      }
+    });
+
+    await batch.commit();
+    await loadAll();
+
+    const ringkasan = Object.entries(hasil).filter(([k, v]) => v > 0).map(([k, v]) => `${v} ke ${k}`).join(', ');
+    status.textContent = 'Selesai: ' + (ringkasan || 'tidak ada slot tersedia') + (sisa > 0 ? `, ${sisa} tidak kebagian (semua sesi penuh)` : '.');
+    btn.disabled = false; btn.textContent = 'Generate Otomatis';
+  });
+
+  // ---------- KEHADIRAN HARI-H ----------
+  const PAYMENT_OPTIONS = `
+    <option value="belum_bayar">Belum bayar</option>
+    <option value="cash">Cash</option>
+    <option value="qris">QRIS</option>
+  `;
+
+  function renderKehadiranGrid() {
+    const grid = document.getElementById('sessionGrid');
+    grid.innerHTML = '';
+    sesiCache.forEach(sesi => {
+      const direncanakan = rencanaCache.filter(r => r.sesi_id === sesi.id).map(r => r.siswa_id);
+      const sudahHadir = kehadiranCache.filter(k => k.sesi_id === sesi.id).map(k => k.siswa_id);
+      const idsDitampilkan = Array.from(new Set([...direncanakan, ...sudahHadir]));
+      const daftarSiswa = idsDitampilkan.map(id => siswaCache.find(s => s.id === id)).filter(Boolean);
+
+      const card = document.createElement('div');
+      card.className = 'session-card';
+      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><span class="count">${sudahHadir.length}/${sesi.kapasitas}</span></div><div class="sesi-body"></div>`;
+      const body = card.querySelector('.sesi-body');
+      if (daftarSiswa.length === 0) {
+        body.innerHTML = '<div class="empty-state">Belum ada rencana untuk sesi ini</div>';
+      } else {
+        daftarSiswa.forEach(s => body.appendChild(buildKehadiranRow(s, sesi)));
+      }
+      const walkinBtn = document.createElement('button');
+      walkinBtn.className = 'icon-btn';
+      walkinBtn.style.margin = '10px 16px 14px';
+      walkinBtn.textContent = '+ Tambah Peserta Dadakan';
+      walkinBtn.addEventListener('click', () => openWalkinModal(sesi));
+      card.appendChild(walkinBtn);
+      grid.appendChild(card);
+    });
+  }
+
+  function buildKehadiranRow(s, sesi) {
+    const kehadiran = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
+    const row = document.createElement('div');
+    row.className = 'siswa-row';
+    row.innerHTML = `
+      <input type="checkbox" data-siswa="${s.id}" data-sesi="${sesi.id}" ${kehadiran ? 'checked' : ''} style="width:auto;">
+      ${avatarHtml(s)}
+      <span class="nama">${escapeHtml(s.nama)}</span>
+      ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" style="width:auto;">${PAYMENT_OPTIONS}</select>` : ''}
+    `;
+    if (kehadiran) {
+      row.querySelector('select').value = kehadiran.status_bayar || 'belum_bayar';
+    }
+    row.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
+      const checked = e.target.checked;
+      if (checked) {
+        await db.collection(HADIR_COL).add({
+          siswa_id: s.id, siswa_nama: s.nama,
+          sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
+          status_bayar: 'belum_bayar', walk_in: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        const existing = kehadiranCache.find(k => k.siswa_id === s.id && k.sesi_id === sesi.id);
+        if (existing) await db.collection(HADIR_COL).doc(existing.id).delete();
+      }
+      await loadAll();
+    });
+    const select = row.querySelector('select[data-hadir-id]');
+    if (select) {
+      select.addEventListener('change', async (e) => {
+        await db.collection(HADIR_COL).doc(e.target.getAttribute('data-hadir-id')).update({ status_bayar: e.target.value });
+        await loadAll();
+      });
+    }
+    return row;
+  }
+
+  // ---------- WALK-IN ----------
+  const walkinOverlay = document.getElementById('walkinModalOverlay');
+  let walkinSesi = null;
+
+  function openWalkinModal(sesi) {
+    walkinSesi = sesi;
+    const sudahAda = new Set(kehadiranCache.filter(k => k.sesi_id === sesi.id).map(k => k.siswa_id));
+    const select = document.getElementById('walkinSiswaSelect');
+    select.innerHTML = siswaCache.filter(s => !sudahAda.has(s.id)).map(s => `<option value="${s.id}">${escapeHtml(s.nama)}</option>`).join('');
+    if (select.options.length === 0) select.innerHTML = '<option value="">Semua siswa sudah tercatat di sesi ini</option>';
+    walkinOverlay.classList.add('active');
+  }
+  document.getElementById('btnBatalWalkin').addEventListener('click', () => walkinOverlay.classList.remove('active'));
+  document.getElementById('btnSimpanWalkin').addEventListener('click', async () => {
+    const siswaId = document.getElementById('walkinSiswaSelect').value;
+    if (!siswaId || !walkinSesi) { walkinOverlay.classList.remove('active'); return; }
+    const s = siswaCache.find(x => x.id === siswaId);
+    await db.collection(HADIR_COL).add({
+      siswa_id: s.id, siswa_nama: s.nama,
+      sesi_id: walkinSesi.id, sesi_label: walkinSesi.label, sesi_tanggal: walkinSesi.tanggal || null,
+      status_bayar: 'belum_bayar', walk_in: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    walkinOverlay.classList.remove('active');
+    await loadAll();
+  });
+
+  // ---------- LAPORAN KEUANGAN ----------
+  document.getElementById('btnMuatLaporan').addEventListener('click', muatLaporan);
+
+  async function muatLaporan() {
+    const bulan = document.getElementById('laporanBulan').value; // format YYYY-MM
+    let filtered = kehadiranCache;
+    if (bulan) {
+      filtered = kehadiranCache.filter(k => k.sesi_tanggal && k.sesi_tanggal.startsWith(bulan));
+    }
+    const cash = filtered.filter(k => k.status_bayar === 'cash');
+    const qris = filtered.filter(k => k.status_bayar === 'qris');
+    const belum = filtered.filter(k => k.status_bayar !== 'cash' && k.status_bayar !== 'qris');
+    const totalLunas = cash.length + qris.length;
+
+    document.getElementById('lapTotal').textContent = filtered.length;
+    document.getElementById('lapCash').textContent = cash.length;
+    document.getElementById('lapQris').textContent = qris.length;
+    document.getElementById('lapBelum').textContent = belum.length;
+    document.getElementById('lapPendapatan').textContent = 'Rp' + (totalLunas * 15000).toLocaleString('id-ID');
+
+    const perSesi = {};
+    filtered.forEach(k => {
+      if (!perSesi[k.sesi_label]) perSesi[k.sesi_label] = { total: 0, lunas: 0 };
+      perSesi[k.sesi_label].total++;
+      if (k.status_bayar === 'cash' || k.status_bayar === 'qris') perSesi[k.sesi_label].lunas++;
+    });
+
+    const el = document.getElementById('lapPerSesi');
+    el.innerHTML = '';
+    const keys = Object.keys(perSesi);
+    if (keys.length === 0) {
+      el.innerHTML = '<div class="empty-state">Tidak ada data di periode ini</div>';
+    } else {
+      keys.forEach(label => {
+        const row = document.createElement('div');
+        row.className = 'siswa-row';
+        row.innerHTML = `<span class="nama">${escapeHtml(label)}</span><span style="color:var(--text-secondary);font-size:12px;">${perSesi[label].lunas}/${perSesi[label].total} lunas</span>`;
+        el.appendChild(row);
+      });
+    }
+  }
 </script>
 </body>
 </html>
