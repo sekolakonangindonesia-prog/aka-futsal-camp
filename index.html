@@ -36,9 +36,11 @@
  overflow:hidden;
  }
  .hero.has-image{background-color:var(--bg);}
- .hero-canvas{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:0;transition:opacity 1s ease;}
- .hero-canvas.ready{opacity:1;}
+ .hero-mascot{display:none;width:100%;max-width:420px;height:auto;object-fit:contain;margin:0 auto 16px;position:relative;z-index:2;border-radius:12px;}
+ .hero-mascot.active{display:block;}
+ .hero-canvas{display:none;}
  .hero img.logo{width:84px;margin-bottom:14px;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.4));position:relative;z-index:2;}
+ .hero img.logo.hidden{display:none;}
  /* ---- 3D tilt & depth (ringan, CSS-only, dipakai di semua halaman) ---- */
  .tilt-zone{perspective:900px;}
  .tilt{
@@ -144,8 +146,8 @@
 <body>
 <div class="wrap">
  <div class="hero" id="hero">
- <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
- <img class="logo" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
+ <img class="hero-mascot" id="heroMascotImg" src="" alt="Maskot AKA Futsal Camp">
+ <img class="logo" id="heroLogoFallback" src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
  <span class="eyebrow">Program Pembinaan</span>
  <h1>AKA <span>Futsal Camp</span></h1>
  <p class="sub">Fase awal pencarian bakat — cikal bakal AKA Futsal Club</p>
@@ -229,9 +231,10 @@
  const doc = await db.collection('pengaturan').doc('umum').get();
  const data = doc.exists ? doc.data() : {};
  if (data.heroImage) {
- const heroEl = document.getElementById('hero');
- heroEl.style.backgroundImage = `linear-gradient(180deg, rgba(18,14,12,.55), rgba(18,14,12,.92) 88%), url('${data.heroImage}')`;
- heroEl.classList.add('has-image');
+ const mascotImg = document.getElementById('heroMascotImg');
+ mascotImg.src = data.heroImage;
+ mascotImg.classList.add('active');
+ document.getElementById('heroLogoFallback').classList.add('hidden');
  }
  vmContainer.innerHTML = '';
  if (data.visi) {
@@ -464,64 +467,6 @@
  // Kartu statis (about-card, 2 stat-box) yang sudah ada di HTML dari awal
  observeTiltCards(document);
 
- // ---- Hero 3D ball (Three.js), hanya di hero index.html ----
- function initHeroBall() {
- const canvas = document.getElementById('heroCanvas');
- if (!canvas) { console.warn('[hero3d] canvas #heroCanvas tidak ditemukan'); return; }
- if (prefersReducedMotion) { console.log('[hero3d] dilewati: prefers-reduced-motion aktif'); return; }
- if (typeof THREE === 'undefined') { console.error('[hero3d] THREE tidak terdefinisi — library three.js gagal dimuat dari CDN'); return; }
- const heroEl = document.getElementById('hero');
- let renderer;
- try {
- renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
- } catch (e) { console.error('[hero3d] WebGLRenderer gagal dibuat (WebGL mungkin tidak didukung/nonaktif di browser ini):', e); return; }
- const scene = new THREE.Scene();
- const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
- camera.position.z = 4.2;
-
- const group = new THREE.Group();
- const geo = new THREE.IcosahedronGeometry(1.45, 1);
- const solid = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({
- color: 0xe8b923, transparent: true, opacity: 0.22, shininess: 30
- }));
- const wire = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
- color: 0xe8b923, wireframe: true, transparent: true, opacity: 0.7
- }));
- group.add(solid, wire);
- group.position.set(0, -0.1, 0);
- scene.add(group);
-
- const ambient = new THREE.AmbientLight(0xffffff, 0.6);
- const point = new THREE.PointLight(0xc8272d, 1.3, 12);
- point.position.set(2, 2, 3);
- scene.add(ambient, point);
-
- function resize() {
- const w = heroEl.clientWidth, h = heroEl.clientHeight;
- if (!w || !h) { console.warn('[hero3d] ukuran hero 0x0, coba lagi frame berikutnya'); requestAnimationFrame(resize); return; }
- renderer.setSize(w, h, false);
- renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
- camera.aspect = w / h;
- camera.updateProjectionMatrix();
- }
- resize();
- window.addEventListener('resize', resize);
-
- let running = true;
- document.addEventListener('visibilitychange', () => { running = !document.hidden; });
-
- function animate() {
- if (running) {
- group.rotation.y += 0.0045;
- group.rotation.x += 0.0015;
- renderer.render(scene, camera);
- }
- requestAnimationFrame(animate);
- }
- animate();
- requestAnimationFrame(() => canvas.classList.add('ready'));
- }
-
  loadPengaturan();
  loadJadwal();
  loadRanking();
@@ -529,13 +474,6 @@
  const sticky = document.getElementById('stickyCta');
  if (window.scrollY > 260) sticky.classList.add('show'); else sticky.classList.remove('show');
  });
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="console.error('[hero3d] gagal load three.js dari cdnjs, coba fallback jsdelivr'); var fb=document.createElement('script'); fb.src='https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'; fb.onload=function(){ console.log('[hero3d] three.js fallback jsdelivr berhasil'); if (typeof initHeroBall === 'function') initHeroBall(); }; fb.onerror=function(){ console.error('[hero3d] fallback jsdelivr juga gagal, bola 3D tidak akan tampil'); }; document.body.appendChild(fb);"></script>
-<script>
- if (typeof THREE !== 'undefined' && typeof initHeroBall === 'function') {
- console.log('[hero3d] three.js siap, menjalankan initHeroBall()');
- initHeroBall();
- }
 </script>
 </body>
 </html>
