@@ -27,42 +27,48 @@
     border-radius:20px;
     overflow:hidden;
     position:relative;
-    display:flex;
-    min-height:340px;
+    min-height:380px;
   }
-  .card-badge{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:6px;z-index:3;}
-  .card-badge img{width:22px;height:22px;object-fit:contain;}
-  .card-badge span{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--amber);text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,0.6);}
-  .rank-flag{position:absolute;top:12px;right:12px;background:rgba(232,185,35,0.15);border:1px solid var(--amber);color:var(--amber);font-family:'Space Mono',monospace;font-size:10px;padding:4px 9px;border-radius:20px;z-index:3;}
+  .rank-flag{position:absolute;top:14px;left:14px;background:rgba(232,185,35,0.15);border:1px solid var(--amber);color:var(--amber);font-family:'Space Mono',monospace;font-size:10px;padding:4px 9px;border-radius:20px;z-index:3;}
 
-  .photo-col{
-    width:38%;flex-shrink:0;position:relative;background:var(--surface-2);
-    animation: fadeInLeft .7s ease-out;
+  .photo-bg{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;
+    animation: fadeInPhoto .8s ease-out;
   }
-  .photo-col img{width:100%;height:100%;object-fit:contain;object-position:center top;display:block;position:absolute;inset:0;background:var(--surface-2);}
   .photo-initial{
-    width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-    font-family:'Oswald',sans-serif;font-size:52px;color:var(--amber);
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:'Oswald',sans-serif;font-size:64px;color:var(--amber);background:var(--surface-2);
   }
-  .photo-col::after{content:'';position:absolute;inset:0;box-shadow:inset -8px 0 16px -8px rgba(0,0,0,0.35);pointer-events:none;}
-  @keyframes fadeInLeft{ from{opacity:0;transform:translateX(-14px);} to{opacity:1;transform:translateX(0);} }
+  @keyframes fadeInPhoto{ from{opacity:0;transform:scale(1.03);} to{opacity:1;transform:scale(1);} }
 
-  .info-col{flex:1;display:flex;flex-direction:column;min-width:0;}
-  .name-block{padding:16px 16px 12px;}
-  .name-block h1{font-size:19px;letter-spacing:.3px;line-height:1.1;}
+  .info-col{
+    position:relative;z-index:2;
+    margin-left:auto;
+    width:62%;
+    display:flex;flex-direction:column;
+    padding:18px 16px 18px 14px;
+  }
+  .name-block{
+    background:rgba(18,14,12,0.62);
+    backdrop-filter:blur(3px);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-bottom:10px;
+  }
+  .name-block h1{font-size:19px;letter-spacing:.3px;line-height:1.1;text-shadow:0 2px 8px rgba(0,0,0,0.6);}
   .name-block .sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-secondary);margin-top:6px;letter-spacing:.5px;text-transform:uppercase;}
 
-  .total-band{background:var(--amber);color:#1a1310;padding:10px 16px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
+  .total-band{background:rgba(232,185,35,0.88);backdrop-filter:blur(3px);color:#1a1310;padding:10px 14px;border-radius:8px;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
   .total-band strong{font-size:18px;}
 
-  .stat-list{padding:2px 0;flex:1;}
-  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;font-size:12px;}
-  .stat-row:nth-child(odd){background:rgba(232,185,35,0.05);}
+  .stat-list{display:flex;flex-direction:column;gap:5px;}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;font-size:12px;background:rgba(18,14,12,0.62);backdrop-filter:blur(3px);border-radius:8px;}
   .stat-row .label{color:var(--text-secondary);text-transform:uppercase;font-size:10.5px;letter-spacing:.4px;}
   .stat-row .value{font-family:'Space Mono',monospace;font-weight:700;color:var(--chalk);font-size:14px;}
   @media (max-width:380px){
+    .info-col{width:70%;}
     .name-block h1{font-size:16px;}
-    .stat-row{padding:8px 12px;font-size:11px;}
+    .stat-row{padding:7px 12px;font-size:11px;}
   }
 
   .bulan-picker{display:flex;justify-content:center;margin-top:18px;}
@@ -155,10 +161,8 @@
 
     content.innerHTML = `
       <div class="card">
-        <div class="photo-col">
-          ${foto ? `<img src="${foto}" alt="">` : `<div class="photo-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</div>`}
-          ${rank ? `<div class="rank-flag">#${rank}</div>` : ''}
-        </div>
+        ${foto ? `<img class="photo-bg" src="${foto}" alt="">` : `<div class="photo-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</div>`}
+        ${rank ? `<div class="rank-flag">#${rank}</div>` : ''}
         <div class="info-col">
           <div class="name-block">
             <h1>${escapeHtml(nama)}</h1>
@@ -168,7 +172,7 @@
             <div class="total-band"><span>Total Poin</span><strong>${nilai.total || 0}</strong></div>
             <div class="stat-list">${statRows}</div>
           ` : `
-            <div class="total-band" style="background:var(--surface-2);color:var(--text-secondary);"><span>Belum ada penilaian</span></div>
+            <div class="total-band" style="background:rgba(90,90,90,0.7);color:var(--chalk);"><span>Belum ada penilaian</span></div>
           `}
         </div>
       </div>
