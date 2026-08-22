@@ -39,12 +39,12 @@
     width:38%;flex-shrink:0;position:relative;background:var(--surface-2);
     animation: fadeInLeft .7s ease-out;
   }
-  .photo-col img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0;}
+  .photo-col img{width:100%;height:100%;object-fit:contain;object-position:center top;display:block;position:absolute;inset:0;background:var(--surface-2);}
   .photo-initial{
     width:100%;height:100%;display:flex;align-items:center;justify-content:center;
     font-family:'Oswald',sans-serif;font-size:52px;color:var(--amber);
   }
-  .photo-col::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg, transparent 70%, var(--surface) 100%);pointer-events:none;}
+  .photo-col::after{content:'';position:absolute;inset:0;box-shadow:inset -8px 0 16px -8px rgba(0,0,0,0.35);pointer-events:none;}
   @keyframes fadeInLeft{ from{opacity:0;transform:translateX(-14px);} to{opacity:1;transform:translateX(0);} }
 
   .info-col{flex:1;display:flex;flex-direction:column;min-width:0;}
@@ -157,7 +157,6 @@
       <div class="card">
         <div class="photo-col">
           ${foto ? `<img src="${foto}" alt="">` : `<div class="photo-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</div>`}
-          <div class="card-badge"><img src="aka%20futsal%20camp.png" alt=""><span>AKA</span></div>
           ${rank ? `<div class="rank-flag">#${rank}</div>` : ''}
         </div>
         <div class="info-col">
