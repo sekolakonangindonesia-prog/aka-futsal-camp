@@ -163,6 +163,7 @@
       <h2>Daftar Siswa</h2>
       <button class="btn" id="btnTambahSiswa">+ Tambah Siswa</button>
     </div>
+    <input type="text" id="siswaSearch" placeholder="Cari nama siswa..." style="margin-bottom:14px;">
     <div class="siswa-table" id="siswaTable"></div>
   </div>
 
@@ -527,7 +528,8 @@
         db.collection(SISWA_COL).orderBy('tanggal_daftar', 'asc').get(),
         db.collection(SESI_COL).orderBy('createdAt', 'asc').get()
       ]);
-      siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      siswaCache = siswaSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' }));
       sesiCache = sesiSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       showGlobalError(null);
     } catch (err) {
@@ -646,7 +648,17 @@
       table.innerHTML = '<div class="empty-state">Belum ada siswa terdaftar</div>';
       return;
     }
-    siswaCache.forEach(s => {
+
+    const keyword = (document.getElementById('siswaSearch').value || '').trim().toLowerCase();
+    const terurut = [...siswaCache].sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' }));
+    const terfilter = keyword ? terurut.filter(s => (s.nama || '').toLowerCase().includes(keyword)) : terurut;
+
+    if (terfilter.length === 0) {
+      table.innerHTML = '<div class="empty-state">Tidak ada siswa dengan nama itu</div>';
+      return;
+    }
+
+    terfilter.forEach(s => {
       const jumlahHadir = kehadiranCache.filter(k => k.siswa_id === s.id).length;
       const row = document.createElement('div');
       row.className = 'siswa-item';
@@ -666,6 +678,8 @@
     table.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openSiswaModal(b.dataset.edit)));
     table.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => hapusSiswa(b.dataset.del)));
   }
+
+  document.getElementById('siswaSearch').addEventListener('input', renderSiswaTab);
 
   const overlay = document.getElementById('siswaModalOverlay');
   let editingId = null;
