@@ -64,8 +64,14 @@
  .hero .sub{color:var(--text-secondary);font-size:14px;margin-top:10px;position:relative;z-index:2;}
  .badge-row{display:flex;justify-content:center;margin-top:16px;position:relative;z-index:2;}
  .badge{background:var(--surface-2);border:1px solid var(--red);color:var(--red);border-radius:20px;padding:6px 14px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;}
- .about-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:24px;}
- .about-card p{color:var(--text-secondary);font-size:13px;margin:0;}
+ .about-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;margin-top:24px;display:flex;gap:18px;align-items:center;}
+ .about-card p{color:var(--text-secondary);font-size:13px;margin:0;flex:1;min-width:0;}
+ .about-mascot{flex:0 0 110px;width:110px;height:110px;border-radius:12px;overflow:hidden;border:1px solid var(--line);}
+ .about-mascot img{width:100%;height:100%;object-fit:cover;object-position:center 15%;}
+ @media (max-width:420px){
+ .about-card{flex-direction:column;align-items:stretch;}
+ .about-mascot{flex-basis:auto;width:100%;height:150px;order:-1;}
+ }
  .about-card p strong{color:var(--chalk);}
  .stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px;}
  .stat-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 12px;text-align:center;}
@@ -155,6 +161,7 @@
  </div>
  <div class="tilt-zone"><div class="about-card tilt tilt-hover">
  <p><strong>AKA Futsal Camp</strong> adalah program latihan futsal untuk anak & remaja di Probolinggo, sekaligus proses awal pencarian bakat sebelum resmi menjadi <strong>AKA Futsal Club</strong>. Tiap peserta dilatih rutin dan dinilai lewat musim seleksi bulanan menuju skuad inti.</p>
+ <div class="about-mascot"><img src="aka-mascot-about.png" alt="AKA Futsal Camp"></div>
  </div></div>
  <div class="stats-row" id="statsRow">
  <div class="tilt-zone"><div class="stat-box tilt tilt-hover"><div class="stat-num" id="statPeserta">–</div><div class="stat-label">Peserta Terdaftar</div></div></div>
