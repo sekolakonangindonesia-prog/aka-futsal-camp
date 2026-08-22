@@ -1135,15 +1135,32 @@
         const detail = document.createElement('div');
         detail.className = 'laporan-detail';
         detail.innerHTML = anggota.map(k =>
-          `<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--line);">
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;border-bottom:1px solid var(--line);">
              <span>${escapeHtml(k.siswa_nama)}${k.walk_in ? ' <span style="color:var(--amber);">(dadakan)</span>' : ''}</span>
-             <span style="color:var(--text-secondary);">${labelBayar[k.status_bayar] || 'Belum bayar'}</span>
+             <span style="display:flex;align-items:center;gap:8px;">
+               <span style="color:var(--text-secondary);">${labelBayar[k.status_bayar] || 'Belum bayar'}</span>
+               <button class="icon-btn" data-hapus-hadir="${k.id}" style="padding:3px 8px;font-size:10px;">Hapus</button>
+             </span>
            </div>`
         ).join('');
 
         row.addEventListener('click', () => detail.classList.toggle('open'));
         el.appendChild(row);
         el.appendChild(detail);
+        detail.querySelectorAll('[data-hapus-hadir]').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm('Hapus catatan kehadiran ini?')) return;
+            try {
+              await db.collection(HADIR_COL).doc(btn.dataset.hapusHadir).delete();
+              await loadAll();
+              muatLaporan();
+            } catch (err) {
+              console.error('Gagal menghapus kehadiran:', err);
+              alert('Gagal menghapus: ' + err.message);
+            }
+          });
+        });
       });
     }
   }
