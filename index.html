@@ -82,12 +82,19 @@
  .section-title h2{font-size:15px;color:var(--text-secondary);letter-spacing:2px;}
  .section-title .line{flex:1;height:1px;background:var(--line);}
  .vm-grid{display:grid;grid-template-columns:1fr;gap:12px;}
- .vm-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;}
+ .vm-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;gap:14px;align-items:center;}
+ .vm-card .vm-text{flex:1;min-width:0;}
  .vm-card h3{font-size:14px;color:var(--amber);margin-bottom:8px;}
  .vm-card p{color:var(--text-secondary);font-size:13px;margin:0;}
  .vm-card ul{margin:0;padding-left:18px;color:var(--text-secondary);font-size:13px;}
  .vm-card li{margin-bottom:6px;}
  .vm-card li:last-child{margin-bottom:0;}
+ .vm-mascot{flex:0 0 88px;width:88px;height:130px;border-radius:10px;overflow:hidden;border:1px solid var(--line);}
+ .vm-mascot img{width:100%;height:100%;object-fit:cover;object-position:center top;}
+ @media (max-width:380px){
+ .vm-card{padding:14px;gap:10px;}
+ .vm-mascot{flex-basis:72px;width:72px;height:108px;}
+ }
  .sesi-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px;cursor:pointer;}
  .sesi-card .head{padding:16px 18px;display:flex;align-items:center;justify-content:space-between;}
  .sesi-card .head h3{font-size:16px;}
@@ -246,11 +253,11 @@
  }
  vmContainer.innerHTML = '';
  if (data.visi) {
- vmContainer.innerHTML += `<div class="tilt-zone"><div class="vm-card tilt tilt-hover"><h3>Visi</h3><p>${escapeHtml(data.visi)}</p></div></div>`;
+ vmContainer.innerHTML += `<div class="tilt-zone"><div class="vm-card visi tilt tilt-hover"><div class="vm-mascot"><img src="aka-mascot-visi.png" alt=""></div><div class="vm-text"><h3>Visi</h3><p>${escapeHtml(data.visi)}</p></div></div></div>`;
  }
  if (data.misi && data.misi.length) {
  const items = data.misi.map(m => `<li>${escapeHtml(m)}</li>`).join('');
- vmContainer.innerHTML += `<div class="tilt-zone"><div class="vm-card tilt tilt-hover"><h3>Misi</h3><ul>${items}</ul></div></div>`;
+ vmContainer.innerHTML += `<div class="tilt-zone"><div class="vm-card misi tilt tilt-hover"><div class="vm-text"><h3>Misi</h3><ul>${items}</ul></div><div class="vm-mascot"><img src="aka-mascot-misi.png" alt=""></div></div></div>`;
  }
  if (!data.visi && !(data.misi && data.misi.length)) {
  vmContainer.innerHTML = '<div class="loading">Visi & misi belum ditambahkan.</div>';
