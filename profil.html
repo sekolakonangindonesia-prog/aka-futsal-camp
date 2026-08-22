@@ -27,40 +27,41 @@
     border-radius:20px;
     overflow:hidden;
     position:relative;
-    min-height:440px;
+    padding:16px;
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
   }
-  .rank-flag{position:absolute;top:14px;left:14px;background:rgba(232,185,35,0.15);border:1px solid var(--amber);color:var(--amber);font-family:'Space Mono',monospace;font-size:10px;padding:4px 9px;border-radius:20px;z-index:3;}
+  .rank-flag{position:absolute;top:12px;right:12px;background:rgba(232,185,35,0.15);border:1px solid var(--amber);color:var(--amber);font-family:'Space Mono',monospace;font-size:10px;padding:4px 9px;border-radius:20px;z-index:3;}
 
-  .photo-bg{
-    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top;
+  .photo-col{flex:0 0 40%;max-width:170px;}
+  .photo-frame{
+    width:100%;aspect-ratio:3/4;border-radius:14px;overflow:hidden;
+    background:var(--surface-2);border:2px solid var(--amber);
+    display:flex;align-items:center;justify-content:center;
     animation: fadeInPhoto .8s ease-out;
   }
-  .photo-initial{
-    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-family:'Oswald',sans-serif;font-size:64px;color:var(--amber);background:var(--surface-2);
-  }
-  @keyframes fadeInPhoto{ from{opacity:0;transform:scale(1.03);} to{opacity:1;transform:scale(1);} }
+  .photo-frame img{width:100%;height:100%;object-fit:cover;object-position:center top;}
+  .photo-initial{font-family:'Oswald',sans-serif;font-size:44px;color:var(--amber);}
+  @keyframes fadeInPhoto{ from{opacity:0;transform:scale(1.04);} to{opacity:1;transform:scale(1);} }
 
-  .info-col{
-    position:absolute;left:0;right:0;bottom:0;z-index:2;
-    background:linear-gradient(to top, rgba(15,11,9,0.95) 30%, rgba(15,11,9,0.78) 65%, transparent 100%);
-    padding:44px 14px 14px;
-    display:flex;flex-direction:column;gap:7px;
-  }
-  .name-block{padding:0;margin-bottom:2px;}
-  .name-block h1{font-size:19px;letter-spacing:.3px;line-height:1.15;text-shadow:0 2px 8px rgba(0,0,0,0.7);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .name-block .sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-secondary);margin-top:3px;letter-spacing:.5px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .info-col{flex:1;min-width:0;display:flex;flex-direction:column;gap:9px;padding-top:2px;}
+  .name-block h1{font-size:18px;letter-spacing:.3px;line-height:1.2;word-break:break-word;}
+  .name-block .sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-secondary);margin-top:4px;letter-spacing:.5px;text-transform:uppercase;}
 
-  .total-band{background:rgba(232,185,35,0.92);color:#1a1310;padding:8px 12px;border-radius:8px;font-family:'Oswald',sans-serif;font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
-  .total-band strong{font-size:17px;}
+  .total-band{background:rgba(232,185,35,0.92);color:#1a1310;padding:8px 10px;border-radius:8px;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:1px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
+  .total-band strong{font-size:16px;}
 
-  .stat-list{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
-  .stat-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 9px;font-size:11px;background:rgba(15,11,9,0.55);border-radius:6px;}
-  .stat-row .label{color:var(--text-secondary);text-transform:uppercase;font-size:9.5px;letter-spacing:.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .stat-list{display:flex;flex-direction:column;gap:4px;}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:6px 9px;font-size:11px;background:rgba(15,11,9,0.4);border-radius:6px;}
+  .stat-row:nth-child(odd){background:rgba(15,11,9,0.6);}
+  .stat-row .label{color:var(--text-secondary);text-transform:uppercase;font-size:9.5px;letter-spacing:.3px;}
   .stat-row .value{font-family:'Space Mono',monospace;font-weight:700;color:var(--chalk);font-size:13px;flex-shrink:0;}
-  @media (max-width:380px){
-    .name-block h1{font-size:17px;}
-    .stat-row{font-size:10px;padding:5px 8px;}
+  @media (max-width:360px){
+    .card{gap:10px;padding:12px;}
+    .photo-col{flex-basis:36%;}
+    .name-block h1{font-size:15px;}
+    .stat-row{font-size:10px;padding:5px 7px;}
   }
 
   .bulan-picker{display:flex;justify-content:center;margin-top:18px;}
@@ -153,8 +154,10 @@
 
     content.innerHTML = `
       <div class="card">
-        ${foto ? `<img class="photo-bg" src="${foto}" alt="">` : `<div class="photo-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</div>`}
         ${rank ? `<div class="rank-flag">#${rank}</div>` : ''}
+        <div class="photo-col">
+          <div class="photo-frame">${foto ? `<img src="${foto}" alt="">` : `<div class="photo-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</div>`}</div>
+        </div>
         <div class="info-col">
           <div class="name-block">
             <h1>${escapeHtml(nama)}</h1>
