@@ -289,7 +289,7 @@
  const fotoMap = {}; siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
  const statPeserta = document.getElementById('statPeserta');
  const statSesi = document.getElementById('statSesi');
- if (statPeserta) statPeserta.textContent = rencanaList.length;
+ if (statPeserta) statPeserta.textContent = siswaSnap.docs.length;
  if (statSesi) statSesi.textContent = sesiList.length;
  if (sesiList.length === 0) {
  container.innerHTML = '<div class="no-sesi">Jadwal belum diumumkan, pantau terus ya.</div>';
