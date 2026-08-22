@@ -282,17 +282,6 @@
       <div class="status-line" id="tentangStatus"></div>
     </div>
 
-    <div class="section-head"><h2>Gambar Hero</h2></div>
-    <div class="sesi-config">
-      <p style="font-size:12px;color:var(--text-secondary);margin-top:-6px;margin-bottom:12px;">Gambar ini muncul di paling atas halaman utama (index.html), menggantikan logo default. Format lanskap/potret bebas — tampil utuh, tidak dipotong.</p>
-      <div class="photo-preview" id="heroPhotoPreview" style="width:120px;height:120px;">Belum ada gambar</div>
-      <label for="heroFotoInput" class="btn btn-secondary" style="display:inline-block;font-size:12px;padding:8px 14px;margin-top:8px;">Pilih gambar</label>
-      <input type="file" id="heroFotoInput" accept="image/*" style="display:none;">
-      <br>
-      <button class="btn" id="btnSimpanHero" style="margin-top:14px;">Simpan Gambar Hero</button>
-      <div class="status-line" id="heroStatus"></div>
-    </div>
-
     <div class="section-head"><h2>Sosial Media</h2></div>
     <div class="sesi-config">
       <div class="field"><label>Instagram (link lengkap)</label><input type="text" id="settingIg" placeholder="https://instagram.com/..."></div>
@@ -302,6 +291,13 @@
       <button class="btn" id="btnSimpanSosial">Simpan Sosial Media</button>
       <div class="status-line" id="sosialStatus"></div>
     </div>
+
+    <div class="section-head"><h2>Perawatan Data</h2></div>
+    <div class="sesi-config">
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:-6px;margin-bottom:12px;">Hapus catatan rencana jadwal & kehadiran yang siswanya sudah tidak ada lagi (biasanya sisa dari siswa yang dihapus sebelum fitur pembersihan otomatis ada). Angka "Peserta Terdaftar" di index.html juga akan lebih akurat setelah ini.</p>
+      <button class="btn btn-secondary" id="btnBersihkanYatim">Cek & Bersihkan Data Yatim</button>
+      <div class="status-line" id="bersihkanStatus"></div>
+    </div>
   </div>
 </div>
 
@@ -309,16 +305,9 @@
   <div class="modal">
     <h2 id="siswaModalTitle">Tambah Siswa</h2>
     <div class="field">
-      <label>Foto Pendaftaran</label>
       <div class="photo-preview" id="modalPhotoPreview">Belum ada foto</div>
       <label for="modalFotoInput" class="btn btn-secondary" style="display:inline-block;font-size:12px;padding:8px 14px;">Pilih foto</label>
       <input type="file" id="modalFotoInput" accept="image/*" style="display:none;">
-    </div>
-    <div class="field">
-      <label>Foto Kartu Profil <span style="font-weight:400;color:var(--text-secondary);text-transform:none;">(muncul di profil.html, boleh beda dari foto pendaftaran)</span></label>
-      <div class="photo-preview" id="modalKartuPreview" style="width:90px;height:120px;">Belum ada foto</div>
-      <label for="modalKartuFotoInput" class="btn btn-secondary" style="display:inline-block;font-size:12px;padding:8px 14px;">Pilih foto kartu</label>
-      <input type="file" id="modalKartuFotoInput" accept="image/*" style="display:none;">
     </div>
     <div class="field"><label>Nama lengkap</label><input type="text" id="modalNama"></div>
     <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="modalWa" placeholder="cth. 081234567890"></div>
@@ -578,44 +567,11 @@
         document.getElementById('settingTiktok').value = s.tiktok || '';
         document.getElementById('settingFb').value = s.facebook || '';
         document.getElementById('settingYt').value = s.youtube || '';
-        heroFotoBase64 = s.heroImage || null;
-        const heroPreview = document.getElementById('heroPhotoPreview');
-        heroPreview.innerHTML = heroFotoBase64 ? `<img src="${heroFotoBase64}">` : 'Belum ada gambar';
       }
     } catch (err) {
       console.error('Gagal memuat pengaturan:', err);
     }
   }
-
-  let heroFotoBase64 = null;
-  document.getElementById('heroFotoInput').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX_DIM = 1000;
-        let { width, height } = img;
-        if (width > height && width > MAX_DIM) { height = Math.round(height * (MAX_DIM / width)); width = MAX_DIM; }
-        else if (height > MAX_DIM) { width = Math.round(width * (MAX_DIM / height)); height = MAX_DIM; }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        heroFotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
-        document.getElementById('heroPhotoPreview').innerHTML = `<img src="${heroFotoBase64}">`;
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-
-  document.getElementById('btnSimpanHero').addEventListener('click', async () => {
-    if (!heroFotoBase64) { alert('Pilih gambar dulu.'); return; }
-    await db.collection('pengaturan').doc('umum').set({ heroImage: heroFotoBase64 }, { merge: true });
-    document.getElementById('heroStatus').textContent = 'Tersimpan.';
-    setTimeout(() => document.getElementById('heroStatus').textContent = '', 2000);
-  });
 
   document.getElementById('btnSimpanTentang').addEventListener('click', async () => {
     const visi = document.getElementById('settingVisi').value.trim();
@@ -635,6 +591,36 @@
     await db.collection('pengaturan').doc('umum').set(data, { merge: true });
     document.getElementById('sosialStatus').textContent = 'Tersimpan.';
     setTimeout(() => document.getElementById('sosialStatus').textContent = '', 2000);
+  });
+
+  document.getElementById('btnBersihkanYatim').addEventListener('click', async () => {
+    const btn = document.getElementById('btnBersihkanYatim');
+    const status = document.getElementById('bersihkanStatus');
+    btn.disabled = true; btn.textContent = 'Memeriksa...';
+
+    const idsSiswaValid = new Set(siswaCache.map(s => s.id));
+    const rencanaYatim = rencanaCache.filter(r => !idsSiswaValid.has(r.siswa_id));
+    const hadirYatim = kehadiranCache.filter(k => !idsSiswaValid.has(k.siswa_id));
+
+    if (rencanaYatim.length === 0 && hadirYatim.length === 0) {
+      status.textContent = 'Tidak ada data yatim ditemukan, semua sudah bersih.';
+      btn.disabled = false; btn.textContent = 'Cek & Bersihkan Data Yatim';
+      return;
+    }
+
+    if (!confirm(`Ditemukan ${rencanaYatim.length} rencana jadwal dan ${hadirYatim.length} catatan kehadiran milik siswa yang sudah tidak ada. Hapus semua?`)) {
+      btn.disabled = false; btn.textContent = 'Cek & Bersihkan Data Yatim';
+      return;
+    }
+
+    const batch = db.batch();
+    rencanaYatim.forEach(r => batch.delete(db.collection(JADWAL_COL).doc(r.id)));
+    hadirYatim.forEach(k => batch.delete(db.collection(HADIR_COL).doc(k.id)));
+    await batch.commit();
+    await loadAll();
+
+    status.textContent = `Selesai: ${rencanaYatim.length} rencana & ${hadirYatim.length} kehadiran yatim dihapus.`;
+    btn.disabled = false; btn.textContent = 'Cek & Bersihkan Data Yatim';
   });
 
   function escapeHtml(str) {
@@ -684,7 +670,6 @@
   const overlay = document.getElementById('siswaModalOverlay');
   let editingId = null;
   let modalFotoBase64 = null;
-  let modalKartuFotoBase64 = null;
 
   document.getElementById('btnTambahSiswa').addEventListener('click', () => openSiswaModal(null));
   document.getElementById('btnBatalSiswa').addEventListener('click', closeSiswaModal);
@@ -702,9 +687,6 @@
     modalFotoBase64 = s ? (s.foto || null) : null;
     const preview = document.getElementById('modalPhotoPreview');
     preview.innerHTML = modalFotoBase64 ? `<img src="${modalFotoBase64}">` : 'Belum ada foto';
-    modalKartuFotoBase64 = s ? (s.foto_profil || null) : null;
-    const kartuPreview = document.getElementById('modalKartuPreview');
-    kartuPreview.innerHTML = modalKartuFotoBase64 ? `<img src="${modalKartuFotoBase64}">` : 'Belum ada foto';
 
     const riwayatEl = document.getElementById('modalRiwayat');
     if (!id) {
@@ -747,28 +729,6 @@
     reader.readAsDataURL(file);
   });
 
-  document.getElementById('modalKartuFotoInput').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const MAX_DIM = 800;
-        let { width, height } = img;
-        if (width > height && width > MAX_DIM) { height = Math.round(height * (MAX_DIM / width)); width = MAX_DIM; }
-        else if (height > MAX_DIM) { width = Math.round(width * (MAX_DIM / height)); height = MAX_DIM; }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        modalKartuFotoBase64 = canvas.toDataURL('image/jpeg', 0.82);
-        document.getElementById('modalKartuPreview').innerHTML = `<img src="${modalKartuFotoBase64}">`;
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-
   document.getElementById('btnSimpanSiswa').addEventListener('click', async () => {
     const data = {
       nama: document.getElementById('modalNama').value.trim(),
@@ -777,8 +737,7 @@
       tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
       kelas: document.getElementById('modalKelas').value.trim() || null,
       sekolah: document.getElementById('modalSekolah').value.trim() || null,
-      foto: modalFotoBase64,
-      foto_profil: modalKartuFotoBase64
+      foto: modalFotoBase64
     };
     if (!data.nama) { alert('Nama wajib diisi'); return; }
 
@@ -798,9 +757,14 @@
   });
 
   async function hapusSiswa(id) {
-    if (!confirm('Yakin hapus data siswa ini?')) return;
+    if (!confirm('Yakin hapus data siswa ini? Rencana jadwal & riwayat kehadirannya juga akan ikut terhapus.')) return;
     try {
-      await db.collection(SISWA_COL).doc(id).delete();
+      const batch = db.batch();
+      batch.delete(db.collection(SISWA_COL).doc(id));
+      batch.delete(db.collection(JADWAL_COL).doc(id));
+      const hadirTerkait = kehadiranCache.filter(k => k.siswa_id === id);
+      hadirTerkait.forEach(k => batch.delete(db.collection(HADIR_COL).doc(k.id)));
+      await batch.commit();
       await loadAll();
     } catch (err) {
       console.error('Gagal menghapus siswa:', err);
