@@ -713,18 +713,51 @@
     if (!id) {
       riwayatEl.innerHTML = '<em>Belum ada riwayat (siswa baru)</em>';
     } else {
-      const riwayat = kehadiranCache.filter(k => k.siswa_id === id)
-        .sort((a, b) => (b.sesi_tanggal || '').localeCompare(a.sesi_tanggal || ''));
-      if (riwayat.length === 0) {
-        riwayatEl.innerHTML = '<em>Belum pernah tercatat hadir</em>';
-      } else {
-        const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar' };
-        riwayatEl.innerHTML = riwayat.map(k =>
-          `<div style="padding:4px 0;border-bottom:1px solid var(--line);">${escapeHtml(k.sesi_label)} — ${labelBayar[k.status_bayar] || 'Belum bayar'}</div>`
-        ).join('');
-      }
+      renderRiwayatRaport(id);
     }
     overlay.classList.add('active');
+  }
+
+  function renderRiwayatRaport(id) {
+    const riwayatEl = document.getElementById('modalRiwayat');
+    const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar' };
+    const riwayat = kehadiranCache.filter(k => k.siswa_id === id)
+      .sort((a, b) => (b.sesi_tanggal || '').localeCompare(a.sesi_tanggal || ''));
+    if (riwayat.length === 0) {
+      riwayatEl.innerHTML = '<em>Belum pernah tercatat hadir</em>';
+      return;
+    }
+    riwayatEl.innerHTML = '';
+    riwayat.forEach(k => {
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:8px 0;border-bottom:1px solid var(--line);';
+      row.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span>${escapeHtml(k.sesi_label)} — ${labelBayar[k.status_bayar] || 'Belum bayar'}</span>
+          <button class="icon-btn btn-catatan" data-hadir-id="${k.id}" style="font-size:10px;padding:4px 8px;flex-shrink:0;">${k.catatan ? 'Edit Catatan' : '+ Catatan'}</button>
+        </div>
+        ${k.catatan ? `<div style="margin-top:5px;color:var(--chalk);font-style:italic;">"${escapeHtml(k.catatan)}"</div>` : ''}
+      `;
+      riwayatEl.appendChild(row);
+    });
+    riwayatEl.querySelectorAll('.btn-catatan').forEach(btn => {
+      btn.addEventListener('click', () => openCatatanPrompt(btn.dataset.hadirId, id));
+    });
+  }
+
+  async function openCatatanPrompt(hadirId, siswaId) {
+    const existing = kehadiranCache.find(k => k.id === hadirId);
+    const teks = prompt('Catatan raport untuk sesi ini (kekurangan, peningkatan, fokus latihan berikutnya, dll):', existing ? existing.catatan || '' : '');
+    if (teks === null) return;
+    try {
+      await db.collection(HADIR_COL).doc(hadirId).update({ catatan: teks.trim() });
+      const cache = kehadiranCache.find(k => k.id === hadirId);
+      if (cache) cache.catatan = teks.trim();
+      renderRiwayatRaport(siswaId);
+    } catch (err) {
+      console.error('Gagal menyimpan catatan:', err);
+      alert('Gagal menyimpan catatan: ' + err.message);
+    }
   }
   function closeSiswaModal() { overlay.classList.remove('active'); editingId = null; }
 
@@ -1033,9 +1066,11 @@
       ${avatarHtml(s)}
       <span class="nama">${escapeHtml(s.nama)}</span>
       ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" ${isSelesai ? 'disabled' : ''} style="width:auto;">${PAYMENT_OPTIONS}</select>` : ''}
+      ${kehadiran ? `<button class="icon-btn btn-catatan-cepat" data-hadir-id="${kehadiran.id}" style="font-size:10px;padding:5px 8px;flex-shrink:0;">${kehadiran.catatan ? '📝 Catatan' : '+ Catatan'}</button>` : ''}
     `;
     if (kehadiran) {
       row.querySelector('select').value = kehadiran.status_bayar || 'belum_bayar';
+      row.querySelector('.btn-catatan-cepat').addEventListener('click', () => openCatatanPrompt(kehadiran.id, s.id).then(renderKehadiranGrid));
     }
     row.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
       const checked = e.target.checked;
