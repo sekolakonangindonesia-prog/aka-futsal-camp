@@ -99,6 +99,7 @@
   .siswa-row select{width:auto;padding:5px 8px;font-size:12px;}
   .status-line{text-align:center;font-size:12px;color:var(--text-secondary);margin-top:10px;}
   .badge-selesai{background:rgba(52,211,153,0.15);color:var(--success);border:1px solid var(--success);border-radius:6px;padding:2px 8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;}
+  .badge-baru{background:rgba(232,185,35,0.18);color:var(--amber);border:1px solid var(--amber);border-radius:6px;padding:2px 8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-left:8px;}
   .session-card.selesai{opacity:0.85;}
   .laporan-row{cursor:pointer;}
   .laporan-detail{display:none;padding:8px 16px 12px;background:var(--surface-2);}
@@ -650,7 +651,13 @@
     }
 
     const keyword = (document.getElementById('siswaSearch').value || '').trim().toLowerCase();
-    const terurut = [...siswaCache].sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' }));
+    const millisDaftar = (s) => (s.tanggal_daftar && s.tanggal_daftar.toMillis) ? s.tanggal_daftar.toMillis() : 0;
+    const isBaru = (s) => {
+      const ms = millisDaftar(s);
+      if (!ms) return false;
+      return (Date.now() - ms) <= 7 * 24 * 60 * 60 * 1000;
+    };
+    const terurut = [...siswaCache].sort((a, b) => millisDaftar(b) - millisDaftar(a));
     const terfilter = keyword ? terurut.filter(s => (s.nama || '').toLowerCase().includes(keyword)) : terurut;
 
     if (terfilter.length === 0) {
@@ -665,7 +672,7 @@
       row.innerHTML = `
         ${avatarHtml(s)}
         <div class="info">
-          <div class="nama">${escapeHtml(s.nama)}</div>
+          <div class="nama">${escapeHtml(s.nama)}${isBaru(s) ? '<span class="badge-baru">Baru</span>' : ''}</div>
           <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.nomor_wa ? ' · ' + escapeHtml(s.nomor_wa) : ''} · ${jumlahHadir} sesi tercatat</div>
         </div>
         <div class="actions">
