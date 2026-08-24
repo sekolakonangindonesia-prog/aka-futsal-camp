@@ -149,6 +149,7 @@
     <button class="tab-btn active" data-tab="siswaTab">Kelola Siswa</button>
     <button class="tab-btn" data-tab="jadwalTab">Jadwal Latihan</button>
     <button class="tab-btn" data-tab="penilaianTab">Penilaian</button>
+    <button class="tab-btn" data-tab="raportTab">Raport</button>
     <button class="tab-btn" data-tab="laporanTab">Laporan Keuangan</button>
     <button class="tab-btn" data-tab="pengaturanTab">Pengaturan</button>
   </div>
@@ -247,6 +248,22 @@
         <button class="btn btn-secondary" id="btnBatalPenilaian">Batal</button>
         <button class="btn" id="btnSimpanPenilaian">Simpan</button>
       </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="raportTab">
+    <div class="section-head">
+      <h2>Raport Latihan <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— catatan pelatih per sesi</span></h2>
+    </div>
+    <div class="sesi-config" style="margin-bottom:20px;">
+      <div class="add-sesi-form" style="margin-top:0;">
+        <input type="month" id="raportBulan">
+        <button class="btn btn-secondary" id="btnMuatRaport">Muat Raport</button>
+      </div>
+    </div>
+    <div class="session-card">
+      <div class="head"><h2>Catatan per Sesi</h2></div>
+      <div id="raportPerSesi"></div>
     </div>
   </div>
 
@@ -380,6 +397,7 @@
       btn.classList.add('active');
       document.getElementById(btn.dataset.tab).classList.add('active');
       if (btn.dataset.tab === 'penilaianTab') loadAndRenderPenilaian();
+      if (btn.dataset.tab === 'raportTab') muatRaport();
     });
   });
 
@@ -1136,6 +1154,60 @@
 
   // ---------- LAPORAN KEUANGAN ----------
   document.getElementById('btnMuatLaporan').addEventListener('click', muatLaporan);
+  document.getElementById('btnMuatRaport').addEventListener('click', muatRaport);
+  document.getElementById('raportBulan').value = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+
+  async function muatRaport() {
+    const bulan = document.getElementById('raportBulan').value;
+    let filtered = kehadiranCache;
+    if (bulan) {
+      filtered = kehadiranCache.filter(k => k.sesi_tanggal && k.sesi_tanggal.startsWith(bulan));
+    }
+
+    const perSesi = {};
+    filtered.forEach(k => {
+      if (!perSesi[k.sesi_label]) perSesi[k.sesi_label] = [];
+      perSesi[k.sesi_label].push(k);
+    });
+
+    const el = document.getElementById('raportPerSesi');
+    el.innerHTML = '';
+    const keys = Object.keys(perSesi);
+    if (keys.length === 0) {
+      el.innerHTML = '<div class="empty-state">Tidak ada data kehadiran di periode ini</div>';
+      return;
+    }
+    keys.forEach(label => {
+      const anggota = perSesi[label];
+      const adaCatatan = anggota.filter(k => k.catatan).length;
+      const row = document.createElement('div');
+      row.className = 'siswa-row laporan-row';
+      row.innerHTML = `<span class="nama">${escapeHtml(label)}</span><span style="color:var(--text-secondary);font-size:12px;">${adaCatatan}/${anggota.length} ada catatan &#9662;</span>`;
+
+      const detail = document.createElement('div');
+      detail.className = 'laporan-detail';
+      detail.innerHTML = anggota.map(k => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+            <span>${escapeHtml(k.siswa_nama)}${k.walk_in ? ' <span style="color:var(--amber);">(dadakan)</span>' : ''}</span>
+            <button class="icon-btn btn-catatan-raport" data-hadir-id="${k.id}" data-siswa-id="${k.siswa_id}" style="font-size:10px;padding:4px 8px;flex-shrink:0;">${k.catatan ? 'Edit Catatan' : '+ Catatan'}</button>
+          </div>
+          ${k.catatan ? `<div style="margin-top:5px;font-size:12px;color:var(--chalk);font-style:italic;">"${escapeHtml(k.catatan)}"</div>` : ''}
+        </div>
+      `).join('');
+
+      row.addEventListener('click', () => detail.classList.toggle('open'));
+      el.appendChild(row);
+      el.appendChild(detail);
+      detail.querySelectorAll('.btn-catatan-raport').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await openCatatanPrompt(btn.dataset.hadirId, btn.dataset.siswaId);
+          muatRaport();
+        });
+      });
+    });
+  }
 
   async function muatLaporan() {
     const bulan = document.getElementById('laporanBulan').value; // format YYYY-MM
