@@ -189,7 +189,7 @@
       <button class="btn" id="generateBtn">Generate Otomatis</button>
     </div>
     <div class="status-line" id="generateStatus"></div>
-    <div class="siswa-table" id="rencanaTable" style="margin-top:14px;margin-bottom:28px;"></div>
+    <div id="rencanaTable" style="margin-top:14px;margin-bottom:28px;"></div>
 
     <div class="section-head">
       <h2>Kehadiran Hari-H <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— centang yang beneran datang</span></h2>
@@ -833,7 +833,8 @@
     try {
       const batch = db.batch();
       batch.delete(db.collection(SISWA_COL).doc(id));
-      batch.delete(db.collection(JADWAL_COL).doc(id));
+      const rencanaTerkait = rencanaCache.filter(r => r.siswa_id === id);
+      rencanaTerkait.forEach(r => batch.delete(db.collection(JADWAL_COL).doc(r.id)));
       const hadirTerkait = kehadiranCache.filter(k => k.siswa_id === id);
       hadirTerkait.forEach(k => batch.delete(db.collection(HADIR_COL).doc(k.id)));
       await batch.commit();
@@ -923,75 +924,86 @@
 
   // ---------- RENCANA JADWAL (sebelum di-share ke grup) ----------
   function renderRencanaTable() {
-    const table = document.getElementById('rencanaTable');
-    table.innerHTML = '';
-    if (siswaCache.length === 0) {
-      table.innerHTML = '<div class="empty-state">Belum ada siswa terdaftar</div>';
+    const grid = document.getElementById('rencanaTable');
+    grid.innerHTML = '';
+    const sesiAktif = sesiCache.filter(s => !s.selesai);
+    if (sesiAktif.length === 0) {
+      grid.innerHTML = '<div class="empty-state">Belum ada sesi aktif. Tambahkan sesi di atas, atau buka kembali sesi yang sudah ditandai selesai di tab Kehadiran Hari-H.</div>';
       return;
     }
-    siswaCache.forEach(s => {
-      const rencana = rencanaCache.find(r => r.siswa_id === s.id);
-      const options = sesiCache.map(sesi => `<option value="${sesi.id}" ${rencana && rencana.sesi_id === sesi.id ? 'selected' : ''}>${escapeHtml(sesi.label)}</option>`).join('');
-      const row = document.createElement('div');
-      row.className = 'siswa-item';
-      row.innerHTML = `
-        ${avatarHtml(s)}
-        <div class="info"><div class="nama">${escapeHtml(s.nama)}</div></div>
-        <select data-siswa-id="${s.id}" style="width:auto;">
-          <option value="" ${!rencana ? 'selected' : ''}>Belum direncanakan</option>
-          ${options}
-        </select>
-      `;
-      row.querySelector('select').addEventListener('change', async (e) => {
-        const sesiId = e.target.value;
-        try {
-          if (sesiId) {
-            const sesi = sesiCache.find(x => x.id === sesiId);
-            await db.collection(JADWAL_COL).doc(s.id).set({ siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
-          } else {
-            await db.collection(JADWAL_COL).doc(s.id).delete();
-          }
-        } catch (err) {
-          console.error('Gagal simpan rencana jadwal:', err);
-          alert('Gagal menyimpan perubahan jadwal: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "jadwal_rencana".');
-        }
-        await loadAll();
-      });
-      table.appendChild(row);
+    if (siswaCache.length === 0) {
+      grid.innerHTML = '<div class="empty-state">Belum ada siswa terdaftar</div>';
+      return;
+    }
+    sesiAktif.forEach(sesi => {
+      const terisi = rencanaCache.filter(r => r.sesi_id === sesi.id).length;
+      const card = document.createElement('div');
+      card.className = 'session-card';
+      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><span class="count">${terisi}/${sesi.kapasitas}</span></div><div class="sesi-body"></div>`;
+      const body = card.querySelector('.sesi-body');
+      siswaCache.forEach(s => body.appendChild(buildRencanaRow(s, sesi)));
+      grid.appendChild(card);
     });
+  }
+
+  function buildRencanaRow(s, sesi) {
+    const rencana = rencanaCache.find(r => r.siswa_id === s.id && r.sesi_id === sesi.id);
+    const row = document.createElement('div');
+    row.className = 'siswa-row';
+    row.innerHTML = `
+      <input type="checkbox" data-siswa="${s.id}" data-sesi="${sesi.id}" ${rencana ? 'checked' : ''} style="width:auto;">
+      ${avatarHtml(s)}
+      <span class="nama">${escapeHtml(s.nama)}</span>
+    `;
+    row.querySelector('input').addEventListener('change', async (e) => {
+      try {
+        if (e.target.checked) {
+          await db.collection(JADWAL_COL).add({ siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
+        } else {
+          const existing = rencanaCache.find(r => r.siswa_id === s.id && r.sesi_id === sesi.id);
+          if (existing) await db.collection(JADWAL_COL).doc(existing.id).delete();
+        }
+      } catch (err) {
+        console.error('Gagal simpan rencana jadwal:', err);
+        alert('Gagal menyimpan perubahan jadwal: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "jadwal_rencana".');
+      }
+      await loadAll();
+    });
+    return row;
   }
 
   document.getElementById('generateBtn').addEventListener('click', async () => {
     const btn = document.getElementById('generateBtn');
     const status = document.getElementById('generateStatus');
-    if (sesiCache.length === 0) { status.textContent = 'Tambahkan minimal satu sesi dulu.'; return; }
+    const sesiAktif = sesiCache.filter(s => !s.selesai);
+    if (sesiAktif.length === 0) { status.textContent = 'Tambahkan sesi aktif dulu (yang belum ditandai selesai).'; return; }
     btn.disabled = true; btn.textContent = 'Memproses...';
 
     const idsSudahDirencanakan = new Set(rencanaCache.map(r => r.siswa_id));
     const belumDirencanakan = siswaCache.filter(s => !idsSudahDirencanakan.has(s.id));
     if (belumDirencanakan.length === 0) {
-      status.textContent = 'Semua siswa sudah punya rencana jadwal.';
+      status.textContent = 'Semua siswa sudah punya rencana jadwal di minimal satu sesi. Kalau mau tambah sesi lain buat siswa tertentu, centang manual di grid di bawah.';
       btn.disabled = false; btn.textContent = 'Generate Otomatis';
       return;
     }
 
     const slot = {};
-    sesiCache.forEach(sesi => {
+    sesiAktif.forEach(sesi => {
       const terisi = rencanaCache.filter(r => r.sesi_id === sesi.id).length;
       slot[sesi.id] = sesi.kapasitas - terisi;
     });
 
     const batch = db.batch();
-    let hasil = {}; sesiCache.forEach(s => hasil[s.label] = 0);
+    let hasil = {}; sesiAktif.forEach(s => hasil[s.label] = 0);
     let sisa = 0;
 
     belumDirencanakan.forEach(s => {
       const targetId = Object.keys(slot).reduce((best, key) => (slot[key] > (slot[best] || 0) ? key : best), Object.keys(slot)[0]);
       if (slot[targetId] > 0) {
         slot[targetId]--;
-        const sesi = sesiCache.find(x => x.id === targetId);
+        const sesi = sesiAktif.find(x => x.id === targetId);
         hasil[sesi.label]++;
-        batch.set(db.collection(JADWAL_COL).doc(s.id), { siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
+        batch.set(db.collection(JADWAL_COL).doc(), { siswa_id: s.id, siswa_nama: s.nama, sesi_id: sesi.id, sesi_label: sesi.label });
       } else {
         sisa++;
       }
