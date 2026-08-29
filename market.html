@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Market — AKA Futsal Camp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#120e0c; --surface:#1d1613; --surface-2:#261c17; --line:#3a2b23;
+    --amber:#e8b923; --red:#c8272d; --chalk:#f5f1e8; --text-secondary:#a89586; --success:#34d399; --danger:#f26b6b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--chalk);font-family:'Manrope',sans-serif;min-height:100vh;padding:0 0 60px;}
+  h1,h2,h3{font-family:'Oswald',sans-serif;text-transform:uppercase;margin:0;}
+  .wrap{max-width:520px;margin:0 auto;padding:0 16px;}
+  .topbar{display:flex;align-items:center;gap:10px;padding:18px 16px 10px;max-width:520px;margin:0 auto;}
+  .topbar img{width:34px;height:34px;object-fit:contain;}
+  .topbar .club-name{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--text-secondary);text-transform:uppercase;}
+  .back-link{color:var(--text-secondary);text-decoration:none;font-size:13px;margin-left:auto;}
+  .back-link:hover{color:var(--amber);}
+
+  .hero h1{font-size:28px;margin-top:14px;}
+  .hero h1 .accent{color:var(--amber);}
+  .hero p{color:var(--text-secondary);font-size:13px;margin-top:8px;}
+
+  .cat-tabs{display:flex;gap:8px;margin:18px 0;}
+  .cat-tab{background:var(--surface);border:1px solid var(--line);color:var(--text-secondary);border-radius:20px;padding:8px 16px;font-size:12px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;}
+  .cat-tab.active{background:rgba(232,185,35,0.15);border-color:var(--amber);color:var(--amber);}
+
+  .produk-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .produk-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;}
+  .produk-photo{width:100%;aspect-ratio:1/1;background:var(--surface-2);display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .produk-photo img{width:100%;height:100%;object-fit:cover;}
+  .produk-photo .ph-icon{font-size:32px;color:var(--text-secondary);}
+  .produk-info{padding:10px 12px 12px;}
+  .produk-info .nama{font-size:13px;font-weight:700;line-height:1.25;margin-bottom:4px;}
+  .produk-info .harga{color:var(--amber);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;}
+
+  .empty-msg, .loading{text-align:center;color:var(--text-secondary);font-size:13px;padding:50px 16px;grid-column:1/-1;}
+
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;align-items:flex-end;justify-content:center;}
+  .overlay.active{display:flex;}
+  .sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;padding:20px;}
+  .sheet-photo{width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:var(--surface-2);margin-bottom:14px;display:flex;align-items:center;justify-content:center;}
+  .sheet-photo img{width:100%;height:100%;object-fit:cover;}
+  .sheet h2{font-size:20px;margin-bottom:6px;}
+  .sheet .harga{color:var(--amber);font-family:'Space Mono',monospace;font-size:16px;font-weight:700;margin-bottom:10px;}
+  .sheet .deskripsi{color:var(--text-secondary);font-size:13px;line-height:1.5;margin-bottom:16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;}
+  input, textarea, select{
+    width:100%;background:var(--surface-2);border:1px solid var(--line);color:var(--chalk);
+    border-radius:8px;padding:11px 12px;font-family:'Manrope',sans-serif;font-size:14px;
+  }
+  textarea{resize:vertical;min-height:60px;}
+  .ukuran-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .ukuran-pill{background:var(--surface-2);border:1px solid var(--line);color:var(--chalk);border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:'Space Mono',monospace;}
+  .ukuran-pill.active{background:rgba(232,185,35,0.18);border-color:var(--amber);color:var(--amber);}
+  .qty-row{display:flex;align-items:center;gap:14px;}
+  .qty-btn{width:36px;height:36px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);color:var(--chalk);font-size:18px;cursor:pointer;}
+  .qty-val{font-family:'Space Mono',monospace;font-size:16px;min-width:24px;text-align:center;}
+  .close-btn{position:absolute;top:14px;right:20px;background:none;border:none;color:var(--text-secondary);font-size:22px;cursor:pointer;}
+  .subtotal-line{display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-family:'Oswald',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:1px;}
+  .subtotal-line strong{color:var(--amber);font-size:17px;}
+  .submit-btn{width:100%;background:var(--amber);color:#1a1310;border:none;border-radius:10px;padding:14px;font-family:'Oswald',sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:1px;font-weight:700;cursor:pointer;}
+  .submit-btn:disabled{opacity:.6;}
+  .status-msg{text-align:center;font-size:12px;margin-top:10px;color:var(--text-secondary);}
+  .success-box{text-align:center;padding:20px 0;}
+  .success-box .icon{font-size:44px;margin-bottom:12px;}
+  .success-box h3{color:var(--success);font-size:16px;margin-bottom:8px;}
+  .success-box p{color:var(--text-secondary);font-size:13px;margin-bottom:16px;}
+  .wa-btn{display:inline-block;background:var(--success);color:#0e1a12;padding:11px 20px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <img src="aka%20futsal%20camp.png" alt="AKA">
+  <span class="club-name">AKA Futsal Camp &middot; Market</span>
+  <a class="back-link" href="index.html">&larr; Kembali</a>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Market <span class="accent">Resmi</span></h1>
+    <p>Jersey & aksesoris resmi AKA Futsal Camp. Pilih produk, isi data, dan pesanan langsung masuk ke admin buat diproses.</p>
+  </div>
+
+  <div class="cat-tabs" id="catTabs">
+    <button class="cat-tab active" data-cat="semua">Semua</button>
+    <button class="cat-tab" data-cat="jersey">Jersey</button>
+    <button class="cat-tab" data-cat="aksesoris">Aksesoris</button>
+  </div>
+
+  <div class="produk-grid" id="produkGrid">
+    <div class="loading">Memuat produk...</div>
+  </div>
+</div>
+
+<div class="overlay" id="orderOverlay">
+  <div class="sheet" id="orderSheet"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWg3d1qtHFEwsN-GLakSDIvb-Wjbo7cIQ",
+    authDomain: "aka-futsal-camp.firebaseapp.com",
+    projectId: "aka-futsal-camp",
+    storageBucket: "aka-futsal-camp.firebasestorage.app",
+    messagingSenderId: "721774551002",
+    appId: "1:721774551002:web:bcd2e47b06d61daf626ae3"
+  };
+  let db = null;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  } catch (err) {
+    console.error('Firebase gagal dimuat:', err);
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+  function formatRupiah(n) {
+    return 'Rp' + Number(n || 0).toLocaleString('id-ID');
+  }
+
+  let produkList = [];
+  let waAdmin = '';
+  let currentCat = 'semua';
+
+  async function init() {
+    const grid = document.getElementById('produkGrid');
+    if (!db) { grid.innerHTML = '<div class="empty-msg">Koneksi data tidak tersedia.</div>'; return; }
+    try {
+      const [produkSnap, settingDoc] = await Promise.all([
+        db.collection('produk').where('aktif', '==', true).get(),
+        db.collection('pengaturan').doc('umum').get()
+      ]);
+      produkList = produkSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (settingDoc.exists) waAdmin = settingDoc.data().wa_admin || '';
+      renderGrid();
+    } catch (err) {
+      console.error(err);
+      grid.innerHTML = '<div class="empty-msg">Gagal memuat produk: ' + err.message + '</div>';
+    }
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('produkGrid');
+    const filtered = currentCat === 'semua' ? produkList : produkList.filter(p => p.kategori === currentCat);
+    if (filtered.length === 0) {
+      grid.innerHTML = '<div class="empty-msg">Belum ada produk di kategori ini.</div>';
+      return;
+    }
+    grid.innerHTML = '';
+    filtered.forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'produk-card';
+      card.innerHTML = `
+        <div class="produk-photo">${p.foto ? `<img src="${p.foto}" alt="">` : `<span class="ph-icon">&#128092;</span>`}</div>
+        <div class="produk-info">
+          <div class="nama">${escapeHtml(p.nama)}</div>
+          <div class="harga">${formatRupiah(p.harga)}</div>
+        </div>
+      `;
+      card.addEventListener('click', () => openOrderSheet(p));
+      grid.appendChild(card);
+    });
+  }
+
+  document.getElementById('catTabs').addEventListener('click', (e) => {
+    if (!e.target.dataset.cat) return;
+    currentCat = e.target.dataset.cat;
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === currentCat));
+    renderGrid();
+  });
+
+  function openOrderSheet(p) {
+    let selectedUkuran = (p.ukuran && p.ukuran.length) ? p.ukuran[0] : null;
+    let qty = 1;
+
+    function render() {
+      const sheet = document.getElementById('orderSheet');
+      sheet.innerHTML = `
+        <button class="close-btn" id="btnCloseSheet">&times;</button>
+        <div class="sheet-photo">${p.foto ? `<img src="${p.foto}" alt="">` : ''}</div>
+        <h2>${escapeHtml(p.nama)}</h2>
+        <div class="harga">${formatRupiah(p.harga)}</div>
+        ${p.deskripsi ? `<div class="deskripsi">${escapeHtml(p.deskripsi)}</div>` : ''}
+
+        ${p.ukuran && p.ukuran.length ? `
+          <div class="field"><label>Ukuran</label>
+            <div class="ukuran-row" id="ukuranRow">
+              ${p.ukuran.map(u => `<span class="ukuran-pill${u === selectedUkuran ? ' active' : ''}" data-ukuran="${escapeHtml(u)}">${escapeHtml(u)}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="field"><label>Jumlah</label>
+          <div class="qty-row">
+            <button class="qty-btn" id="qtyMinus">&minus;</button>
+            <span class="qty-val" id="qtyVal">${qty}</span>
+            <button class="qty-btn" id="qtyPlus">+</button>
+          </div>
+        </div>
+
+        <div class="field"><label>Nama Pemesan</label><input type="text" id="orderNama" placeholder="Nama lengkap"></div>
+        <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="orderWa" placeholder="08xxxxxxxxxx"></div>
+        <div class="field"><label>Catatan (opsional)</label><textarea id="orderCatatan" placeholder="cth. nama untuk sablon punggung"></textarea></div>
+
+        <div class="subtotal-line"><span>Subtotal</span><strong id="subtotalVal">${formatRupiah(p.harga * qty)}</strong></div>
+
+        <button class="submit-btn" id="btnSubmitOrder">Kirim Pesanan</button>
+        <div class="status-msg" id="orderStatus"></div>
+      `;
+
+      document.getElementById('btnCloseSheet').addEventListener('click', closeOrderSheet);
+      const ukuranRow = document.getElementById('ukuranRow');
+      if (ukuranRow) {
+        ukuranRow.querySelectorAll('.ukuran-pill').forEach(pill => {
+          pill.addEventListener('click', () => { selectedUkuran = pill.dataset.ukuran; render(); });
+        });
+      }
+      document.getElementById('qtyMinus').addEventListener('click', () => { if (qty > 1) { qty--; render(); } });
+      document.getElementById('qtyPlus').addEventListener('click', () => { qty++; render(); });
+      document.getElementById('btnSubmitOrder').addEventListener('click', () => submitOrder(p, selectedUkuran, qty));
+    }
+    render();
+    document.getElementById('orderOverlay').classList.add('active');
+  }
+
+  function closeOrderSheet() {
+    document.getElementById('orderOverlay').classList.remove('active');
+  }
+  document.getElementById('orderOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'orderOverlay') closeOrderSheet();
+  });
+
+  async function submitOrder(p, ukuran, qty) {
+    const nama = document.getElementById('orderNama').value.trim();
+    const wa = document.getElementById('orderWa').value.trim();
+    const catatan = document.getElementById('orderCatatan').value.trim();
+    const status = document.getElementById('orderStatus');
+    const btn = document.getElementById('btnSubmitOrder');
+
+    if (!nama) { status.textContent = 'Nama pemesan wajib diisi.'; status.style.color = 'var(--danger)'; return; }
+    if (!wa) { status.textContent = 'Nomor WhatsApp wajib diisi.'; status.style.color = 'var(--danger)'; return; }
+
+    btn.disabled = true; btn.textContent = 'Mengirim...';
+    const subtotal = p.harga * qty;
+
+    try {
+      await db.collection('pesanan').add({
+        produk_id: p.id,
+        produk_nama: p.nama,
+        harga: p.harga,
+        ukuran: ukuran || null,
+        jumlah: qty,
+        subtotal,
+        nama_pemesan: nama,
+        nomor_wa: wa,
+        catatan,
+        status: 'baru',
+        status_bayar: 'belum_bayar',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      const sheet = document.getElementById('orderSheet');
+      const pesanWa = encodeURIComponent(
+        `Halo, saya mau konfirmasi pesanan Market AKA Futsal Camp:\n${p.nama}${ukuran ? ' (' + ukuran + ')' : ''} x${qty}\nTotal: ${formatRupiah(subtotal)}\nAtas nama: ${nama}`
+      );
+      sheet.innerHTML = `
+        <button class="close-btn" id="btnCloseSheet2">&times;</button>
+        <div class="success-box">
+          <div class="icon">&#9989;</div>
+          <h3>Pesanan Terkirim</h3>
+          <p>Pesanan kamu udah masuk. Admin bakal proses & hubungi kamu lewat WhatsApp buat konfirmasi pembayaran.</p>
+          ${waAdmin ? `<a class="wa-btn" href="https://wa.me/${waAdmin}?text=${pesanWa}" target="_blank">Konfirmasi via WhatsApp</a>` : ''}
+        </div>
+      `;
+      document.getElementById('btnCloseSheet2').addEventListener('click', closeOrderSheet);
+    } catch (err) {
+      console.error('Gagal mengirim pesanan:', err);
+      status.textContent = 'Gagal mengirim: ' + err.message;
+      status.style.color = 'var(--danger)';
+      btn.disabled = false; btn.textContent = 'Kirim Pesanan';
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
