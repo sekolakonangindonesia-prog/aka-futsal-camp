@@ -110,7 +110,7 @@
  .sesi-card.open .names{border-top:1px solid var(--line);}
  .names-inner{padding:16px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:12px 8px;}
  .player-card{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;}
- .player-photo{width:42px;height:42px;border-radius:50%;background:var(--surface-2);border:2px solid var(--amber);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+ .player-photo{width:42px;height:42px;border-radius:50%;background:var(--surface-2);border:2px solid var(--amber);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:zoom-in;}
  .player-photo img{width:100%;height:100%;object-fit:cover;}
  .player-initial{font-family:'Oswald',sans-serif;font-size:15px;color:var(--amber);}
  .player-name{font-size:10px;color:var(--chalk);line-height:1.2;word-break:break-word;max-width:64px;}
@@ -141,6 +141,11 @@
  .rank-detail-inner{padding:12px 16px;display:flex;flex-direction:column;gap:7px;}
  .kategori-bar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);}
  .kategori-bar-row span:last-child{color:var(--chalk);font-family:'Space Mono',monospace;}
+
+ .foto-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:100;align-items:center;justify-content:center;padding:24px;}
+ .foto-lightbox.active{display:flex;}
+ .foto-lightbox img{max-width:100%;max-height:80vh;border-radius:10px;object-fit:contain;}
+ .foto-lightbox-close{position:fixed;top:16px;right:16px;background:var(--surface);border:1px solid var(--line);color:var(--chalk);width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;}
  .lihat-profil-link{display:block;margin-top:12px;color:var(--amber);font-size:12.5px;font-weight:700;text-decoration:none;}
  .lihat-profil-link:hover{text-decoration:underline;}
  .rank-photo{cursor:pointer;}
@@ -200,6 +205,11 @@
  </div>
  <div class="footer-note">AKA FUTSAL CAMP · UPDATE OTOMATIS</div>
 </div>
+<div class="foto-lightbox" id="fotoLightbox">
+ <button class="foto-lightbox-close" id="btnCloseFotoLightbox">&times;</button>
+ <img id="fotoLightboxImg" src="" alt="">
+</div>
+
 <div class="sticky-cta" id="stickyCta">
  <p>Kuota terbatas<br>per sesi latihan</p>
  <a class="cta-btn" href="form_siswa.html">Daftar Sekarang</a>
@@ -350,6 +360,9 @@
  <div class="player-photo">${foto ? `<img src="${foto}" alt="">` : `<span class="player-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</span>`}</div>
  <span class="player-name">${escapeHtml(nama)}</span>
  `;
+ if (foto) {
+ pcard.querySelector('.player-photo').addEventListener('click', () => openFotoLightbox(foto));
+ }
  namesInner.appendChild(pcard);
  });
  }
@@ -493,6 +506,18 @@
  window.addEventListener('scroll', () => {
  const sticky = document.getElementById('stickyCta');
  if (window.scrollY > 260) sticky.classList.add('show'); else sticky.classList.remove('show');
+ });
+
+ function openFotoLightbox(src) {
+ document.getElementById('fotoLightboxImg').src = src;
+ document.getElementById('fotoLightbox').classList.add('active');
+ }
+ function closeFotoLightbox() {
+ document.getElementById('fotoLightbox').classList.remove('active');
+ }
+ document.getElementById('btnCloseFotoLightbox').addEventListener('click', closeFotoLightbox);
+ document.getElementById('fotoLightbox').addEventListener('click', (e) => {
+ if (e.target.id === 'fotoLightbox') closeFotoLightbox();
  });
 </script>
 </body>
