@@ -43,8 +43,13 @@
   .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;align-items:flex-end;justify-content:center;}
   .overlay.active{display:flex;}
   .sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;padding:20px;}
-  .sheet-photo{width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:var(--surface-2);margin-bottom:14px;display:flex;align-items:center;justify-content:center;}
-  .sheet-photo img{width:100%;height:100%;object-fit:cover;}
+  .sheet-photo{width:100%;border-radius:12px;overflow:hidden;background:var(--surface-2);margin-bottom:14px;display:flex;align-items:center;justify-content:center;cursor:zoom-in;}
+  .sheet-photo img{width:100%;height:auto;display:block;object-fit:contain;}
+
+  .lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:100;overflow:auto;padding:20px;}
+  .lightbox.active{display:flex;align-items:flex-start;justify-content:center;}
+  .lightbox img{max-width:100%;width:100%;height:auto;border-radius:8px;}
+  .lightbox-close{position:fixed;top:16px;right:16px;background:var(--surface);border:1px solid var(--line);color:var(--chalk);width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;z-index:101;}
   .sheet h2{font-size:20px;margin-bottom:6px;}
   .sheet .harga{color:var(--amber);font-family:'Space Mono',monospace;font-size:16px;font-weight:700;margin-bottom:10px;}
   .sheet .deskripsi{color:var(--text-secondary);font-size:13px;line-height:1.5;margin-bottom:16px;}
@@ -100,6 +105,11 @@
 
 <div class="overlay" id="orderOverlay">
   <div class="sheet" id="orderSheet"></div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="btnCloseLightbox">&times;</button>
+  <img id="lightboxImg" src="" alt="">
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -189,7 +199,7 @@
       const sheet = document.getElementById('orderSheet');
       sheet.innerHTML = `
         <button class="close-btn" id="btnCloseSheet">&times;</button>
-        <div class="sheet-photo">${p.foto ? `<img src="${p.foto}" alt="">` : ''}</div>
+        <div class="sheet-photo" id="sheetPhotoTap">${p.foto ? `<img src="${p.foto}" alt="">` : ''}</div>
         <h2>${escapeHtml(p.nama)}</h2>
         <div class="harga">${formatRupiah(p.harga)}</div>
         ${p.deskripsi ? `<div class="deskripsi">${escapeHtml(p.deskripsi)}</div>` : ''}
@@ -221,6 +231,9 @@
       `;
 
       document.getElementById('btnCloseSheet').addEventListener('click', closeOrderSheet);
+      if (p.foto) {
+        document.getElementById('sheetPhotoTap').addEventListener('click', () => openLightbox(p.foto));
+      }
       const ukuranRow = document.getElementById('ukuranRow');
       if (ukuranRow) {
         ukuranRow.querySelectorAll('.ukuran-pill').forEach(pill => {
@@ -238,6 +251,18 @@
   function closeOrderSheet() {
     document.getElementById('orderOverlay').classList.remove('active');
   }
+
+  function openLightbox(src) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightbox').classList.add('active');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+  }
+  document.getElementById('btnCloseLightbox').addEventListener('click', closeLightbox);
+  document.getElementById('lightbox').addEventListener('click', (e) => {
+    if (e.target.id === 'lightbox') closeLightbox();
+  });
   document.getElementById('orderOverlay').addEventListener('click', (e) => {
     if (e.target.id === 'orderOverlay') closeOrderSheet();
   });
