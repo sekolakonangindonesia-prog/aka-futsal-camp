@@ -151,6 +151,7 @@
     <button class="tab-btn" data-tab="penilaianTab">Penilaian</button>
     <button class="tab-btn" data-tab="raportTab">Raport</button>
     <button class="tab-btn" data-tab="laporanTab">Laporan Keuangan</button>
+    <button class="tab-btn" data-tab="marketTab">Market</button>
     <button class="tab-btn" data-tab="pengaturanTab">Pengaturan</button>
   </div>
 
@@ -292,6 +293,43 @@
     </div>
   </div>
 
+  <div class="tab-panel" id="marketTab">
+    <div class="section-head">
+      <h2>Kelola Produk</h2>
+      <button class="btn" id="btnTambahProduk">+ Tambah Produk</button>
+    </div>
+    <div class="siswa-table" id="produkTable" style="margin-bottom:28px;"></div>
+
+    <div class="section-head"><h2>Pesanan Masuk</h2></div>
+    <div class="siswa-table" id="pesananTable"></div>
+  </div>
+
+  <div class="overlay" id="produkModalOverlay">
+    <div class="modal">
+      <h2 id="produkModalTitle">Tambah Produk</h2>
+      <div class="field">
+        <div class="photo-preview" id="produkPhotoPreview">Belum ada foto</div>
+        <label for="produkFotoInput" class="btn btn-secondary" style="display:inline-block;font-size:12px;padding:8px 14px;">Pilih foto</label>
+        <input type="file" id="produkFotoInput" accept="image/*" style="display:none;">
+      </div>
+      <div class="field"><label>Nama Produk</label><input type="text" id="produkNama" placeholder="cth. Jersey Home AKA 2026"></div>
+      <div class="field"><label>Kategori</label>
+        <select id="produkKategori">
+          <option value="jersey">Jersey</option>
+          <option value="aksesoris">Aksesoris</option>
+        </select>
+      </div>
+      <div class="field"><label>Harga (Rp)</label><input type="number" id="produkHarga" min="0" placeholder="150000"></div>
+      <div class="field"><label>Ukuran tersedia (pisah koma, kosongkan kalau tidak ada ukuran)</label><input type="text" id="produkUkuran" placeholder="S, M, L, XL"></div>
+      <div class="field"><label>Deskripsi</label><textarea id="produkDeskripsi" rows="3" placeholder="Bahan, detail produk, dll"></textarea></div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="produkAktif" style="width:auto;" checked><label style="margin:0;">Tampilkan di Market (aktif)</label></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btnBatalProduk">Batal</button>
+        <button class="btn" id="btnSimpanProduk">Simpan</button>
+      </div>
+    </div>
+  </div>
+
   <div class="tab-panel" id="pengaturanTab">
     <div class="section-head"><h2>Tentang Camp</h2></div>
     <div class="sesi-config">
@@ -307,6 +345,7 @@
       <div class="field"><label>TikTok (link lengkap)</label><input type="text" id="settingTiktok" placeholder="https://tiktok.com/@..."></div>
       <div class="field"><label>Facebook (link lengkap)</label><input type="text" id="settingFb" placeholder="https://facebook.com/..."></div>
       <div class="field"><label>YouTube (link lengkap)</label><input type="text" id="settingYt" placeholder="https://youtube.com/@..."></div>
+      <div class="field"><label>Nomor WA Admin (buat konfirmasi pesanan Market, format 628xxxx)</label><input type="text" id="settingWaAdmin" placeholder="6281234567890"></div>
       <button class="btn" id="btnSimpanSosial">Simpan Sosial Media</button>
       <div class="status-line" id="sosialStatus"></div>
     </div>
@@ -398,6 +437,7 @@
       document.getElementById(btn.dataset.tab).classList.add('active');
       if (btn.dataset.tab === 'penilaianTab') loadAndRenderPenilaian();
       if (btn.dataset.tab === 'raportTab') muatRaport();
+      if (btn.dataset.tab === 'marketTab') loadAndRenderMarket();
     });
   });
 
@@ -588,6 +628,7 @@
         document.getElementById('settingTiktok').value = s.tiktok || '';
         document.getElementById('settingFb').value = s.facebook || '';
         document.getElementById('settingYt').value = s.youtube || '';
+        document.getElementById('settingWaAdmin').value = s.wa_admin || '';
       }
     } catch (err) {
       console.error('Gagal memuat pengaturan:', err);
@@ -607,7 +648,8 @@
       instagram: document.getElementById('settingIg').value.trim(),
       tiktok: document.getElementById('settingTiktok').value.trim(),
       facebook: document.getElementById('settingFb').value.trim(),
-      youtube: document.getElementById('settingYt').value.trim()
+      youtube: document.getElementById('settingYt').value.trim(),
+      wa_admin: document.getElementById('settingWaAdmin').value.trim()
     };
     await db.collection('pengaturan').doc('umum').set(data, { merge: true });
     document.getElementById('sosialStatus').textContent = 'Tersimpan.';
@@ -1460,6 +1502,174 @@
       alert('Gagal menyimpan penilaian: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "penilaian".');
     }
   });
+
+  // ===== MARKET (produk & pesanan) =====
+  const PRODUK_COL = "produk";
+  const PESANAN_COL = "pesanan";
+  let produkCache = [];
+  let pesananCache = [];
+  let editingProdukId = null;
+  let produkFotoBase64 = null;
+
+  async function loadAndRenderMarket() {
+    try {
+      const [produkSnap, pesananSnap] = await Promise.all([
+        db.collection(PRODUK_COL).get(),
+        db.collection(PESANAN_COL).get()
+      ]);
+      produkCache = produkSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      pesananCache = pesananSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => ((b.createdAt && b.createdAt.toMillis) ? b.createdAt.toMillis() : 0) - ((a.createdAt && a.createdAt.toMillis) ? a.createdAt.toMillis() : 0));
+    } catch (err) {
+      console.error('Gagal memuat data market:', err);
+      showGlobalError('Gagal memuat data market: ' + err.message + ' — cek security rules Firestore untuk koleksi "produk" dan "pesanan".');
+      return;
+    }
+    renderProdukTable();
+    renderPesananTable();
+  }
+
+  function renderProdukTable() {
+    const table = document.getElementById('produkTable');
+    table.innerHTML = '';
+    if (produkCache.length === 0) {
+      table.innerHTML = '<div class="empty-state">Belum ada produk. Klik "+ Tambah Produk" buat mulai.</div>';
+      return;
+    }
+    produkCache.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'siswa-item';
+      row.innerHTML = `
+        ${p.foto ? `<img src="${p.foto}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;">` : `<div style="width:44px;height:44px;border-radius:8px;background:var(--surface-2);flex-shrink:0;"></div>`}
+        <div class="info">
+          <div class="nama">${escapeHtml(p.nama)}${!p.aktif ? '<span class="badge-baru" style="background:rgba(160,160,160,0.15);color:var(--text-secondary);border-color:var(--text-secondary);">Nonaktif</span>' : ''}</div>
+          <div class="meta">${p.kategori === 'jersey' ? 'Jersey' : 'Aksesoris'} · Rp${Number(p.harga || 0).toLocaleString('id-ID')}${p.ukuran && p.ukuran.length ? ' · ' + p.ukuran.join('/') : ''}</div>
+        </div>
+        <div class="actions">
+          <button class="icon-btn" data-edit-produk="${p.id}">Edit</button>
+          <button class="icon-btn" data-del-produk="${p.id}">Hapus</button>
+        </div>
+      `;
+      table.appendChild(row);
+    });
+    table.querySelectorAll('[data-edit-produk]').forEach(btn => btn.addEventListener('click', () => openProdukModal(btn.dataset.editProduk)));
+    table.querySelectorAll('[data-del-produk]').forEach(btn => btn.addEventListener('click', () => hapusProduk(btn.dataset.delProduk)));
+  }
+
+  function openProdukModal(id) {
+    editingProdukId = id || null;
+    const p = id ? produkCache.find(x => x.id === id) : null;
+    document.getElementById('produkModalTitle').textContent = id ? 'Edit Produk' : 'Tambah Produk';
+    document.getElementById('produkNama').value = p ? p.nama || '' : '';
+    document.getElementById('produkKategori').value = p ? p.kategori || 'jersey' : 'jersey';
+    document.getElementById('produkHarga').value = p ? p.harga || '' : '';
+    document.getElementById('produkUkuran').value = p && p.ukuran ? p.ukuran.join(', ') : '';
+    document.getElementById('produkDeskripsi').value = p ? p.deskripsi || '' : '';
+    document.getElementById('produkAktif').checked = p ? !!p.aktif : true;
+    produkFotoBase64 = p ? (p.foto || null) : null;
+    document.getElementById('produkPhotoPreview').innerHTML = produkFotoBase64 ? `<img src="${produkFotoBase64}">` : 'Belum ada foto';
+    document.getElementById('produkModalOverlay').classList.add('active');
+  }
+
+  document.getElementById('btnTambahProduk').addEventListener('click', () => openProdukModal(null));
+  document.getElementById('btnBatalProduk').addEventListener('click', () => document.getElementById('produkModalOverlay').classList.remove('active'));
+
+  document.getElementById('produkFotoInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 640;
+        let { width, height } = img;
+        if (width > height && width > MAX_DIM) { height = Math.round(height * (MAX_DIM / width)); width = MAX_DIM; }
+        else if (height > MAX_DIM) { width = Math.round(width * (MAX_DIM / height)); height = MAX_DIM; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        produkFotoBase64 = canvas.toDataURL('image/jpeg', 0.75);
+        document.getElementById('produkPhotoPreview').innerHTML = `<img src="${produkFotoBase64}">`;
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('btnSimpanProduk').addEventListener('click', async () => {
+    const nama = document.getElementById('produkNama').value.trim();
+    const harga = Number(document.getElementById('produkHarga').value) || 0;
+    if (!nama) { alert('Nama produk wajib diisi'); return; }
+    const ukuran = document.getElementById('produkUkuran').value.split(',').map(s => s.trim()).filter(Boolean);
+    const data = {
+      nama, harga,
+      kategori: document.getElementById('produkKategori').value,
+      deskripsi: document.getElementById('produkDeskripsi').value.trim(),
+      ukuran,
+      aktif: document.getElementById('produkAktif').checked,
+      foto: produkFotoBase64
+    };
+    try {
+      if (editingProdukId) {
+        await db.collection(PRODUK_COL).doc(editingProdukId).update(data);
+      } else {
+        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection(PRODUK_COL).add(data);
+      }
+      document.getElementById('produkModalOverlay').classList.remove('active');
+      await loadAndRenderMarket();
+    } catch (err) {
+      console.error('Gagal menyimpan produk:', err);
+      alert('Gagal menyimpan produk: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "produk".');
+    }
+  });
+
+  async function hapusProduk(id) {
+    if (!confirm('Yakin hapus produk ini? Pesanan yang sudah masuk untuk produk ini tidak akan terhapus.')) return;
+    try {
+      await db.collection(PRODUK_COL).doc(id).delete();
+      await loadAndRenderMarket();
+    } catch (err) {
+      console.error('Gagal menghapus produk:', err);
+      alert('Gagal menghapus produk: ' + err.message);
+    }
+  }
+
+  const STATUS_PESANAN_OPTIONS = `<option value="baru">Baru</option><option value="diproses">Diproses</option><option value="selesai">Selesai</option><option value="batal">Batal</option>`;
+  const STATUS_BAYAR_OPTIONS_MARKET = `<option value="belum_bayar">Belum bayar</option><option value="cash">Cash</option><option value="qris">QRIS</option>`;
+
+  function renderPesananTable() {
+    const table = document.getElementById('pesananTable');
+    table.innerHTML = '';
+    if (pesananCache.length === 0) {
+      table.innerHTML = '<div class="empty-state">Belum ada pesanan masuk</div>';
+      return;
+    }
+    pesananCache.forEach(o => {
+      const row = document.createElement('div');
+      row.className = 'siswa-item';
+      row.style.flexWrap = 'wrap';
+      row.innerHTML = `
+        <div class="info" style="flex:1 1 100%;">
+          <div class="nama">${escapeHtml(o.produk_nama)}${o.ukuran ? ' (' + escapeHtml(o.ukuran) + ')' : ''} &times; ${o.jumlah}</div>
+          <div class="meta">${escapeHtml(o.nama_pemesan)} · ${escapeHtml(o.nomor_wa || '-')} · Rp${Number(o.subtotal || 0).toLocaleString('id-ID')}${o.catatan ? ' · "' + escapeHtml(o.catatan) + '"' : ''}</div>
+        </div>
+        <select data-status-pesanan="${o.id}" style="width:auto;">${STATUS_PESANAN_OPTIONS}</select>
+        <select data-bayar-pesanan="${o.id}" style="width:auto;">${STATUS_BAYAR_OPTIONS_MARKET}</select>
+      `;
+      row.querySelector('[data-status-pesanan]').value = o.status || 'baru';
+      row.querySelector('[data-bayar-pesanan]').value = o.status_bayar || 'belum_bayar';
+      row.querySelector('[data-status-pesanan]').addEventListener('change', async (e) => {
+        try { await db.collection(PESANAN_COL).doc(o.id).update({ status: e.target.value }); }
+        catch (err) { alert('Gagal update status: ' + err.message); }
+      });
+      row.querySelector('[data-bayar-pesanan]').addEventListener('change', async (e) => {
+        try { await db.collection(PESANAN_COL).doc(o.id).update({ status_bayar: e.target.value }); }
+        catch (err) { alert('Gagal update status bayar: ' + err.message); }
+      });
+      table.appendChild(row);
+    });
+  }
 </script>
 </body>
 </html>
