@@ -74,6 +74,20 @@
 
   .loading, .empty-msg{text-align:center;color:var(--text-secondary);font-size:13px;padding:60px 16px;}
   .footer-note{text-align:center;color:var(--text-secondary);font-size:10.5px;margin-top:26px;font-family:'Space Mono',monospace;letter-spacing:1px;text-transform:uppercase;}
+
+  .stat-row{cursor:pointer;}
+  .stat-row:active{opacity:0.7;}
+  .sub-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:30;align-items:flex-end;justify-content:center;}
+  .sub-overlay.active{display:flex;}
+  .sub-modal{background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 0 0;width:100%;max-width:420px;padding:20px 18px 26px;max-height:70vh;overflow-y:auto;}
+  @media (min-width:480px){ .sub-overlay{align-items:center;} .sub-modal{border-radius:16px;} }
+  .sub-modal h3{font-family:'Oswald',sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.5px;margin:0 0 4px;color:var(--amber);}
+  .sub-modal .sub-modal-total{font-size:12px;color:var(--text-secondary);margin-bottom:14px;}
+  .sub-item{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:8px;font-size:13px;}
+  .sub-item:nth-child(odd){background:rgba(232,185,35,0.06);}
+  .sub-item .label{color:var(--text-secondary);}
+  .sub-item .value{font-family:'Space Mono',monospace;font-weight:700;color:var(--chalk);}
+  .sub-modal-close{display:block;width:100%;margin-top:16px;background:var(--amber);color:#1a1310;border:none;border-radius:8px;padding:11px;font-family:'Oswald',sans-serif;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -87,6 +101,15 @@
   <div id="content"><div class="loading">Memuat profil...</div></div>
 
   <div class="footer-note">AKA Futsal Camp &middot; Update Otomatis</div>
+</div>
+
+<div class="sub-overlay" id="subOverlay">
+  <div class="sub-modal">
+    <h3 id="subModalTitle">Kategori</h3>
+    <div class="sub-modal-total" id="subModalTotal"></div>
+    <div id="subModalList"></div>
+    <button class="sub-modal-close" id="subModalClose">Tutup</button>
+  </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -119,6 +142,7 @@
 
   let siswaData = null;
   let kriteriaLabelMap = {};
+  let kriteriaFull = [];
   let penilaianList = [];
 
   function bulanLabel(bulan) {
@@ -153,7 +177,7 @@
     let statRows = '';
     if (nilai && nilai.kategoriTotal) {
       statRows = Object.keys(nilai.kategoriTotal).map(key =>
-        `<div class="stat-row"><span class="label">${escapeHtml(kriteriaLabelMap[key] || key)}</span><span class="value">${nilai.kategoriTotal[key]}</span></div>`
+        `<div class="stat-row" data-kat="${escapeHtml(key)}"><span class="label">${escapeHtml(kriteriaLabelMap[key] || key)}</span><span class="value">${nilai.kategoriTotal[key]}</span></div>`
       ).join('');
     }
 
@@ -185,7 +209,39 @@
         renderProfile(chosen);
       });
     }
+
+    content.querySelectorAll('.stat-row[data-kat]').forEach(row => {
+      row.addEventListener('click', () => bukaSubModal(row.dataset.kat, nilai));
+    });
   }
+
+  function bukaSubModal(katKey, nilai) {
+    const kat = kriteriaFull.find(k => k.key === katKey);
+    if (!kat) return;
+    document.getElementById('subModalTitle').textContent = kat.label;
+    const totalKat = nilai.kategoriTotal && nilai.kategoriTotal[katKey] !== undefined ? nilai.kategoriTotal[katKey] : '-';
+    document.getElementById('subModalTotal').textContent = 'Total ' + kat.label + ': ' + totalKat;
+
+    const listEl = document.getElementById('subModalList');
+    const subs = kat.subs || [];
+    if (subs.length === 0) {
+      listEl.innerHTML = '<div class="empty-msg" style="padding:20px 0;">Belum ada rincian sub-kriteria.</div>';
+    } else {
+      listEl.innerHTML = subs.map(sub => {
+        const nilaiSub = nilai.detailPoin && nilai.detailPoin[katKey] && nilai.detailPoin[katKey][sub.key] !== undefined
+          ? nilai.detailPoin[katKey][sub.key] : '-';
+        return `<div class="sub-item"><span class="label">${escapeHtml(sub.label)}</span><span class="value">${nilaiSub}</span></div>`;
+      }).join('');
+    }
+    document.getElementById('subOverlay').classList.add('active');
+  }
+
+  document.getElementById('subModalClose').addEventListener('click', () => {
+    document.getElementById('subOverlay').classList.remove('active');
+  });
+  document.getElementById('subOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'subOverlay') document.getElementById('subOverlay').classList.remove('active');
+  });
 
   async function init() {
     const content = document.getElementById('content');
@@ -200,7 +256,8 @@
       if (!siswaDoc.exists) { content.innerHTML = '<div class="empty-msg">Peserta tidak ditemukan.</div>'; return; }
       siswaData = siswaDoc.data();
       if (kriteriaDoc.exists) {
-        (kriteriaDoc.data().kategori || []).forEach(kat => { kriteriaLabelMap[kat.key] = kat.label; });
+        kriteriaFull = kriteriaDoc.data().kategori || [];
+        kriteriaFull.forEach(kat => { kriteriaLabelMap[kat.key] = kat.label; });
       }
       penilaianList = penilaianSnap.docs.map(d => d.data()).sort((a, b) => (b.bulan || '').localeCompare(a.bulan || ''));
       renderProfile(penilaianList[0] || null);
