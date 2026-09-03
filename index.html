@@ -142,6 +142,16 @@
  .kategori-bar-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);}
  .kategori-bar-row span:last-child{color:var(--chalk);font-family:'Space Mono',monospace;}
 
+ .sesi-card.selesai{opacity:0.75;}
+ .badge-selesai{display:inline-block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--text-secondary);border:1px solid var(--line);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px;}
+ .list-more-wrap{margin-top:4px;}
+ .list-more{max-height:0;overflow:hidden;transition:max-height .35s ease;}
+ .list-more.open{max-height:8000px;}
+ .list-toggle{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:12px;margin-top:8px;color:var(--amber);font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.5px;cursor:pointer;text-transform:uppercase;}
+ .list-toggle:active{background:var(--surface-2);}
+ .list-toggle .chevron{transition:transform .25s;font-size:11px;}
+ .list-toggle.open .chevron{transform:rotate(180deg);}
+
  .foto-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:100;align-items:center;justify-content:center;padding:24px;}
  .foto-lightbox.active{display:flex;}
  .foto-lightbox img{max-width:100%;max-height:80vh;border-radius:10px;object-fit:contain;}
@@ -188,10 +198,12 @@
  <div id="sesiContainer">
  <div class="loading">Memuat jadwal...</div>
  </div>
+ <div id="sesiMoreWrap"></div>
  <div class="section-title"><h2>Ranking 14 Besar</h2><div class="line"></div></div>
  <div id="rankingContainer">
  <div class="loading">Memuat ranking...</div>
  </div>
+ <div id="rankingMoreWrap"></div>
  <div class="section-title"><h2>Market</h2><div class="line"></div></div>
  <div class="tilt-zone"><div class="about-card tilt tilt-hover" style="justify-content:space-between;">
  <p>Jersey & aksesoris resmi AKA Futsal Camp — pesan langsung dari sini.</p>
@@ -325,8 +337,8 @@
  container.innerHTML = '<div class="no-sesi">Jadwal belum diumumkan, pantau terus ya.</div>';
  return;
  }
- container.innerHTML = '';
- sesiList.forEach(sesi => {
+
+ function buildSesiZone(sesi) {
  const anggota = rencanaList.filter(r => r.sesi_id === sesi.id);
  const kap = sesi.kapasitas || 0;
  const ratio = kap > 0 ? anggota.length / kap : 0;
@@ -335,10 +347,10 @@
  const zone = document.createElement('div');
  zone.className = 'tilt-zone';
  const card = document.createElement('div');
- card.className = 'sesi-card tilt tilt-hover';
+ card.className = 'sesi-card tilt tilt-hover' + (sesi.selesai ? ' selesai' : '');
  card.innerHTML = `
  <div class="head">
- <h3>${escapeHtml(sesi.label)}</h3>
+ <h3>${escapeHtml(sesi.label)}${sesi.selesai ? ' <span class="badge-selesai">Selesai</span>' : ''}</h3>
  <div class="head-right">
  <span class="kap">${anggota.length}/${kap}</span>
  <span class="chevron">▾</span>
@@ -372,9 +384,42 @@
  namesEl.style.maxHeight = isOpen ? namesEl.scrollHeight + 'px' : '0px';
  });
  zone.appendChild(card);
- container.appendChild(zone);
- });
+ return zone;
+ }
+
+ const sesiAktif = sesiList.filter(s => !s.selesai);
+ const sesiSelesai = sesiList.filter(s => s.selesai);
+
+ container.innerHTML = '';
+ if (sesiAktif.length === 0) {
+ container.innerHTML = '<div class="no-sesi">Belum ada sesi aktif saat ini.</div>';
+ } else {
+ sesiAktif.forEach(sesi => container.appendChild(buildSesiZone(sesi)));
+ }
  observeTiltCards(container);
+
+ const sesiMoreWrap = document.getElementById('sesiMoreWrap');
+ sesiMoreWrap.innerHTML = '';
+ if (sesiSelesai.length > 0) {
+ const wrap = document.createElement('div');
+ wrap.className = 'list-more-wrap';
+ const more = document.createElement('div');
+ more.className = 'list-more';
+ sesiSelesai.forEach(sesi => more.appendChild(buildSesiZone(sesi)));
+ const toggleBtn = document.createElement('button');
+ toggleBtn.type = 'button';
+ toggleBtn.className = 'list-toggle';
+ toggleBtn.innerHTML = `<span>Lihat sesi selesai (${sesiSelesai.length})</span><span class="chevron">▾</span>`;
+ toggleBtn.addEventListener('click', () => {
+ const isOpen = more.classList.toggle('open');
+ toggleBtn.classList.toggle('open', isOpen);
+ toggleBtn.querySelector('span').textContent = isOpen ? 'Sembunyikan' : `Lihat sesi selesai (${sesiSelesai.length})`;
+ if (isOpen) observeTiltCards(more);
+ });
+ wrap.appendChild(more);
+ wrap.appendChild(toggleBtn);
+ sesiMoreWrap.appendChild(wrap);
+ }
  } catch (err) {
  console.error(err);
  container.innerHTML = '<div class="no-sesi">Gagal memuat jadwal, coba refresh halaman.</div>';
@@ -405,14 +450,16 @@
  }
  let list = penilaianSnap.docs.map(d => d.data());
  list.sort((a, b) => (b.total || 0) - (a.total || 0));
- list = list.slice(0, 14);
  if (list.length === 0) {
  container.innerHTML = '<div class="no-sesi">Musim seleksi bulan ini belum ada hasil.</div>';
  return;
  }
- container.innerHTML = '';
- list.forEach((p, idx) => {
- const rank = idx + 1;
+
+ const TOP_COUNT = 14;
+ const topList = list.slice(0, TOP_COUNT);
+ const restList = list.slice(TOP_COUNT);
+
+ function buildRankZone(p, rank) {
  const foto = fotoMap[p.siswa_id];
  const nama = p.siswa_nama || '-';
  const zone = document.createElement('div');
@@ -454,9 +501,35 @@
  detailEl.style.maxHeight = isOpen ? detailEl.scrollHeight + 'px' : '0px';
  });
  zone.appendChild(card);
- container.appendChild(zone);
- });
+ return zone;
+ }
+
+ container.innerHTML = '';
+ topList.forEach((p, idx) => container.appendChild(buildRankZone(p, idx + 1)));
  observeTiltCards(container);
+
+ const rankingMoreWrap = document.getElementById('rankingMoreWrap');
+ rankingMoreWrap.innerHTML = '';
+ if (restList.length > 0) {
+ const wrap = document.createElement('div');
+ wrap.className = 'list-more-wrap';
+ const more = document.createElement('div');
+ more.className = 'list-more';
+ restList.forEach((p, idx) => more.appendChild(buildRankZone(p, TOP_COUNT + idx + 1)));
+ const toggleBtn = document.createElement('button');
+ toggleBtn.type = 'button';
+ toggleBtn.className = 'list-toggle';
+ toggleBtn.innerHTML = `<span>Lihat semua peserta (${restList.length} lainnya)</span><span class="chevron">▾</span>`;
+ toggleBtn.addEventListener('click', () => {
+ const isOpen = more.classList.toggle('open');
+ toggleBtn.classList.toggle('open', isOpen);
+ toggleBtn.querySelector('span').textContent = isOpen ? 'Sembunyikan' : `Lihat semua peserta (${restList.length} lainnya)`;
+ if (isOpen) observeTiltCards(more);
+ });
+ wrap.appendChild(more);
+ wrap.appendChild(toggleBtn);
+ rankingMoreWrap.appendChild(wrap);
+ }
  } catch (err) {
  console.error(err);
  container.innerHTML = '<div class="no-sesi">Gagal memuat ranking, coba refresh halaman.</div>';
