@@ -224,6 +224,7 @@
         <input type="month" id="penilaianBulan">
         <input type="text" id="penilaianSearch" placeholder="Cari nama siswa..." style="flex:2;min-width:160px;">
         <button class="icon-btn" id="btnAturKriteria">⚙ Atur Kriteria Penilaian</button>
+        <button class="icon-btn" id="btnHitungUlangPenilaian">🔄 Hitung Ulang Semua Poin</button>
       </div>
     </div>
     <div class="section-head">
@@ -465,18 +466,18 @@
   const DEFAULT_KRITERIA = {
     kategori: [
       { key: 'teknik', label: 'Teknik', subs: [
-        { key: 'a', label: 'Sub A', max: 10 }, { key: 'b', label: 'Sub B', max: 10 },
-        { key: 'c', label: 'Sub C', max: 10 }, { key: 'd', label: 'Sub D', max: 10 }
+        { key: 'a', label: 'Sub A', min: 0, max: 10, arah: 'tinggi' }, { key: 'b', label: 'Sub B', min: 0, max: 10, arah: 'tinggi' },
+        { key: 'c', label: 'Sub C', min: 0, max: 10, arah: 'tinggi' }, { key: 'd', label: 'Sub D', min: 0, max: 10, arah: 'tinggi' }
       ]},
       { key: 'fisik', label: 'Fisik', subs: [
-        { key: 'a', label: 'Sub A', max: 10 }, { key: 'b', label: 'Sub B', max: 10 },
-        { key: 'c', label: 'Sub C', max: 10 }, { key: 'd', label: 'Sub D', max: 10 }, { key: 'e', label: 'Sub E', max: 10 }
+        { key: 'a', label: 'Sub A', min: 0, max: 10, arah: 'tinggi' }, { key: 'b', label: 'Sub B', min: 0, max: 10, arah: 'tinggi' },
+        { key: 'c', label: 'Sub C', min: 0, max: 10, arah: 'tinggi' }, { key: 'd', label: 'Sub D', min: 0, max: 10, arah: 'tinggi' }, { key: 'e', label: 'Sub E', min: 0, max: 10, arah: 'tinggi' }
       ]},
-      { key: 'decision_making', label: 'Decision Making', subs: [{ key: 'a', label: 'Sub A', max: 10 }] },
+      { key: 'decision_making', label: 'Decision Making', subs: [{ key: 'a', label: 'Sub A', min: 0, max: 10, arah: 'tinggi' }] },
       { key: 'taktik', label: 'Taktik', subs: [
-        { key: 'a', label: 'Sub A', max: 10 }, { key: 'b', label: 'Sub B', max: 10 }, { key: 'c', label: 'Sub C', max: 10 }
+        { key: 'a', label: 'Sub A', min: 0, max: 10, arah: 'tinggi' }, { key: 'b', label: 'Sub B', min: 0, max: 10, arah: 'tinggi' }, { key: 'c', label: 'Sub C', min: 0, max: 10, arah: 'tinggi' }
       ]},
-      { key: 'mental', label: 'Mental', subs: [{ key: 'a', label: 'Sub A', max: 10 }] }
+      { key: 'mental', label: 'Mental', subs: [{ key: 'a', label: 'Sub A', min: 0, max: 10, arah: 'tinggi' }] }
     ]
   };
 
@@ -512,11 +513,16 @@
       const subList = group.querySelector('.sub-list');
       kat.subs.forEach((sub, si) => {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
+        row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap;';
         row.innerHTML = `
-          <input type="text" class="sub-label-input" data-ki="${ki}" data-si="${si}" value="${escapeAttr(sub.label)}" placeholder="Nama sub-kriteria" style="flex:2;">
-          <input type="number" class="sub-max-input" data-ki="${ki}" data-si="${si}" value="${sub.max}" min="1" placeholder="Maks poin" style="flex:1;">
-          <button class="icon-btn btn-hapus-sub" data-ki="${ki}" data-si="${si}" style="padding:6px 8px;">✕</button>
+          <input type="text" class="sub-label-input" data-ki="${ki}" data-si="${si}" value="${escapeAttr(sub.label)}" placeholder="Nama sub-kriteria" style="flex:2;min-width:130px;">
+          <input type="number" class="sub-min-input" data-ki="${ki}" data-si="${si}" value="${sub.min ?? 0}" placeholder="Min" style="width:64px;flex:none;">
+          <input type="number" class="sub-max-input" data-ki="${ki}" data-si="${si}" value="${sub.max}" min="1" placeholder="Maks" style="width:64px;flex:none;">
+          <select class="sub-arah-input" data-ki="${ki}" data-si="${si}" style="flex:none;width:auto;">
+            <option value="tinggi" ${(sub.arah || 'tinggi') === 'tinggi' ? 'selected' : ''}>Tinggi lebih baik</option>
+            <option value="rendah" ${sub.arah === 'rendah' ? 'selected' : ''}>Rendah lebih baik</option>
+          </select>
+          <button class="icon-btn btn-hapus-sub" data-ki="${ki}" data-si="${si}" style="padding:6px 8px;flex:none;">✕</button>
         `;
         subList.appendChild(row);
       });
@@ -532,6 +538,12 @@
     body.querySelectorAll('.sub-max-input').forEach(inp => inp.addEventListener('input', e => {
       kriteriaCache.kategori[Number(e.target.dataset.ki)].subs[Number(e.target.dataset.si)].max = Number(e.target.value) || 0;
     }));
+    body.querySelectorAll('.sub-min-input').forEach(inp => inp.addEventListener('input', e => {
+      kriteriaCache.kategori[Number(e.target.dataset.ki)].subs[Number(e.target.dataset.si)].min = Number(e.target.value) || 0;
+    }));
+    body.querySelectorAll('.sub-arah-input').forEach(sel => sel.addEventListener('change', e => {
+      kriteriaCache.kategori[Number(e.target.dataset.ki)].subs[Number(e.target.dataset.si)].arah = e.target.value;
+    }));
     body.querySelectorAll('.btn-hapus-kat').forEach(btn => btn.addEventListener('click', e => {
       if (kriteriaCache.kategori.length <= 1) { alert('Minimal harus ada 1 kategori.'); return; }
       if (!confirm('Hapus kategori ini beserta semua sub-kriterianya?')) return;
@@ -540,7 +552,7 @@
     }));
     body.querySelectorAll('.btn-tambah-sub').forEach(btn => btn.addEventListener('click', e => {
       const ki = Number(e.target.dataset.ki);
-      kriteriaCache.kategori[ki].subs.push({ key: 'sub_' + Date.now(), label: '', max: 10 });
+      kriteriaCache.kategori[ki].subs.push({ key: 'sub_' + Date.now(), label: '', min: 0, max: 10, arah: 'tinggi' });
       renderKriteriaEditor();
     }));
     body.querySelectorAll('.btn-hapus-sub').forEach(btn => btn.addEventListener('click', e => {
@@ -558,7 +570,7 @@
   });
 
   document.getElementById('btnTambahKategori').addEventListener('click', () => {
-    kriteriaCache.kategori.push({ key: 'kat_' + Date.now(), label: 'Kategori Baru', subs: [{ key: 'sub_' + Date.now(), label: 'Sub A', max: 10 }] });
+    kriteriaCache.kategori.push({ key: 'kat_' + Date.now(), label: 'Kategori Baru', subs: [{ key: 'sub_' + Date.now(), label: 'Sub A', min: 0, max: 10, arah: 'tinggi' }] });
     renderKriteriaEditor();
   });
 
@@ -573,6 +585,7 @@
       for (const sub of kat.subs) {
         if (!sub.label.trim()) { alert('Nama sub-kriteria tidak boleh kosong (kategori "' + kat.label + '").'); return; }
         if (!sub.max || sub.max <= 0) { alert('Poin maksimal harus lebih dari 0 (sub "' + sub.label + '").'); return; }
+        if ((sub.min ?? 0) >= sub.max) { alert('Poin minimum harus lebih kecil dari poin maksimal (sub "' + sub.label + '").'); return; }
       }
     }
     try {
@@ -1436,7 +1449,7 @@
 
   function openPenilaianModal(siswa, existing) {
     editingPenilaianSiswaId = siswa.id;
-    document.getElementById('penilaianModalTitle').textContent = 'Input Penilaian — ' + siswa.nama;
+    document.getElementById('penilaianModalTitle').textContent = 'Input Nilai Mentah — ' + siswa.nama;
     const body = document.getElementById('penilaianModalBody');
     body.innerHTML = '';
     kriteriaCache.kategori.forEach(kat => {
@@ -1446,71 +1459,119 @@
       const subsEl = group.querySelector('.kategori-subs');
       kat.subs.forEach(sub => {
         const val = existing && existing.detail && existing.detail[kat.key] ? (existing.detail[kat.key][sub.key] ?? '') : '';
+        const arahLabel = (sub.arah === 'rendah') ? 'makin kecil makin baik' : 'makin besar makin baik';
         const field = document.createElement('div');
         field.className = 'kategori-sub-field';
-        field.innerHTML = `<label>${escapeHtml(sub.label)} (maks ${sub.max})</label><input type="number" step="0.5" min="0" max="${sub.max}" data-kat="${kat.key}" data-sub="${sub.key}" value="${val}">`;
+        field.innerHTML = `<label>${escapeHtml(sub.label)} <span style="opacity:.6;">(${arahLabel})</span></label><input type="number" step="any" data-kat="${kat.key}" data-sub="${sub.key}" value="${val}" placeholder="nilai mentah">`;
         subsEl.appendChild(field);
       });
       body.appendChild(group);
     });
-    body.querySelectorAll('input').forEach(inp => {
-      inp.addEventListener('input', updatePenilaianTotalPreview);
-      inp.addEventListener('change', () => {
-        let v = Number(inp.value) || 0;
-        const max = Number(inp.getAttribute('max'));
-        if (v < 0) v = 0;
-        if (max && v > max) v = max;
-        inp.value = v;
-        updatePenilaianTotalPreview();
-      });
-    });
-    updatePenilaianTotalPreview();
+    document.getElementById('penilaianTotalPreview').textContent = 'Poin & Total Nilai dihitung otomatis setelah disimpan (dibandingkan dengan data siswa lain bulan ini).';
     penilaianOverlay.classList.add('active');
   }
 
-  function updatePenilaianTotalPreview() {
-    const body = document.getElementById('penilaianModalBody');
-    let total = 0;
-    body.querySelectorAll('input').forEach(inp => { total += Number(inp.value) || 0; });
-    document.getElementById('penilaianTotalPreview').textContent = 'Total: ' + total + ' poin';
+  document.getElementById('btnBatalPenilaian').addEventListener('click', () => penilaianOverlay.classList.remove('active'));
+
+  function hitungPoin(rawVal, allRawValues, sub) {
+    const nums = allRawValues.filter(v => v !== null && v !== undefined && v !== '').map(Number);
+    const floor = (sub.min !== undefined && sub.min !== null) ? Number(sub.min) : 0;
+    const ceil = (sub.max !== undefined && sub.max !== null) ? Number(sub.max) : 10;
+    if (nums.length === 0) return null;
+    const minV = Math.min(...nums);
+    const maxV = Math.max(...nums);
+    let poin;
+    if (maxV === minV) {
+      poin = (floor + ceil) / 2;
+    } else if (sub.arah === 'rendah') {
+      poin = floor + ((maxV - rawVal) / (maxV - minV)) * (ceil - floor);
+    } else {
+      poin = floor + ((rawVal - minV) / (maxV - minV)) * (ceil - floor);
+    }
+    return Math.round(poin * 2) / 2;
   }
 
-  document.getElementById('btnBatalPenilaian').addEventListener('click', () => penilaianOverlay.classList.remove('active'));
+  // Hitung ulang poin & total SEMUA siswa di bulan tsb (dipanggil tiap kali ada nilai mentah baru disimpan,
+  // karena rentang min/max satu angkatan bisa berubah setiap kali ada data baru masuk)
+  async function recomputeBulanPoin(bulan) {
+    const snap = await db.collection(PENILAIAN_COL).where('bulan', '==', bulan).get();
+    const docs = snap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() }));
+    if (docs.length === 0) return;
+
+    const batch = db.batch();
+    docs.forEach(doc => {
+      const kategoriTotal = {};
+      const detailPoin = {};
+      let allPoin = [];
+      kriteriaCache.kategori.forEach(kat => {
+        detailPoin[kat.key] = {};
+        let katPoinList = [];
+        kat.subs.forEach(sub => {
+          const rawVal = (doc.detail && doc.detail[kat.key]) ? doc.detail[kat.key][sub.key] : undefined;
+          if (rawVal === undefined || rawVal === null || rawVal === '') return;
+          const allRaw = docs.map(d => (d.detail && d.detail[kat.key]) ? d.detail[kat.key][sub.key] : null);
+          const poin = hitungPoin(Number(rawVal), allRaw, sub);
+          if (poin === null) return;
+          detailPoin[kat.key][sub.key] = poin;
+          katPoinList.push(poin);
+          allPoin.push(poin);
+        });
+        if (katPoinList.length > 0) {
+          kategoriTotal[kat.key] = Math.round((katPoinList.reduce((a, b) => a + b, 0) / katPoinList.length) * 10) / 10;
+        }
+      });
+      const total = allPoin.length > 0 ? Math.round((allPoin.reduce((a, b) => a + b, 0) / allPoin.length) * 10) / 10 : 0;
+      batch.update(doc.ref, { detailPoin, kategoriTotal, total });
+    });
+    await batch.commit();
+  }
 
   document.getElementById('btnSimpanPenilaian').addEventListener('click', async () => {
     const siswa = siswaCache.find(s => s.id === editingPenilaianSiswaId);
     if (!siswa) return;
     const bulan = penilaianBulanInput.value || currentBulanStr();
     const detail = {};
-    const kategoriTotal = {};
-    let total = 0;
     kriteriaCache.kategori.forEach(kat => {
       detail[kat.key] = {};
-      let subTotal = 0;
       kat.subs.forEach(sub => {
         const inp = document.querySelector(`#penilaianModalBody input[data-kat="${kat.key}"][data-sub="${sub.key}"]`);
-        let val = Number(inp.value) || 0;
-        if (val < 0) val = 0;
-        if (sub.max && val > sub.max) val = sub.max;
-        detail[kat.key][sub.key] = val;
-        subTotal += val;
+        const raw = inp.value.trim();
+        if (raw !== '') detail[kat.key][sub.key] = Number(raw);
       });
-      kategoriTotal[kat.key] = subTotal;
-      total += subTotal;
     });
 
     const docId = bulan + '_' + siswa.id;
+    const btn = document.getElementById('btnSimpanPenilaian');
+    btn.disabled = true; btn.textContent = 'Menyimpan & menghitung...';
     try {
       await db.collection(PENILAIAN_COL).doc(docId).set({
         bulan, siswa_id: siswa.id, siswa_nama: siswa.nama,
-        detail, kategoriTotal, total,
+        detail,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      }, { merge: true });
+      await recomputeBulanPoin(bulan);
       penilaianOverlay.classList.remove('active');
       await loadAndRenderPenilaian();
     } catch (err) {
       console.error('Gagal menyimpan penilaian:', err);
       alert('Gagal menyimpan penilaian: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "penilaian".');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Simpan';
+    }
+  });
+
+  document.getElementById('btnHitungUlangPenilaian').addEventListener('click', async () => {
+    const bulan = penilaianBulanInput.value || currentBulanStr();
+    const btn = document.getElementById('btnHitungUlangPenilaian');
+    btn.disabled = true; btn.textContent = 'Menghitung...';
+    try {
+      await recomputeBulanPoin(bulan);
+      await loadAndRenderPenilaian();
+    } catch (err) {
+      console.error('Gagal menghitung ulang:', err);
+      alert('Gagal menghitung ulang: ' + err.message);
+    } finally {
+      btn.disabled = false; btn.textContent = '🔄 Hitung Ulang Semua Poin';
     }
   });
 
