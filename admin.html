@@ -154,6 +154,7 @@
     <button class="tab-btn active" data-tab="siswaTab">Kelola Siswa</button>
     <button class="tab-btn" data-tab="jadwalTab">Jadwal Latihan</button>
     <button class="tab-btn" data-tab="penilaianTab">Penilaian</button>
+    <button class="tab-btn" data-tab="eksporTab">Ekspor Data</button>
     <button class="tab-btn" data-tab="raportTab">Raport</button>
     <button class="tab-btn" data-tab="laporanTab">Laporan Keuangan</button>
     <button class="tab-btn" data-tab="marketTab">Market</button>
@@ -231,6 +232,17 @@
       <h2>Ranking Musim Ini <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— 14 besar otomatis ditandai</span></h2>
     </div>
     <div class="siswa-table" id="penilaianTable" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="tab-panel" id="eksporTab">
+    <div class="section-head">
+      <h2>Rekap Semua Siswa <span style="color:var(--text-secondary);font-size:11px;text-transform:none;font-family:'Manrope',sans-serif;font-weight:400;">— seluruh riwayat penilaian, semua bulan</span></h2>
+      <button class="btn" id="btnDownloadSemua">⬇ Download Excel (Semua Siswa)</button>
+    </div>
+    <p style="color:var(--text-secondary);font-size:12px;margin:-8px 0 16px;">Tabel ini nampilin semua data sebelum di-download, biar kelihatan lengkap — nggak cuma tersimpan di Firebase. Klik "Laporan" di baris siswa buat download rekap detail satu siswa itu aja.</p>
+    <div style="overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;">
+      <table id="eksporTable" style="width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;"></table>
+    </div>
   </div>
 
   <div class="overlay" id="kriteriaModalOverlay">
@@ -399,6 +411,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyCWg3d1qtHFEwsN-GLakSDIvb-Wjbo7cIQ",
@@ -449,6 +462,7 @@
       document.getElementById(btn.dataset.tab).classList.add('active');
       if (btn.dataset.tab === 'penilaianTab') loadAndRenderPenilaian();
       if (btn.dataset.tab === 'raportTab') muatRaport();
+      if (btn.dataset.tab === 'eksporTab') loadEksporSemua();
       if (btn.dataset.tab === 'marketTab') loadAndRenderMarket();
     });
   });
@@ -1762,6 +1776,258 @@
     const img = e.target.closest('img[data-zoomable]');
     if (img) openFotoLightbox(img.src, img.dataset.nama);
   });
+
+  // ---------- EKSPOR DATA ----------
+  let eksporPenilaianCache = [];
+  let eksporBulanList = [];
+
+  function bulanLabelEkspor(bulanStr) {
+    if (!bulanStr) return '-';
+    const [y, m] = bulanStr.split('-');
+    const namaBulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    return namaBulan[Number(m) - 1] + ' ' + y;
+  }
+
+  async function loadEksporSemua() {
+    const table = document.getElementById('eksporTable');
+    table.innerHTML = '<tr><td style="padding:20px;color:var(--text-secondary);">Memuat seluruh riwayat penilaian...</td></tr>';
+    try {
+      if (!kriteriaCache) await loadKriteria();
+      const snap = await db.collection(PENILAIAN_COL).get();
+      eksporPenilaianCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      eksporBulanList = Array.from(new Set(eksporPenilaianCache.map(p => p.bulan))).sort();
+      renderEksporTable();
+    } catch (err) {
+      console.error('Gagal memuat rekap ekspor:', err);
+      table.innerHTML = '<tr><td style="padding:20px;color:var(--danger);">Gagal memuat data: ' + err.message + '</td></tr>';
+    }
+  }
+
+  function renderEksporTable() {
+    const table = document.getElementById('eksporTable');
+    let head = '<tr><th style="padding:10px 14px;text-align:left;background:var(--surface-2);">No</th><th style="padding:10px 14px;text-align:left;background:var(--surface-2);">Nama</th>';
+    eksporBulanList.forEach(b => head += `<th style="padding:10px 14px;text-align:center;background:var(--surface-2);">${bulanLabelEkspor(b)}</th>`);
+    head += '<th style="padding:10px 14px;text-align:center;background:var(--surface-2);">Rata-rata</th><th style="padding:10px 14px;text-align:center;background:var(--surface-2);">Jumlah Dinilai</th><th style="padding:10px 14px;background:var(--surface-2);"></th></tr>';
+
+    let body = '';
+    siswaCache.forEach((s, i) => {
+      const milikSiswa = eksporPenilaianCache.filter(p => p.siswa_id === s.id);
+      let row = `<tr style="border-top:1px solid var(--line);"><td style="padding:9px 14px;">${i + 1}</td><td style="padding:9px 14px;">${escapeHtml(s.nama)}</td>`;
+      const totals = [];
+      eksporBulanList.forEach(b => {
+        const nilai = milikSiswa.find(p => p.bulan === b);
+        row += `<td style="padding:9px 14px;text-align:center;">${nilai ? nilai.total : '-'}</td>`;
+        if (nilai && typeof nilai.total === 'number') totals.push(nilai.total);
+      });
+      const rataRata = totals.length ? Math.round((totals.reduce((a, b) => a + b, 0) / totals.length) * 10) / 10 : null;
+      row += `<td style="padding:9px 14px;text-align:center;font-weight:700;color:var(--amber);">${rataRata !== null ? rataRata : '-'}</td>`;
+      row += `<td style="padding:9px 14px;text-align:center;">${totals.length}</td>`;
+      row += `<td style="padding:9px 14px;white-space:nowrap;"><button class="icon-btn" data-download-siswa="${s.id}" style="font-size:11px;">Excel</button> <button class="icon-btn" data-raport-siswa="${s.id}" style="font-size:11px;">Raport PDF</button></td>`;
+      row += '</tr>';
+      body += row;
+    });
+
+    table.innerHTML = head + body;
+    table.querySelectorAll('[data-download-siswa]').forEach(btn => {
+      btn.addEventListener('click', () => downloadLaporanSatuSiswa(btn.dataset.downloadSiswa));
+    });
+    table.querySelectorAll('[data-raport-siswa]').forEach(btn => {
+      btn.addEventListener('click', () => bukaRaportPDF(btn.dataset.raportSiswa));
+    });
+  }
+
+  document.getElementById('btnDownloadSemua').addEventListener('click', () => {
+    if (typeof XLSX === 'undefined') { alert('Library Excel belum siap, coba refresh halaman.'); return; }
+    const aoa = [];
+    const header = ['No', 'Nama', ...eksporBulanList.map(bulanLabelEkspor), 'Rata-rata', 'Jumlah Dinilai'];
+    aoa.push(header);
+
+    siswaCache.forEach((s, i) => {
+      const milikSiswa = eksporPenilaianCache.filter(p => p.siswa_id === s.id);
+      const totals = [];
+      const rowVals = eksporBulanList.map(b => {
+        const nilai = milikSiswa.find(p => p.bulan === b);
+        if (nilai && typeof nilai.total === 'number') totals.push(nilai.total);
+        return nilai ? nilai.total : '';
+      });
+      const rataRata = totals.length ? Math.round((totals.reduce((a, b) => a + b, 0) / totals.length) * 10) / 10 : '';
+      aoa.push([i + 1, s.nama, ...rowVals, rataRata, totals.length]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 5 }, { wch: 28 }, ...eksporBulanList.map(() => ({ wch: 12 })), { wch: 10 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Semua Siswa');
+    XLSX.writeFile(wb, 'Rekap Penilaian - Semua Siswa - AKA Futsal Camp.xlsx');
+  });
+
+  function downloadLaporanSatuSiswa(siswaId) {
+    if (typeof XLSX === 'undefined') { alert('Library Excel belum siap, coba refresh halaman.'); return; }
+    const s = siswaCache.find(x => x.id === siswaId);
+    if (!s) return;
+    const milikSiswa = eksporPenilaianCache.filter(p => p.siswa_id === siswaId).sort((a, b) => a.bulan.localeCompare(b.bulan));
+
+    const aoaRingkasan = [
+      ['Laporan Penilaian Individu — AKA Futsal Camp'],
+      [],
+      ['Nama', s.nama],
+      ['Usia', s.usia || '-'],
+      ['Kelas', s.kelas || '-'],
+      ['Sekolah', s.sekolah || '-'],
+      ['Nomor WhatsApp', s.nomor_wa || '-'],
+      [],
+    ];
+    const totals = milikSiswa.filter(p => typeof p.total === 'number').map(p => p.total);
+    const rataRata = totals.length ? Math.round((totals.reduce((a, b) => a + b, 0) / totals.length) * 10) / 10 : '-';
+    aoaRingkasan.push(['Jumlah Bulan Dinilai', totals.length]);
+    aoaRingkasan.push(['Rata-rata Total Poin', rataRata]);
+
+    const katKeys = (kriteriaCache ? kriteriaCache.kategori : []).map(k => k.key);
+    const katLabels = (kriteriaCache ? kriteriaCache.kategori : []).map(k => k.label);
+    const aoaRiwayat = [['Bulan', 'Total Poin', ...katLabels]];
+    milikSiswa.forEach(p => {
+      const row = [bulanLabelEkspor(p.bulan), typeof p.total === 'number' ? p.total : '-'];
+      katKeys.forEach(k => row.push(p.kategoriTotal && p.kategoriTotal[k] !== undefined ? p.kategoriTotal[k] : '-'));
+      aoaRiwayat.push(row);
+    });
+    if (milikSiswa.length === 0) aoaRiwayat.push(['Belum ada penilaian tercatat']);
+
+    const wb = XLSX.utils.book_new();
+    const wsRingkasan = XLSX.utils.aoa_to_sheet(aoaRingkasan);
+    wsRingkasan['!cols'] = [{ wch: 22 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, wsRingkasan, 'Ringkasan');
+
+    const wsRiwayat = XLSX.utils.aoa_to_sheet(aoaRiwayat);
+    wsRiwayat['!cols'] = [{ wch: 12 }, { wch: 12 }, ...katLabels.map(() => ({ wch: 14 }))];
+    XLSX.utils.book_append_sheet(wb, wsRiwayat, 'Riwayat per Bulan');
+
+    const namaFile = 'Laporan - ' + s.nama.replace(/[\\/:*?"<>|]+/g, '') + ' - AKA Futsal Camp.xlsx';
+    XLSX.writeFile(wb, namaFile);
+  }
+
+  function bukaRaportPDF(siswaId) {
+    const s = siswaCache.find(x => x.id === siswaId);
+    if (!s) return;
+    const milikSiswa = eksporPenilaianCache.filter(p => p.siswa_id === siswaId).sort((a, b) => a.bulan.localeCompare(b.bulan));
+    const terbaru = milikSiswa[milikSiswa.length - 1];
+
+    if (!terbaru) {
+      alert(s.nama + ' belum punya data penilaian bulan manapun, raport belum bisa dibuat.');
+      return;
+    }
+
+    const katList = kriteriaCache ? kriteriaCache.kategori : [];
+    const fotoUrl = s.foto_profil || s.foto || '';
+    const tanggalCetak = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const barisKategori = katList.map(kat => {
+      const nilai = terbaru.kategoriTotal && terbaru.kategoriTotal[kat.key] !== undefined ? terbaru.kategoriTotal[kat.key] : null;
+      return `
+        <tr>
+          <td class="rap-td rap-td-label">${escapeHtml(kat.label)}</td>
+          <td class="rap-td rap-td-nilai">${nilai !== null ? nilai : '-'}</td>
+        </tr>`;
+    }).join('');
+
+    const riwayatRows = milikSiswa.map(p =>
+      `<tr><td class="rap-td rap-td-label">${bulanLabelEkspor(p.bulan)}</td><td class="rap-td rap-td-nilai">${typeof p.total === 'number' ? p.total : '-'}</td></tr>`
+    ).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Raport - ${escapeAttr(s.nama)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Manrope',sans-serif; color:#1a1310; margin:0; padding:32px; background:#fff; }
+  .rap-header { display:flex; align-items:center; gap:16px; border-bottom:3px solid #c8272d; padding-bottom:16px; margin-bottom:24px; }
+  .rap-header img { width:56px; }
+  .rap-header .titles h1 { font-family:'Oswald',sans-serif; font-size:20px; margin:0; letter-spacing:.5px; }
+  .rap-header .titles p { margin:2px 0 0; font-size:11px; color:#6b6058; letter-spacing:2px; text-transform:uppercase; }
+  .rap-title { text-align:center; margin-bottom:24px; }
+  .rap-title h2 { font-family:'Oswald',sans-serif; font-size:22px; margin:0; text-transform:uppercase; letter-spacing:1px; }
+  .rap-title p { color:#6b6058; font-size:12px; margin:4px 0 0; }
+  .rap-info { display:grid; grid-template-columns:1fr 1fr; gap:6px 24px; margin-bottom:26px; font-size:13px; }
+  .rap-info b { color:#c8272d; }
+  .rap-section-title { font-family:'Oswald',sans-serif; font-size:14px; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid #e8b923; padding-bottom:6px; margin:22px 0 10px; }
+  table.rap-table { width:100%; border-collapse:collapse; margin-bottom:6px; }
+  .rap-td { padding:9px 12px; border-bottom:1px solid #e6e0d6; font-size:13px; }
+  .rap-td-label { text-align:left; }
+  .rap-td-nilai { text-align:right; font-weight:700; font-family:'Oswald',sans-serif; }
+  .rap-total-row td { background:#faf0d8; font-weight:700; color:#8a5a00; }
+  .rap-note { margin-top:24px; font-size:12px; color:#6b6058; }
+  .rap-note-box { border:1px solid #e6e0d6; border-radius:8px; padding:14px; min-height:60px; font-size:12px; color:#6b6058; margin-top:6px; }
+  .rap-footer { display:flex; justify-content:space-between; margin-top:48px; font-size:12px; }
+  .rap-footer .sign { text-align:center; width:200px; }
+  .rap-footer .sign .line { margin-top:56px; border-top:1px solid #1a1310; padding-top:6px; }
+  .rap-photo { width:80px; height:80px; border-radius:10px; object-fit:cover; border:2px solid #e8b923; margin-left:auto; }
+  .rap-print-bar { text-align:center; margin-bottom:20px; }
+  .rap-print-bar button { background:#c8272d; color:#fff; border:none; padding:12px 22px; border-radius:8px; font-family:'Oswald',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:1px; cursor:pointer; }
+  @media print { .rap-print-bar { display:none; } body { padding:0; } }
+</style>
+</head>
+<body>
+  <div class="rap-print-bar"><button onclick="window.print()">Cetak / Simpan sebagai PDF</button></div>
+
+  <div class="rap-header">
+    <img src="aka%20futsal%20camp.png" alt="">
+    <div class="titles">
+      <h1>AKA Futsal Camp</h1>
+      <p>Develop &middot; Inspire &middot; Excel</p>
+    </div>
+    ${fotoUrl ? `<img class="rap-photo" src="${fotoUrl}" alt="">` : ''}
+  </div>
+
+  <div class="rap-title">
+    <h2>Raport Penilaian Peserta</h2>
+    <p>Periode ${bulanLabelEkspor(terbaru.bulan)}</p>
+  </div>
+
+  <div class="rap-info">
+    <div><b>Nama</b><br>${escapeHtml(s.nama)}</div>
+    <div><b>Usia</b><br>${s.usia || '-'} Tahun</div>
+    <div><b>Kelas</b><br>${escapeHtml(s.kelas || '-')}</div>
+    <div><b>Sekolah</b><br>${escapeHtml(s.sekolah || '-')}</div>
+  </div>
+
+  <div class="rap-section-title">Hasil Penilaian ${bulanLabelEkspor(terbaru.bulan)}</div>
+  <table class="rap-table">
+    ${barisKategori}
+    <tr class="rap-total-row"><td class="rap-td rap-td-label">TOTAL POIN</td><td class="rap-td rap-td-nilai">${typeof terbaru.total === 'number' ? terbaru.total : '-'}</td></tr>
+  </table>
+
+  ${milikSiswa.length > 1 ? `
+  <div class="rap-section-title">Riwayat Total Poin per Bulan</div>
+  <table class="rap-table">${riwayatRows}</table>
+  ` : ''}
+
+  <div class="rap-note">
+    <b>Catatan Pelatih</b>
+    <div class="rap-note-box"></div>
+  </div>
+
+  <div class="rap-footer">
+    <div class="sign">
+      <div>Probolinggo, ${tanggalCetak}</div>
+      <div class="line">Orang Tua / Wali</div>
+    </div>
+    <div class="sign">
+      <div>&nbsp;</div>
+      <div class="line">Pelatih AKA Futsal Camp</div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { alert('Popup diblokir browser. Izinkan popup untuk situs ini, lalu coba lagi.'); return; }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  }
 </script>
 </body>
 </html>
