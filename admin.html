@@ -1921,12 +1921,22 @@
     const tanggalCetak = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const barisKategori = katList.map(kat => {
-      const nilai = terbaru.kategoriTotal && terbaru.kategoriTotal[kat.key] !== undefined ? terbaru.kategoriTotal[kat.key] : null;
-      return `
-        <tr>
-          <td class="rap-td rap-td-label">${escapeHtml(kat.label)}</td>
-          <td class="rap-td rap-td-nilai">${nilai !== null ? nilai : '-'}</td>
+      const totalKat = terbaru.kategoriTotal && terbaru.kategoriTotal[kat.key] !== undefined ? terbaru.kategoriTotal[kat.key] : null;
+      const headerRow = `
+        <tr class="rap-kat-row">
+          <td class="rap-td rap-td-label rap-kat-label">${escapeHtml(kat.label)}</td>
+          <td class="rap-td rap-td-nilai rap-kat-label">${totalKat !== null ? totalKat : '-'}</td>
         </tr>`;
+      const subRows = (kat.subs || []).map(sub => {
+        const nilaiSub = terbaru.detailPoin && terbaru.detailPoin[kat.key] && terbaru.detailPoin[kat.key][sub.key] !== undefined
+          ? terbaru.detailPoin[kat.key][sub.key] : null;
+        return `
+          <tr class="rap-sub-row">
+            <td class="rap-td rap-td-label rap-sub-label">${escapeHtml(sub.label)}</td>
+            <td class="rap-td rap-td-nilai rap-sub-nilai">${nilaiSub !== null ? nilaiSub : '-'}</td>
+          </tr>`;
+      }).join('');
+      return headerRow + subRows;
     }).join('');
 
     const riwayatRows = milikSiswa.map(p =>
@@ -1957,6 +1967,11 @@
   .rap-td { padding:9px 12px; border-bottom:1px solid #e6e0d6; font-size:13px; }
   .rap-td-label { text-align:left; }
   .rap-td-nilai { text-align:right; font-weight:700; font-family:'Oswald',sans-serif; }
+  .rap-kat-row td { background:#f7f2e7; }
+  .rap-kat-label { font-weight:700; text-transform:uppercase; font-size:12.5px; letter-spacing:.4px; color:#1a1310; }
+  .rap-sub-row td { border-bottom:1px dashed #e6e0d6; }
+  .rap-sub-label { padding-left:26px; font-size:12px; color:#6b6058; }
+  .rap-sub-nilai { font-size:12px; font-weight:400; font-family:'Manrope',sans-serif; color:#6b6058; }
   .rap-total-row td { background:#faf0d8; font-weight:700; color:#8a5a00; }
   .rap-note { margin-top:24px; font-size:12px; color:#6b6058; }
   .rap-note-box { border:1px solid #e6e0d6; border-radius:8px; padding:14px; min-height:60px; font-size:12px; color:#6b6058; margin-top:6px; }
