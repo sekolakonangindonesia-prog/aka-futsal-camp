@@ -151,6 +151,8 @@
  .list-toggle:active{background:var(--surface-2);}
  .list-toggle .chevron{transition:transform .25s;font-size:11px;}
  .list-toggle.open .chevron{transform:rotate(180deg);}
+ .ranking-avg-note{text-align:center;color:var(--text-secondary);font-size:11.5px;font-family:'Space Mono',monospace;margin:-6px 0 12px;letter-spacing:.3px;}
+ .ranking-avg-note strong{color:var(--amber);}
 
  .foto-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:100;align-items:center;justify-content:center;padding:24px;}
  .foto-lightbox.active{display:flex;}
@@ -200,6 +202,7 @@
  </div>
  <div id="sesiMoreWrap"></div>
  <div class="section-title"><h2>Ranking 14 Besar</h2><div class="line"></div></div>
+ <div class="ranking-avg-note" id="rankingAvgNote"></div>
  <div id="rankingContainer">
  <div class="loading">Memuat ranking...</div>
  </div>
@@ -431,8 +434,10 @@
  }
  async function loadRanking() {
  const container = document.getElementById('rankingContainer');
+ const avgNoteEl = document.getElementById('rankingAvgNote');
  if (!db) {
  container.innerHTML = '<div class="no-sesi">Koneksi data tidak tersedia di preview ini.</div>';
+ if (avgNoteEl) avgNoteEl.innerHTML = '';
  return;
  }
  try {
@@ -450,10 +455,15 @@
  }
  let list = penilaianSnap.docs.map(d => d.data());
  list.sort((a, b) => (b.total || 0) - (a.total || 0));
+ const avgNote = document.getElementById('rankingAvgNote');
  if (list.length === 0) {
  container.innerHTML = '<div class="no-sesi">Musim seleksi bulan ini belum ada hasil.</div>';
+ if (avgNote) avgNote.innerHTML = '';
  return;
  }
+
+ const rataRata = list.reduce((sum, p) => sum + (p.total || 0), 0) / list.length;
+ if (avgNote) avgNote.innerHTML = `Rata-rata seluruh peserta: <strong>${rataRata.toFixed(1)} poin</strong> &middot; ${list.length} peserta dinilai`;
 
  const TOP_COUNT = 14;
  const topList = list.slice(0, TOP_COUNT);
@@ -533,6 +543,7 @@
  } catch (err) {
  console.error(err);
  container.innerHTML = '<div class="no-sesi">Gagal memuat ranking, coba refresh halaman.</div>';
+ if (avgNoteEl) avgNoteEl.innerHTML = '';
  }
  }
  // ---- 3D tilt ringan: reveal saat masuk viewport + tilt saat hover (desktop) ----
