@@ -1531,10 +1531,10 @@
           allPoin.push(poin);
         });
         if (katPoinList.length > 0) {
-          kategoriTotal[kat.key] = Math.round((katPoinList.reduce((a, b) => a + b, 0) / katPoinList.length) * 10) / 10;
+          kategoriTotal[kat.key] = Math.round(katPoinList.reduce((a, b) => a + b, 0) * 10) / 10;
         }
       });
-      const total = allPoin.length > 0 ? Math.round((allPoin.reduce((a, b) => a + b, 0) / allPoin.length) * 10) / 10 : 0;
+      const total = allPoin.length > 0 ? Math.round(allPoin.reduce((a, b) => a + b, 0) * 10) / 10 : 0;
       batch.update(doc.ref, { detailPoin, kategoriTotal, total });
     });
     await batch.commit();
@@ -1920,6 +1920,11 @@
     const fotoUrl = s.foto_profil || s.foto || '';
     const tanggalCetak = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
+    const sekelasBulanIni = eksporPenilaianCache.filter(p => p.bulan === terbaru.bulan && typeof p.total === 'number');
+    const rataRataKelas = sekelasBulanIni.length
+      ? Math.round((sekelasBulanIni.reduce((a, b) => a + b.total, 0) / sekelasBulanIni.length) * 10) / 10
+      : null;
+
     const barisKategori = katList.map(kat => {
       const totalKat = terbaru.kategoriTotal && terbaru.kategoriTotal[kat.key] !== undefined ? terbaru.kategoriTotal[kat.key] : null;
       const headerRow = `
@@ -1973,6 +1978,7 @@
   .rap-sub-label { padding-left:26px; font-size:12px; color:#6b6058; }
   .rap-sub-nilai { font-size:12px; font-weight:400; font-family:'Manrope',sans-serif; color:#6b6058; }
   .rap-total-row td { background:#faf0d8; font-weight:700; color:#8a5a00; }
+  .rap-avg-row td { background:#f0ede6; font-weight:600; color:#6b6058; font-size:12px; }
   .rap-note { margin-top:24px; font-size:12px; color:#6b6058; }
   .rap-note-box { border:1px solid #e6e0d6; border-radius:8px; padding:14px; min-height:60px; font-size:12px; color:#6b6058; margin-top:6px; }
   .rap-footer { display:flex; justify-content:space-between; margin-top:48px; font-size:12px; }
@@ -2012,6 +2018,7 @@
   <table class="rap-table">
     ${barisKategori}
     <tr class="rap-total-row"><td class="rap-td rap-td-label">TOTAL POIN</td><td class="rap-td rap-td-nilai">${typeof terbaru.total === 'number' ? terbaru.total : '-'}</td></tr>
+    <tr class="rap-avg-row"><td class="rap-td rap-td-label">Rata-rata Peserta (${bulanLabelEkspor(terbaru.bulan)})</td><td class="rap-td rap-td-nilai">${rataRataKelas !== null ? rataRataKelas : '-'}</td></tr>
   </table>
 
   ${milikSiswa.length > 1 ? `
