@@ -312,7 +312,10 @@
       <div class="add-sesi-form" style="margin-top:0;">
         <input type="month" id="laporanBulan">
         <button class="btn btn-secondary" id="btnMuatLaporan">Muat Laporan</button>
+        <button class="icon-btn" id="btnExportLapExcel">⬇ Excel</button>
+        <button class="icon-btn" id="btnExportLapWord">📄 Word</button>
       </div>
+      <div style="margin-top:8px;font-size:11.5px;color:var(--text-secondary);">Kosongkan bulan lalu klik "Muat Laporan" untuk melihat/download rekap SEMUA periode.</div>
     </div>
     <div class="stats-row">
       <div class="stat-card"><div class="label">Total kehadiran</div><div class="value" id="lapTotal">-</div></div>
@@ -321,11 +324,33 @@
       <div class="stat-card"><div class="label">Belum bayar</div><div class="value" id="lapBelum">-</div></div>
     </div>
     <div class="stats-row">
-      <div class="stat-card"><div class="label">Total pendapatan</div><div class="value" id="lapPendapatan" style="font-size:22px;">-</div></div>
+      <div class="stat-card"><div class="label">Uang Masuk</div><div class="value" id="lapPendapatan" style="font-size:20px;color:var(--success);">-</div></div>
+      <div class="stat-card"><div class="label">Uang Keluar</div><div class="value" id="lapPengeluaranTotal" style="font-size:20px;color:var(--red);">-</div></div>
+      <div class="stat-card"><div class="label">Saldo Bersih</div><div class="value" id="lapSaldo" style="font-size:20px;">-</div></div>
+    </div>
+    <div class="session-card" style="margin-bottom:20px;">
+      <div class="head"><h2>Uang Masuk — Rekap per Sesi</h2></div>
+      <div id="lapPerSesi"></div>
     </div>
     <div class="session-card">
-      <div class="head"><h2>Rekap per Sesi</h2></div>
-      <div id="lapPerSesi"></div>
+      <div class="head"><h2>Uang Keluar — Pengeluaran</h2></div>
+      <div style="padding:16px;">
+        <div class="add-sesi-form" style="margin-top:0;">
+          <input type="date" id="pengeluaranTanggal">
+          <select id="pengeluaranKategori">
+            <option value="Sewa Lapangan">Sewa Lapangan</option>
+            <option value="Peralatan">Peralatan/Perlengkapan</option>
+            <option value="Konsumsi">Konsumsi</option>
+            <option value="Transport">Transport</option>
+            <option value="Gaji Pelatih">Gaji Pelatih</option>
+            <option value="Lain-lain">Lain-lain</option>
+          </select>
+          <input type="text" id="pengeluaranKeterangan" placeholder="Keterangan (cth. Sewa GOR Sept)" style="flex:2;min-width:160px;">
+          <input type="number" id="pengeluaranJumlah" placeholder="Jumlah (Rp)" min="0" style="max-width:130px;">
+          <button class="btn btn-secondary" id="btnTambahPengeluaran">+ Tambah</button>
+        </div>
+      </div>
+      <div id="lapPengeluaranList" style="padding:0 16px 16px;"></div>
     </div>
   </div>
 
@@ -493,6 +518,8 @@
   const HADIR_COL = "kehadiran";
   const JADWAL_COL = "jadwal_rencana";
   const PENILAIAN_COL = "penilaian";
+  const PENGELUARAN_COL = "pengeluaran";
+  let pengeluaranCache = [];
   const KRITERIA_DOC = "penilaian_kriteria";
   let kriteriaCache = null;
   const DEFAULT_KRITERIA = {
@@ -669,6 +696,14 @@
       console.error('Gagal memuat rencana jadwal (cek rules Firestore untuk collection jadwal_rencana):', err);
       rencanaCache = [];
       showGlobalError('Gagal memuat rencana jadwal: ' + err.message + ' — cek security rules Firestore untuk koleksi "jadwal_rencana".');
+    }
+
+    try {
+      const pengeluaranSnap = await db.collection(PENGELUARAN_COL).get();
+      pengeluaranCache = pengeluaranSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.error('Gagal memuat pengeluaran (cek rules Firestore untuk collection pengeluaran):', err);
+      pengeluaranCache = [];
     }
 
     renderSiswaTab();
@@ -1411,7 +1446,18 @@
     document.getElementById('lapCash').textContent = cash.length;
     document.getElementById('lapQris').textContent = qris.length;
     document.getElementById('lapBelum').textContent = belum.length;
-    document.getElementById('lapPendapatan').textContent = 'Rp' + (totalLunas * 15000).toLocaleString('id-ID');
+    const totalPendapatan = totalLunas * 15000;
+    document.getElementById('lapPendapatan').textContent = 'Rp' + totalPendapatan.toLocaleString('id-ID');
+
+    const filteredPengeluaran = (bulan ? pengeluaranCache.filter(p => p.tanggal && p.tanggal.startsWith(bulan)) : pengeluaranCache.slice())
+      .sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+    const totalPengeluaran = filteredPengeluaran.reduce((sum, p) => sum + (Number(p.jumlah) || 0), 0);
+    document.getElementById('lapPengeluaranTotal').textContent = 'Rp' + totalPengeluaran.toLocaleString('id-ID');
+    const saldo = totalPendapatan - totalPengeluaran;
+    const saldoEl = document.getElementById('lapSaldo');
+    saldoEl.textContent = 'Rp' + saldo.toLocaleString('id-ID');
+    saldoEl.style.color = saldo >= 0 ? 'var(--success)' : 'var(--red)';
+    renderPengeluaranList(filteredPengeluaran);
 
     const perSesi = {};
     filtered.forEach(k => {
@@ -1465,6 +1511,203 @@
       });
     }
   }
+
+  // ---------- PENGELUARAN (Uang Keluar) ----------
+  const KATEGORI_LABEL_PENGELUARAN = {
+    'Sewa Lapangan': 'Sewa Lapangan',
+    'Peralatan': 'Peralatan/Perlengkapan',
+    'Konsumsi': 'Konsumsi',
+    'Transport': 'Transport',
+    'Gaji Pelatih': 'Gaji Pelatih',
+    'Lain-lain': 'Lain-lain'
+  };
+
+  function renderPengeluaranList(list) {
+    const el = document.getElementById('lapPengeluaranList');
+    el.innerHTML = '';
+    if (list.length === 0) {
+      el.innerHTML = '<div class="empty-state">Belum ada pengeluaran dicatat di periode ini</div>';
+      return;
+    }
+    list.forEach(p => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;';
+      const tglLabel = p.tanggal ? new Date(p.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+      row.innerHTML = `
+        <div style="min-width:0;flex:1;">
+          <div style="font-weight:600;">${escapeHtml(p.keterangan || '-')}</div>
+          <div style="color:var(--text-secondary);font-size:11.5px;margin-top:2px;">${escapeHtml(tglLabel)} &middot; ${escapeHtml(KATEGORI_LABEL_PENGELUARAN[p.kategori] || p.kategori || 'Lain-lain')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+          <span style="color:var(--red);font-family:'Space Mono',monospace;font-weight:700;">Rp${(Number(p.jumlah) || 0).toLocaleString('id-ID')}</span>
+          <button class="icon-btn" data-hapus-pengeluaran="${p.id}" style="padding:5px 9px;font-size:10px;">Hapus</button>
+        </div>
+      `;
+      el.appendChild(row);
+    });
+    el.querySelectorAll('[data-hapus-pengeluaran]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Hapus catatan pengeluaran ini?')) return;
+        try {
+          await db.collection(PENGELUARAN_COL).doc(btn.dataset.hapusPengeluaran).delete();
+          await loadAll();
+          muatLaporan();
+        } catch (err) {
+          console.error('Gagal menghapus pengeluaran:', err);
+          alert('Gagal menghapus: ' + err.message);
+        }
+      });
+    });
+  }
+
+  document.getElementById('btnTambahPengeluaran').addEventListener('click', async () => {
+    const tanggal = document.getElementById('pengeluaranTanggal').value;
+    const kategori = document.getElementById('pengeluaranKategori').value;
+    const keterangan = document.getElementById('pengeluaranKeterangan').value.trim();
+    const jumlah = Number(document.getElementById('pengeluaranJumlah').value);
+    if (!tanggal) { alert('Isi tanggal pengeluaran dulu.'); return; }
+    if (!keterangan) { alert('Isi keterangan pengeluaran dulu.'); return; }
+    if (!jumlah || jumlah <= 0) { alert('Isi jumlah pengeluaran yang valid.'); return; }
+    try {
+      await db.collection(PENGELUARAN_COL).add({
+        tanggal, kategori, keterangan, jumlah,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      document.getElementById('pengeluaranTanggal').value = '';
+      document.getElementById('pengeluaranKeterangan').value = '';
+      document.getElementById('pengeluaranJumlah').value = '';
+      await loadAll();
+      muatLaporan();
+    } catch (err) {
+      console.error('Gagal menambah pengeluaran:', err);
+      alert('Gagal menambah pengeluaran: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "pengeluaran".');
+    }
+  });
+
+  // ---------- EXPORT LAPORAN KEUANGAN (Excel & Word) ----------
+  function siapkanDataLaporan() {
+    const bulan = document.getElementById('laporanBulan').value;
+    const filteredHadir = bulan ? kehadiranCache.filter(k => k.sesi_tanggal && k.sesi_tanggal.startsWith(bulan)) : kehadiranCache.slice();
+    const filteredPengeluaran = (bulan ? pengeluaranCache.filter(p => p.tanggal && p.tanggal.startsWith(bulan)) : pengeluaranCache.slice())
+      .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || ''));
+
+    const bulanLabel = bulan ? bulanLabelEkspor(bulan) : 'Seluruh Periode';
+
+    // Kelompokkan pemasukan per bulan lalu per sesi (kalau "semua periode", per-bulan dulu; kalau 1 bulan, langsung per-sesi)
+    const groupBulan = {};
+    filteredHadir.forEach(k => {
+      const b = (k.sesi_tanggal || '').slice(0, 7) || 'Tanpa Tanggal';
+      if (!groupBulan[b]) groupBulan[b] = {};
+      const label = k.sesi_label || '-';
+      if (!groupBulan[b][label]) groupBulan[b][label] = { total: 0, lunas: 0, nominal: 0 };
+      groupBulan[b][label].total++;
+      if (k.status_bayar === 'cash' || k.status_bayar === 'qris') {
+        groupBulan[b][label].lunas++;
+        groupBulan[b][label].nominal += 15000;
+      }
+    });
+
+    const totalPendapatan = filteredHadir.filter(k => k.status_bayar === 'cash' || k.status_bayar === 'qris').length * 15000;
+    const totalPengeluaran = filteredPengeluaran.reduce((sum, p) => sum + (Number(p.jumlah) || 0), 0);
+    const saldo = totalPendapatan - totalPengeluaran;
+
+    return { bulan, bulanLabel, groupBulan, filteredPengeluaran, totalPendapatan, totalPengeluaran, saldo };
+  }
+
+  document.getElementById('btnExportLapExcel').addEventListener('click', () => {
+    const data = siapkanDataLaporan();
+    const wb = XLSX.utils.book_new();
+
+    const aoaRingkasan = [
+      ['Laporan Keuangan — AKA Futsal Camp'],
+      ['Periode', data.bulanLabel],
+      ['Tanggal Cetak', new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })],
+      [],
+      ['Total Uang Masuk', data.totalPendapatan],
+      ['Total Uang Keluar', data.totalPengeluaran],
+      ['Saldo Bersih', data.saldo]
+    ];
+    const wsRingkasan = XLSX.utils.aoa_to_sheet(aoaRingkasan);
+    wsRingkasan['!cols'] = [{ wch: 22 }, { wch: 26 }];
+    XLSX.utils.book_append_sheet(wb, wsRingkasan, 'Ringkasan');
+
+    const aoaMasuk = [['Bulan', 'Sesi', 'Jumlah Hadir', 'Lunas', 'Nominal Masuk (Rp)']];
+    Object.keys(data.groupBulan).sort().forEach(b => {
+      Object.keys(data.groupBulan[b]).forEach(label => {
+        const d = data.groupBulan[b][label];
+        aoaMasuk.push([bulanLabelEkspor(b), label, d.total, d.lunas, d.nominal]);
+      });
+    });
+    const wsMasuk = XLSX.utils.aoa_to_sheet(aoaMasuk);
+    wsMasuk['!cols'] = [{ wch: 14 }, { wch: 26 }, { wch: 12 }, { wch: 10 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, wsMasuk, 'Uang Masuk');
+
+    const aoaKeluar = [['Tanggal', 'Kategori', 'Keterangan', 'Jumlah (Rp)']];
+    data.filteredPengeluaran.forEach(p => {
+      aoaKeluar.push([p.tanggal || '-', KATEGORI_LABEL_PENGELUARAN[p.kategori] || p.kategori || '-', p.keterangan || '-', Number(p.jumlah) || 0]);
+    });
+    aoaKeluar.push(['', '', 'TOTAL', data.totalPengeluaran]);
+    const wsKeluar = XLSX.utils.aoa_to_sheet(aoaKeluar);
+    wsKeluar['!cols'] = [{ wch: 14 }, { wch: 20 }, { wch: 30 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, wsKeluar, 'Uang Keluar');
+
+    const namaFile = 'Laporan Keuangan - ' + data.bulanLabel.replace(/[\\/:*?"<>|]+/g, '') + ' - AKA Futsal Camp.xlsx';
+    XLSX.writeFile(wb, namaFile);
+  });
+
+  document.getElementById('btnExportLapWord').addEventListener('click', () => {
+    const data = siapkanDataLaporan();
+
+    const baris = (cells) => '<tr>' + cells.map(c => `<td style="padding:6px 10px;border:1px solid #ccc;font-size:12px;">${c}</td>`).join('') + '</tr>';
+    const headerRow = (cells) => '<tr>' + cells.map(c => `<th style="padding:6px 10px;border:1px solid #ccc;background:#f0ede6;font-size:12px;text-align:left;">${c}</th>`).join('') + '</tr>';
+
+    let tabelMasuk = '<table style="border-collapse:collapse;width:100%;margin-bottom:20px;">' + headerRow(['Bulan', 'Sesi', 'Hadir', 'Lunas', 'Nominal Masuk (Rp)']);
+    Object.keys(data.groupBulan).sort().forEach(b => {
+      Object.keys(data.groupBulan[b]).forEach(label => {
+        const d = data.groupBulan[b][label];
+        tabelMasuk += baris([escapeHtml(bulanLabelEkspor(b)), escapeHtml(label), d.total, d.lunas, d.nominal.toLocaleString('id-ID')]);
+      });
+    });
+    tabelMasuk += '</table>';
+
+    let tabelKeluar = '<table style="border-collapse:collapse;width:100%;">' + headerRow(['Tanggal', 'Kategori', 'Keterangan', 'Jumlah (Rp)']);
+    data.filteredPengeluaran.forEach(p => {
+      const tglLabel = p.tanggal ? new Date(p.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+      tabelKeluar += baris([escapeHtml(tglLabel), escapeHtml(KATEGORI_LABEL_PENGELUARAN[p.kategori] || p.kategori || '-'), escapeHtml(p.keterangan || '-'), (Number(p.jumlah) || 0).toLocaleString('id-ID')]);
+    });
+    tabelKeluar += baris(['', '', '<b>TOTAL</b>', '<b>' + data.totalPengeluaran.toLocaleString('id-ID') + '</b>']);
+    tabelKeluar += '</table>';
+
+    const html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+      <head><meta charset="utf-8"><title>Laporan Keuangan</title></head>
+      <body style="font-family:Calibri,Arial,sans-serif;color:#1a1310;">
+        <h1 style="font-size:20px;margin-bottom:2px;">AKA Futsal Camp</h1>
+        <p style="color:#6b6058;margin-top:0;">Laporan Keuangan &mdash; ${escapeHtml(data.bulanLabel)}</p>
+        <p style="font-size:12px;color:#6b6058;">Dicetak: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <table style="border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Total Uang Masuk</td><td style="padding:6px 0;color:#0a7a4a;">Rp${data.totalPendapatan.toLocaleString('id-ID')}</td></tr>
+          <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Total Uang Keluar</td><td style="padding:6px 0;color:#c8272d;">Rp${data.totalPengeluaran.toLocaleString('id-ID')}</td></tr>
+          <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Saldo Bersih</td><td style="padding:6px 0;font-weight:bold;">Rp${data.saldo.toLocaleString('id-ID')}</td></tr>
+        </table>
+        <h2 style="font-size:15px;border-bottom:2px solid #e8b923;padding-bottom:4px;">Uang Masuk per Sesi</h2>
+        ${tabelMasuk}
+        <h2 style="font-size:15px;border-bottom:2px solid #e8b923;padding-bottom:4px;">Uang Keluar (Pengeluaran)</h2>
+        ${tabelKeluar}
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Laporan Keuangan - ' + data.bulanLabel.replace(/[\\/:*?"<>|]+/g, '') + ' - AKA Futsal Camp.doc';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
 
   // ===== PENILAIAN (musim seleksi) =====
   function currentBulanStr() {
