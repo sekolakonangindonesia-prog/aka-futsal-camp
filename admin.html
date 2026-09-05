@@ -106,6 +106,24 @@
   .badge-selesai{background:rgba(52,211,153,0.15);color:var(--success);border:1px solid var(--success);border-radius:6px;padding:2px 8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;}
   .badge-baru{background:rgba(232,185,35,0.18);color:var(--amber);border:1px solid var(--amber);border-radius:6px;padding:2px 8px;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-left:8px;}
   .session-card.selesai{opacity:0.85;}
+
+ .toggle-wrap{margin-top:10px;}
+ .toggle-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:11px;color:var(--amber);font-family:'Space Mono',monospace;font-size:11.5px;letter-spacing:.5px;cursor:pointer;text-transform:uppercase;}
+ .toggle-btn:hover{background:var(--surface-2);}
+ .toggle-btn .chev{transition:transform .2s;font-size:10px;}
+ .toggle-btn.open .chev{transform:rotate(180deg);}
+ .toggle-body{display:none;margin-top:10px;}
+ .toggle-body.open{display:block;}
+
+ .session-card-collapsed{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;margin-bottom:8px;opacity:0.85;}
+ .session-card-collapsed:last-child{margin-bottom:0;}
+ .session-card-collapsed .label{font-weight:600;font-size:13px;flex:1;min-width:0;}
+ .session-card-collapsed .meta{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+ .session-card-collapsed .count{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-secondary);}
+ .session-card-collapsed .chev{font-size:10px;color:var(--text-secondary);transition:transform .2s;}
+ .session-card-collapsed.open .chev{transform:rotate(180deg);}
+ .session-card-expand-body{display:none;margin-top:8px;}
+ .session-card-expand-body.open{display:block;}
   .laporan-row{cursor:pointer;}
   .laporan-detail{display:none;padding:8px 16px 12px;background:var(--surface-2);}
   .laporan-detail.open{display:block;}
@@ -984,17 +1002,46 @@
     if (sesiCache.length === 0) {
       sesiListEl.innerHTML = '<div class="empty-state">Belum ada sesi ditambahkan</div>';
     } else {
-      sesiCache.forEach(sesi => {
+      const sesiAktifList = sesiCache.filter(s => !s.selesai);
+      const sesiSelesaiList = sesiCache.filter(s => s.selesai);
+
+      function buildSesiRow(sesi) {
         const terisi = rencanaCache.filter(r => r.sesi_id === sesi.id).length;
         const row = document.createElement('div');
         row.className = 'sesi-list-row';
         row.innerHTML = `
-          <span class="label">${escapeHtml(sesi.label)}</span>
+          <span class="label">${escapeHtml(sesi.label)}${sesi.selesai ? ' <span class="badge-selesai" style="margin-left:6px;">Selesai</span>' : ''}</span>
           <span class="kap">${terisi}/${sesi.kapasitas}</span>
           <button class="icon-btn" data-hapus-sesi="${sesi.id}">Hapus</button>
         `;
-        sesiListEl.appendChild(row);
-      });
+        return row;
+      }
+
+      if (sesiAktifList.length === 0) {
+        sesiListEl.innerHTML = '<div class="empty-state">Belum ada sesi aktif</div>';
+      } else {
+        sesiAktifList.forEach(sesi => sesiListEl.appendChild(buildSesiRow(sesi)));
+      }
+
+      if (sesiSelesaiList.length > 0) {
+        const wrap = document.createElement('div');
+        wrap.className = 'toggle-wrap';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'toggle-btn';
+        btn.innerHTML = `<span>Lihat sesi selesai (${sesiSelesaiList.length})</span><span class="chev">▾</span>`;
+        const body = document.createElement('div');
+        body.className = 'toggle-body';
+        sesiSelesaiList.forEach(sesi => body.appendChild(buildSesiRow(sesi)));
+        btn.addEventListener('click', () => {
+          const isOpen = body.classList.toggle('open');
+          btn.classList.toggle('open', isOpen);
+        });
+        wrap.appendChild(btn);
+        wrap.appendChild(body);
+        sesiListEl.appendChild(wrap);
+      }
+
       sesiListEl.querySelectorAll('[data-hapus-sesi]').forEach(b => b.addEventListener('click', () => hapusSesi(b.dataset.hapusSesi)));
     }
 
@@ -1112,12 +1159,12 @@
   function renderKehadiranGrid() {
     const grid = document.getElementById('sessionGrid');
     grid.innerHTML = '';
-    sesiCache.forEach(sesi => {
+
+    function buildFullCard(sesi, isSelesai) {
       const direncanakan = rencanaCache.filter(r => r.sesi_id === sesi.id).map(r => r.siswa_id);
       const sudahHadir = kehadiranCache.filter(k => k.sesi_id === sesi.id).map(k => k.siswa_id);
       const idsDitampilkan = Array.from(new Set([...direncanakan, ...sudahHadir]));
       const daftarSiswa = idsDitampilkan.map(id => siswaCache.find(s => s.id === id)).filter(Boolean);
-      const isSelesai = !!sesi.selesai;
 
       const card = document.createElement('div');
       card.className = 'session-card' + (isSelesai ? ' selesai' : '');
@@ -1152,8 +1199,56 @@
         actionsRow.appendChild(selesaiBtn);
       }
       card.appendChild(actionsRow);
-      grid.appendChild(card);
-    });
+      return card;
+    }
+
+    const sesiAktifList = sesiCache.filter(s => !s.selesai);
+    const sesiSelesaiList = sesiCache.filter(s => s.selesai);
+
+    sesiAktifList.forEach(sesi => grid.appendChild(buildFullCard(sesi, false)));
+
+    if (sesiSelesaiList.length > 0) {
+      const wrap = document.createElement('div');
+      wrap.className = 'toggle-wrap';
+      const outerBtn = document.createElement('button');
+      outerBtn.type = 'button';
+      outerBtn.className = 'toggle-btn';
+      outerBtn.innerHTML = `<span>Lihat riwayat kehadiran sesi selesai (${sesiSelesaiList.length})</span><span class="chev">▾</span>`;
+      const outerBody = document.createElement('div');
+      outerBody.className = 'toggle-body';
+
+      sesiSelesaiList.forEach(sesi => {
+        const sudahHadir = kehadiranCache.filter(k => k.sesi_id === sesi.id).length;
+        const collapsed = document.createElement('div');
+        collapsed.className = 'session-card-collapsed';
+        collapsed.innerHTML = `
+          <span class="label">${escapeHtml(sesi.label)}</span>
+          <div class="meta">
+            <span class="count">${sudahHadir}/${sesi.kapasitas} hadir</span>
+            <span class="chev">▾</span>
+          </div>
+        `;
+        const expandBody = document.createElement('div');
+        expandBody.className = 'session-card-expand-body';
+        collapsed.addEventListener('click', () => {
+          const isOpen = expandBody.classList.toggle('open');
+          collapsed.classList.toggle('open', isOpen);
+          if (isOpen && expandBody.children.length === 0) {
+            expandBody.appendChild(buildFullCard(sesi, true));
+          }
+        });
+        outerBody.appendChild(collapsed);
+        outerBody.appendChild(expandBody);
+      });
+
+      outerBtn.addEventListener('click', () => {
+        const isOpen = outerBody.classList.toggle('open');
+        outerBtn.classList.toggle('open', isOpen);
+      });
+      wrap.appendChild(outerBtn);
+      wrap.appendChild(outerBody);
+      grid.appendChild(wrap);
+    }
   }
 
   async function toggleSelesaiSesi(sesi, selesai) {
