@@ -1829,12 +1829,12 @@
     const nums = allRawValues.filter(v => v !== null && v !== undefined && v !== '').map(Number);
     const floor = (sub.min !== undefined && sub.min !== null) ? Number(sub.min) : 0;
     const ceil = (sub.max !== undefined && sub.max !== null) ? Number(sub.max) : 10;
-    if (nums.length === 0) return null;
+    if (nums.length < 2) return null; // belum ada data pembanding (cuma 1 siswa/kosong) -> jangan kasih nilai tengah palsu, item ini belum dihitung dulu
     const minV = Math.min(...nums);
     const maxV = Math.max(...nums);
     let poin;
     if (maxV === minV) {
-      poin = (floor + ceil) / 2;
+      poin = (floor + ceil) / 2; // semua siswa yang sudah diisi nilainya sama persis -> wajar disamakan di tengah
     } else if (sub.arah === 'rendah') {
       poin = floor + ((maxV - rawVal) / (maxV - minV)) * (ceil - floor);
     } else {
