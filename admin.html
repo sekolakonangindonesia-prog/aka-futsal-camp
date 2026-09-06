@@ -1834,7 +1834,16 @@
     const maxV = Math.max(...nums);
     let poin;
     if (maxV === minV) {
-      poin = (floor + ceil) / 2; // semua siswa yang sudah diisi nilainya sama persis -> wajar disamakan di tengah
+      // Semua siswa yang sudah diisi nilainya sama persis. Kalau nilai yang sama itu 0 (gagal total/nggak
+      // bisa sama sekali di tes yang "makin besar makin baik"), itu jelas hasil TERBURUK, bukan nilai tengah.
+      // Untuk arah "rendah" (makin kecil makin baik), 0 justru waktu/hasil TERBAIK yang mungkin, jadi tetap dikasih ceil.
+      if (minV === 0 && sub.arah === 'rendah') {
+        poin = ceil;
+      } else if (minV === 0) {
+        poin = floor;
+      } else {
+        poin = (floor + ceil) / 2;
+      }
     } else if (sub.arah === 'rendah') {
       poin = floor + ((maxV - rawVal) / (maxV - minV)) * (ceil - floor);
     } else {
@@ -1888,7 +1897,10 @@
       kat.subs.forEach(sub => {
         const inp = document.querySelector(`#penilaianModalBody input[data-kat="${kat.key}"][data-sub="${sub.key}"]`);
         const raw = inp.value.trim();
-        if (raw !== '') detail[kat.key][sub.key] = Number(raw);
+        // Kalau field dikosongkan, eksplisit HAPUS field-nya dari Firestore.
+        // Kalau cuma di-skip, .set(...,{merge:true}) akan menganggap field itu "tidak diubah"
+        // sehingga nilai lama yang tersimpan tetap nyangkut (nggak beneran terhapus).
+        detail[kat.key][sub.key] = raw !== '' ? Number(raw) : firebase.firestore.FieldValue.delete();
       });
     });
 
