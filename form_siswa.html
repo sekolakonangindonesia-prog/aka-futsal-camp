@@ -261,6 +261,12 @@
       <div class="error-msg">Foto wajib diupload</div>
     </div>
 
+    <div class="field" data-field="alamat">
+      <label>Alamat lengkap</label>
+      <input type="text" id="alamat" placeholder="cth. Jl. Melati No. 12, Probolinggo">
+      <div class="error-msg">Alamat wajib diisi</div>
+    </div>
+
     <div class="field">
       <label>Kelas <span class="opt">opsional</span></label>
       <input type="text" id="kelas" placeholder="cth. 8B">
@@ -278,7 +284,8 @@
   <div class="success-screen" id="successScreen">
     <div class="success-badge">✓</div>
     <h2>Pendaftaran berhasil</h2>
-    <p>Data kamu sudah masuk. Pantau grup WA untuk pengumuman jadwal sesi latihanmu.</p>
+    <p>Data kamu sudah masuk. Kamu bakal diarahkan ke WhatsApp dengan pesan bukti pendaftaran — di dalamnya ada link, klik link itu buat kirim konfirmasi ke admin ya.</p>
+    <a class="submit-btn" id="waConfirmBtn" href="#" target="_blank" rel="noopener" style="display:none;text-decoration:none;margin-top:18px;">Konfirmasi via WhatsApp</a>
   </div>
 
 </div>
@@ -355,16 +362,23 @@
     const wa = document.getElementById('wa').value.trim();
     const usia = document.getElementById('usia').value.trim();
     const ttl = document.getElementById('ttl').value.trim();
+    const alamat = document.getElementById('alamat').value.trim();
 
     let valid = true;
     if (!nama) { setFieldError('nama', true); valid = false; } else clearFieldError('nama');
     if (!wa) { setFieldError('wa', true); valid = false; } else clearFieldError('wa');
     if (!usia) { setFieldError('usia', true); valid = false; } else clearFieldError('usia');
     if (!ttl) { setFieldError('ttl', true); valid = false; } else clearFieldError('ttl');
+    if (!alamat) { setFieldError('alamat', true); valid = false; } else clearFieldError('alamat');
     if (!fotoBase64) { setFieldError('foto', true); valid = false; } else clearFieldError('foto');
 
     return valid;
   }
+
+  let waAdminNumber = null;
+  db.collection('pengaturan').doc('umum').get().then(doc => {
+    if (doc.exists) waAdminNumber = (doc.data().wa_admin || '').trim() || null;
+  }).catch(err => console.error('Gagal memuat nomor WA admin:', err));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -382,6 +396,7 @@
       nomor_wa: document.getElementById('wa').value.trim(),
       usia: Number(document.getElementById('usia').value.trim()),
       tempat_tanggal_lahir: document.getElementById('ttl').value.trim(),
+      alamat: document.getElementById('alamat').value.trim(),
       foto: fotoBase64,
       kelas: document.getElementById('kelas').value.trim() || null,
       sekolah: document.getElementById('sekolah').value.trim() || null,
@@ -395,6 +410,42 @@
       await db.collection(COLLECTION).add(data);
       form.style.display = 'none';
       document.getElementById('successScreen').style.display = 'block';
+
+      if (waAdminNumber) {
+        const pesanKeAdmin = `Halo Admin AKA Futsal Camp, saya sudah mendaftar dengan data berikut:\n` +
+          `Nama: ${data.nama}\n` +
+          `Usia: ${data.usia} Tahun\n` +
+          `Tempat, Tanggal Lahir: ${data.tempat_tanggal_lahir}\n` +
+          `Alamat: ${data.alamat}\n` +
+          (data.kelas ? `Kelas: ${data.kelas}\n` : '') +
+          (data.sekolah ? `Asal Sekolah: ${data.sekolah}\n` : '') +
+          `\nMohon info jadwal & link grup WA selanjutnya ya. Terima kasih!`;
+        const linkKeAdmin = `https://wa.me/${waAdminNumber}?text=${encodeURIComponent(pesanKeAdmin)}`;
+
+        // Pesan "bukti pendaftaran" dikirim ke nomor siswa sendiri (chat "Pesan Sendiri" di WhatsApp),
+        // isinya ucapan terima kasih + link konfirmasi ke admin yang tinggal diklik kapan aja.
+        const nomorSiswa = (data.nomor_wa || '').replace(/[^0-9]/g, '').replace(/^0/, '62');
+        const pesanKeDiriSendiri = `Terima kasih sudah mendaftar di AKA Futsal Camp, ${data.nama}! 🎉\n\n` +
+          `Ini rekap data pendaftaranmu:\n` +
+          `Nama: ${data.nama}\n` +
+          `Usia: ${data.usia} Tahun\n` +
+          `Tempat, Tanggal Lahir: ${data.tempat_tanggal_lahir}\n` +
+          `Alamat: ${data.alamat}\n` +
+          (data.kelas ? `Kelas: ${data.kelas}\n` : '') +
+          (data.sekolah ? `Asal Sekolah: ${data.sekolah}\n` : '') +
+          `\nUntuk menyelesaikan pendaftaran, klik link di bawah ini buat kirim konfirmasi ke Admin ya:\n${linkKeAdmin}\n\n` +
+          `Simpan pesan ini sebagai bukti pendaftaranmu.`;
+        const linkKeDiriSendiri = nomorSiswa
+          ? `https://wa.me/${nomorSiswa}?text=${encodeURIComponent(pesanKeDiriSendiri)}`
+          : linkKeAdmin; // fallback kalau format nomor WA siswa nggak kebaca, langsung aja ke admin
+
+        const waBtn = document.getElementById('waConfirmBtn');
+        waBtn.href = linkKeDiriSendiri;
+        waBtn.textContent = nomorSiswa ? 'Buka Pesan Konfirmasi di WhatsApp' : 'Konfirmasi via WhatsApp';
+        waBtn.style.display = 'block';
+        // Langsung arahkan ke WhatsApp; tombol di atas jadi cadangan kalau redirect otomatis ke-block browser.
+        window.location.href = linkKeDiriSendiri;
+      }
     } catch (err) {
       console.error(err);
       statusLine.textContent = 'Gagal mengirim data, coba lagi.';
