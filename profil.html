@@ -59,6 +59,7 @@
   .total-band strong{font-size:15px;}
   .avg-band{background:rgba(139,101,54,0.35);color:var(--chalk);padding:6px 10px;border-radius:7px;font-family:'Oswald',sans-serif;font-size:8.5px;letter-spacing:.5px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;margin-top:-3px;}
   .avg-band strong{font-family:'Space Mono',monospace;font-size:12px;color:var(--amber);}
+  .golongan-flag{position:absolute;top:14px;left:14px;background:rgba(200,39,45,0.85);color:var(--chalk);font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.5px;padding:4px 10px;border-radius:20px;z-index:3;text-transform:uppercase;}
 
   .stat-list{display:flex;flex-direction:column;gap:3px;}
   .stat-row{display:flex;justify-content:space-between;align-items:center;gap:5px;padding:6px 9px;font-size:10px;background:rgba(139,101,54,0.28);border-radius:6px;}
@@ -154,16 +155,42 @@
     return (namaBulan[Number(m) - 1] || '') + ' ' + y;
   }
 
+  let siswaPeranMap = {};
+
+  function peranOf(sid) {
+    return siswaPeranMap[sid] === 'gk' ? 'gk' : 'pemain';
+  }
+
+  // 'gk' | 'advance' | 'fundamental'. GK nggak ikut pemilahan kelas, rangkingnya sendiri.
+  function klasifikasiGolongan(sid, nilai) {
+    if (peranOf(sid) === 'gk') return 'gk';
+    const golKat = kriteriaFull.find(k => k.golonganKelas);
+    const subs = (golKat && golKat.subs) || [];
+    if (!golKat || subs.length === 0 || !nilai || !nilai.detail || !nilai.detail[golKat.key]) return 'fundamental';
+    const semuaLolos = subs.every(sub => {
+      const v = nilai.detail[golKat.key][sub.key];
+      return typeof v === 'number' && v > 5;
+    });
+    return semuaLolos ? 'advance' : 'fundamental';
+  }
+
+  const labelGolongan = { advance: 'Advance', fundamental: 'Fundamental', gk: 'Goalkeeper (GK)' };
+
   async function computeRankAndAverage(bulan) {
-    if (!bulan) return { rank: null, average: null };
+    if (!bulan) return { rank: null, average: null, golongan: null };
     try {
       const snap = await db.collection('penilaian').where('bulan', '==', bulan).get();
-      const list = snap.docs.map(d => d.data()).sort((a, b) => (b.total || 0) - (a.total || 0));
+      const semua = snap.docs.map(d => d.data());
+      const golonganSiswa = klasifikasiGolongan(siswaId, semua.find(p => p.siswa_id === siswaId));
+      // Ranking & rata-rata dihitung HANYA sesama kelompok (Advance/Fundamental/GK), bukan dicampur semua peserta.
+      const list = semua
+        .filter(p => klasifikasiGolongan(p.siswa_id, p) === golonganSiswa)
+        .sort((a, b) => (b.total || 0) - (a.total || 0));
       const idx = list.findIndex(p => p.siswa_id === siswaId);
       const average = list.length ? list.reduce((sum, p) => sum + (p.total || 0), 0) / list.length : null;
-      return { rank: idx === -1 ? null : idx + 1, average };
+      return { rank: idx === -1 ? null : idx + 1, average, golongan: golonganSiswa };
     } catch (err) {
-      return { rank: null, average: null };
+      return { rank: null, average: null, golongan: null };
     }
   }
 
@@ -173,10 +200,14 @@
     const nama = siswaData.nama || '-';
     let rank = null;
     let average = null;
+    let golongan = null;
     if (nilai) {
       const res = await computeRankAndAverage(nilai.bulan);
       rank = res.rank;
       average = res.average;
+      golongan = res.golongan;
+    } else {
+      golongan = klasifikasiGolongan(siswaId, null);
     }
 
     const bulanOptions = penilaianList.map(p =>
@@ -194,6 +225,7 @@
       <div class="card">
         ${foto ? `<img class="photo-bg" src="${foto}" alt="">` : `<div class="photo-initial">${escapeHtml(nama.charAt(0).toUpperCase())}</div>`}
         <div class="shade-right"></div>
+        ${golongan ? `<div class="golongan-flag">${escapeHtml(labelGolongan[golongan] || golongan)}</div>` : ''}
         ${rank ? `<div class="rank-flag">#${rank}</div>` : ''}
         <div class="info-col">
           <div class="name-block">
@@ -202,7 +234,7 @@
           </div>
           ${nilai ? `
             <div class="total-band"><span>Total Poin</span><strong>${nilai.total || 0}</strong></div>
-            ${average !== null ? `<div class="avg-band"><span>Rata-rata Peserta</span><strong>${average.toFixed(1)}</strong></div>` : ''}
+            ${average !== null ? `<div class="avg-band"><span>Rata-rata ${escapeHtml(labelGolongan[golongan] || '')}</span><strong>${average.toFixed(1)}</strong></div>` : ''}
             <div class="stat-list">${statRows}</div>
           ` : `
             <div class="total-band" style="background:rgba(90,90,90,0.85);color:var(--chalk);"><span>Belum ada penilaian</span></div>
@@ -258,13 +290,15 @@
     if (!siswaId) { content.innerHTML = '<div class="empty-msg">Profil tidak ditemukan.</div>'; return; }
     if (!db) { content.innerHTML = '<div class="empty-msg">Koneksi data tidak tersedia.</div>'; return; }
     try {
-      const [siswaDoc, kriteriaDoc, penilaianSnap] = await Promise.all([
+      const [siswaDoc, kriteriaDoc, penilaianSnap, siswaSemuaSnap] = await Promise.all([
         db.collection('futsal_siswa').doc(siswaId).get(),
         db.collection('penilaian_kriteria').doc('config').get(),
-        db.collection('penilaian').where('siswa_id', '==', siswaId).get()
+        db.collection('penilaian').where('siswa_id', '==', siswaId).get(),
+        db.collection('futsal_siswa').get()
       ]);
       if (!siswaDoc.exists) { content.innerHTML = '<div class="empty-msg">Peserta tidak ditemukan.</div>'; return; }
       siswaData = siswaDoc.data();
+      siswaSemuaSnap.docs.forEach(d => { siswaPeranMap[d.id] = d.data().peran === 'gk' ? 'gk' : 'pemain'; });
       if (kriteriaDoc.exists) {
         kriteriaFull = kriteriaDoc.data().kategori || [];
         kriteriaFull.forEach(kat => { kriteriaLabelMap[kat.key] = kat.label; });
