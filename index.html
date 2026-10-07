@@ -153,6 +153,11 @@
  .list-toggle.open .chevron{transform:rotate(180deg);}
  .ranking-avg-note{text-align:center;color:var(--text-secondary);font-size:11.5px;font-family:'Space Mono',monospace;margin:-6px 0 12px;letter-spacing:.3px;}
  .ranking-avg-note strong{color:var(--amber);}
+ .ranking-subhead{display:flex;align-items:center;gap:8px;margin:22px 0 10px;}
+ .ranking-subhead h3{font-size:13px;color:var(--amber);letter-spacing:1.5px;font-family:'Oswald',sans-serif;text-transform:uppercase;}
+ .ranking-subhead .line{flex:1;height:1px;background:var(--line);}
+ .ranking-subhead .count{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-secondary);}
+ .ranking-subnote{text-align:center;color:var(--text-secondary);font-size:11px;margin:-4px 0 10px;}
 
  .foto-lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:100;align-items:center;justify-content:center;padding:24px;}
  .foto-lightbox.active{display:flex;}
@@ -201,12 +206,11 @@
  <div class="loading">Memuat jadwal...</div>
  </div>
  <div id="sesiMoreWrap"></div>
- <div class="section-title"><h2>Ranking 14 Besar</h2><div class="line"></div></div>
+ <div class="section-title"><h2>Ranking Musim Ini</h2><div class="line"></div></div>
  <div class="ranking-avg-note" id="rankingAvgNote"></div>
- <div id="rankingContainer">
+ <div id="rankingGroups">
  <div class="loading">Memuat ranking...</div>
  </div>
- <div id="rankingMoreWrap"></div>
  <div class="section-title"><h2>Market</h2><div class="line"></div></div>
  <div class="tilt-zone"><div class="about-card tilt tilt-hover" style="justify-content:space-between;">
  <p>Jersey & aksesoris resmi AKA Futsal Camp — pesan langsung dari sini.</p>
@@ -432,11 +436,27 @@
  const d = new Date();
  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
  }
+ // Kategori tanpa "roles" dianggap berlaku utk kedua peran (biar nggak tiba-tiba hilang sebelum admin menandainya).
+ function kategoriRolesIdx(kat) {
+ return (kat && kat.roles && kat.roles.length) ? kat.roles : ['pemain', 'gk'];
+ }
+ function klasifikasiPeserta(peran, nilai, kriteriaKategori) {
+ if (peran === 'gk') return 'gk';
+ const golKat = (kriteriaKategori || []).find(k => k.golonganKelas);
+ const subs = (golKat && golKat.subs) || [];
+ if (!golKat || subs.length === 0 || !nilai || !nilai.detail || !nilai.detail[golKat.key]) return 'fundamental';
+ const semuaLolos = subs.every(sub => {
+ const v = nilai.detail[golKat.key][sub.key];
+ return typeof v === 'number' && v > 5;
+ });
+ return semuaLolos ? 'advance' : 'fundamental';
+ }
+
  async function loadRanking() {
- const container = document.getElementById('rankingContainer');
+ const groupsEl = document.getElementById('rankingGroups');
  const avgNoteEl = document.getElementById('rankingAvgNote');
  if (!db) {
- container.innerHTML = '<div class="no-sesi">Koneksi data tidak tersedia di preview ini.</div>';
+ groupsEl.innerHTML = '<div class="no-sesi">Koneksi data tidak tersedia di preview ini.</div>';
  if (avgNoteEl) avgNoteEl.innerHTML = '';
  return;
  }
@@ -448,26 +468,22 @@
  db.collection('penilaian_kriteria').doc('config').get()
  ]);
  const fotoMap = {};
- siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; });
+ const peranMap = {};
+ siswaSnap.docs.forEach(d => { fotoMap[d.id] = d.data().foto || null; peranMap[d.id] = d.data().peran === 'gk' ? 'gk' : 'pemain'; });
  const labelMap = {};
- if (kriteriaDoc.exists) {
- (kriteriaDoc.data().kategori || []).forEach(kat => { labelMap[kat.key] = kat.label; });
- }
+ const kriteriaKategori = kriteriaDoc.exists ? (kriteriaDoc.data().kategori || []) : [];
+ kriteriaKategori.forEach(kat => { labelMap[kat.key] = kat.label; });
+
  let list = penilaianSnap.docs.map(d => d.data());
- list.sort((a, b) => (b.total || 0) - (a.total || 0));
  const avgNote = document.getElementById('rankingAvgNote');
  if (list.length === 0) {
- container.innerHTML = '<div class="no-sesi">Musim seleksi bulan ini belum ada hasil.</div>';
+ groupsEl.innerHTML = '<div class="no-sesi">Musim seleksi bulan ini belum ada hasil.</div>';
  if (avgNote) avgNote.innerHTML = '';
  return;
  }
 
  const rataRata = list.reduce((sum, p) => sum + (p.total || 0), 0) / list.length;
  if (avgNote) avgNote.innerHTML = `Rata-rata seluruh peserta: <strong>${rataRata.toFixed(1)} poin</strong> &middot; ${list.length} peserta dinilai`;
-
- const TOP_COUNT = 14;
- const topList = list.slice(0, TOP_COUNT);
- const restList = list.slice(TOP_COUNT);
 
  function buildRankZone(p, rank) {
  const foto = fotoMap[p.siswa_id];
@@ -514,12 +530,15 @@
  return zone;
  }
 
- container.innerHTML = '';
- topList.forEach((p, idx) => container.appendChild(buildRankZone(p, idx + 1)));
- observeTiltCards(container);
+ function renderGrup(container, items) {
+ const TOP_COUNT = 14;
+ const topList = items.slice(0, TOP_COUNT);
+ const restList = items.slice(TOP_COUNT);
+ const listEl = document.createElement('div');
+ topList.forEach((p, idx) => listEl.appendChild(buildRankZone(p, idx + 1)));
+ container.appendChild(listEl);
+ observeTiltCards(listEl);
 
- const rankingMoreWrap = document.getElementById('rankingMoreWrap');
- rankingMoreWrap.innerHTML = '';
  if (restList.length > 0) {
  const wrap = document.createElement('div');
  wrap.className = 'list-more-wrap';
@@ -538,11 +557,50 @@
  });
  wrap.appendChild(more);
  wrap.appendChild(toggleBtn);
- rankingMoreWrap.appendChild(wrap);
+ container.appendChild(wrap);
+ }
+ }
+
+ const golonganList = { advance: [], fundamental: [], gk: [] };
+ list.forEach(p => {
+ const peran = peranMap[p.siswa_id] || 'pemain';
+ const gol = klasifikasiPeserta(peran, p, kriteriaKategori);
+ golonganList[gol].push(p);
+ });
+ ['advance', 'fundamental', 'gk'].forEach(key => golonganList[key].sort((a, b) => (b.total || 0) - (a.total || 0)));
+
+ const grupInfo = [
+ { key: 'advance', label: 'Advance', note: 'Lolos semua sub-kriteria Taktik (&gt;5)' },
+ { key: 'fundamental', label: 'Fundamental', note: '' },
+ { key: 'gk', label: 'Goalkeeper (GK)', note: '' }
+ ];
+
+ groupsEl.innerHTML = '';
+ let adaIsi = false;
+ grupInfo.forEach(grp => {
+ const items = golonganList[grp.key];
+ if (items.length === 0) return;
+ adaIsi = true;
+ const subhead = document.createElement('div');
+ subhead.className = 'ranking-subhead';
+ subhead.innerHTML = `<h3>${grp.label}</h3><div class="line"></div><span class="count">${items.length} peserta</span>`;
+ groupsEl.appendChild(subhead);
+ if (grp.note) {
+ const note = document.createElement('div');
+ note.className = 'ranking-subnote';
+ note.innerHTML = grp.note;
+ groupsEl.appendChild(note);
+ }
+ const groupContainer = document.createElement('div');
+ groupsEl.appendChild(groupContainer);
+ renderGrup(groupContainer, items);
+ });
+ if (!adaIsi) {
+ groupsEl.innerHTML = '<div class="no-sesi">Musim seleksi bulan ini belum ada hasil.</div>';
  }
  } catch (err) {
  console.error(err);
- container.innerHTML = '<div class="no-sesi">Gagal memuat ranking, coba refresh halaman.</div>';
+ groupsEl.innerHTML = '<div class="no-sesi">Gagal memuat ranking, coba refresh halaman.</div>';
  if (avgNoteEl) avgNoteEl.innerHTML = '';
  }
  }
