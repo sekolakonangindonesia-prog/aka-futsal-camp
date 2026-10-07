@@ -440,6 +440,11 @@
     <div class="field"><label>Tempat, tanggal lahir</label><input type="text" id="modalTtl"></div>
     <div class="field"><label>Kelas (opsional)</label><input type="text" id="modalKelas"></div>
     <div class="field"><label>Asal sekolah (opsional)</label><input type="text" id="modalSekolah"></div>
+    <div class="field">
+      <label>Alamat <span id="modalAlamatLockInfo" style="font-size:10px;color:var(--text-secondary);font-weight:400;"></span></label>
+      <textarea id="modalAlamat" rows="2" placeholder="Alamat lengkap tempat tinggal" style="width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--chalk);font-family:'Manrope',sans-serif;font-size:14px;resize:vertical;"></textarea>
+      <p style="font-size:11px;color:var(--text-secondary);margin-top:5px;">Admin selalu bisa isi/ubah di sini. Siswa juga bisa isi sendiri lewat link khusus (tombol "🔗 Link Alamat" di daftar siswa) — link itu terkunci otomatis setelah mereka isi.</p>
+    </div>
     <div class="field"><label>Peran</label>
       <select id="modalPeran">
         <option value="pemain">Pemain</option>
@@ -454,6 +459,30 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" id="btnBatalSiswa">Batal</button>
       <button class="btn" id="btnSimpanSiswa">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="alamatLinkModalOverlay">
+  <div class="modal">
+    <h2>Link Isi Alamat — <span id="alamatLinkNama"></span></h2>
+    <div id="alamatLinkSudahIsi" style="display:none;">
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Siswa ini sudah mengisi alamatnya sendiri (atau diisi admin), jadi link-nya otomatis terkunci kalau dibuka lagi — nggak bisa ditimpa oleh siswa.</p>
+      <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:13px;margin-top:6px;" id="alamatLinkIsiText"></div>
+      <p style="font-size:11px;color:var(--text-secondary);margin-top:10px;">Mau buka lagi link-nya biar siswa bisa isi ulang? Kosongkan field "Alamat" di menu Edit Siswa, lalu simpan.</p>
+    </div>
+    <div id="alamatLinkBelumIsi" style="display:none;">
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Kirim link ini ke siswa (lewat WA) biar mereka isi alamatnya sendiri. Begitu disubmit, link otomatis terkunci — nggak bisa diisi ulang/diubah sama siswa.</p>
+      <div class="field" style="margin-top:10px;">
+        <input type="text" id="alamatLinkUrl" readonly style="font-family:'Space Mono',monospace;font-size:12px;" onclick="this.select()">
+      </div>
+      <div class="modal-actions" style="justify-content:flex-start;gap:8px;">
+        <button class="btn btn-secondary" id="btnSalinAlamatLink" type="button">📋 Salin Link</button>
+        <a class="btn" id="btnWaAlamatLink" href="#" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;">Kirim via WhatsApp</a>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnTutupAlamatLink" type="button">Tutup</button>
     </div>
   </div>
 </div>
@@ -901,10 +930,11 @@
       row.innerHTML = `
         ${avatarHtml(s)}
         <div class="info">
-          <div class="nama">${escapeHtml(s.nama)}${isBaru(s) ? '<span class="badge-baru">Baru</span>' : ''}${s.peran === 'gk' ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--amber);border:1px solid var(--amber);">GK</span>' : ''}</div>
+          <div class="nama">${escapeHtml(s.nama)}${isBaru(s) ? '<span class="badge-baru">Baru</span>' : ''}${s.peran === 'gk' ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--amber);border:1px solid var(--amber);">GK</span>' : ''}${s.alamat ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--success);border:1px solid var(--success);">Alamat ✓</span>' : ''}</div>
           <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.nomor_wa ? ' · ' + escapeHtml(s.nomor_wa) : ''} · ${jumlahHadir} sesi tercatat</div>
         </div>
         <div class="actions">
+          <button class="icon-btn" data-alamat="${s.id}">🔗 Alamat</button>
           <button class="icon-btn" data-edit="${s.id}">Edit</button>
           <button class="icon-btn" data-del="${s.id}">Hapus</button>
         </div>
@@ -913,6 +943,7 @@
     });
     table.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openSiswaModal(b.dataset.edit)));
     table.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => hapusSiswa(b.dataset.del)));
+    table.querySelectorAll('[data-alamat]').forEach(b => b.addEventListener('click', () => openAlamatLinkModal(b.dataset.alamat)));
   }
 
   document.getElementById('siswaSearch').addEventListener('input', renderSiswaTab);
@@ -934,6 +965,8 @@
     document.getElementById('modalTtl').value = s ? s.tempat_tanggal_lahir || '' : '';
     document.getElementById('modalKelas').value = s ? s.kelas || '' : '';
     document.getElementById('modalSekolah').value = s ? s.sekolah || '' : '';
+    document.getElementById('modalAlamat').value = s ? s.alamat || '' : '';
+    document.getElementById('modalAlamatLockInfo').textContent = (s && s.alamat) ? '(link siswa sudah terkunci karena ini sudah terisi — kosongkan untuk buka lagi link-nya)' : '';
     document.getElementById('modalPeran').value = s && s.peran === 'gk' ? 'gk' : 'pemain';
     modalFotoBase64 = s ? (s.foto || null) : null;
     const preview = document.getElementById('modalPhotoPreview');
@@ -1021,6 +1054,7 @@
       tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
       kelas: document.getElementById('modalKelas').value.trim() || null,
       sekolah: document.getElementById('modalSekolah').value.trim() || null,
+      alamat: document.getElementById('modalAlamat').value.trim() || null,
       peran: document.getElementById('modalPeran').value === 'gk' ? 'gk' : 'pemain',
       foto: modalFotoBase64
     };
@@ -1057,6 +1091,76 @@
       alert('Gagal menghapus siswa: ' + err.message);
     }
   }
+
+  // ===== Link isi-alamat sendiri (sekali pakai, terkunci otomatis setelah siswa submit) =====
+  function buatTokenAcak() {
+    const bytes = new Uint8Array(16);
+    (window.crypto || window.msCrypto).getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function openAlamatLinkModal(id) {
+    const s = siswaCache.find(x => x.id === id);
+    if (!s) return;
+    document.getElementById('alamatLinkNama').textContent = s.nama;
+    const overlay = document.getElementById('alamatLinkModalOverlay');
+    const sudahIsiEl = document.getElementById('alamatLinkSudahIsi');
+    const belumIsiEl = document.getElementById('alamatLinkBelumIsi');
+
+    if (s.alamat) {
+      sudahIsiEl.style.display = 'block';
+      belumIsiEl.style.display = 'none';
+      document.getElementById('alamatLinkIsiText').textContent = s.alamat;
+      overlay.classList.add('active');
+      return;
+    }
+
+    sudahIsiEl.style.display = 'none';
+    belumIsiEl.style.display = 'block';
+
+    let token = s.alamat_token;
+    if (!token) {
+      token = buatTokenAcak();
+      try {
+        await db.collection(SISWA_COL).doc(id).update({ alamat_token: token });
+        s.alamat_token = token; // update cache lokal biar nggak generate ulang kalau modal dibuka lagi
+      } catch (err) {
+        console.error('Gagal membuat link alamat:', err);
+        alert('Gagal membuat link alamat: ' + err.message);
+        overlay.classList.remove('active');
+        return;
+      }
+    }
+
+    const base = window.location.href.replace(/admin\.html(\?.*)?(#.*)?$/, '');
+    const link = base + 'alamat.html?id=' + encodeURIComponent(id) + '&t=' + encodeURIComponent(token);
+    document.getElementById('alamatLinkUrl').value = link;
+
+    const pesanWa = `Halo ${s.nama}! Mohon lengkapi alamat tempat tinggal kamu untuk data pendaftaran AKA Futsal Camp lewat link berikut ya:\n${link}\n\nTerima kasih!`;
+    const nomorTujuan = (s.nomor_wa || '').replace(/[^0-9]/g, '').replace(/^0/, '62');
+    document.getElementById('btnWaAlamatLink').href = nomorTujuan
+      ? `https://wa.me/${nomorTujuan}?text=${encodeURIComponent(pesanWa)}`
+      : `https://wa.me/?text=${encodeURIComponent(pesanWa)}`;
+
+    overlay.classList.add('active');
+  }
+
+  document.getElementById('btnTutupAlamatLink').addEventListener('click', () => {
+    document.getElementById('alamatLinkModalOverlay').classList.remove('active');
+  });
+  document.getElementById('btnSalinAlamatLink').addEventListener('click', async () => {
+    const input = document.getElementById('alamatLinkUrl');
+    input.select();
+    try {
+      await navigator.clipboard.writeText(input.value);
+      const btn = document.getElementById('btnSalinAlamatLink');
+      const asli = btn.textContent;
+      btn.textContent = '✓ Disalin';
+      setTimeout(() => { btn.textContent = asli; }, 1500);
+    } catch (err) {
+      document.execCommand('copy');
+    }
+  });
 
   const NAMA_HARI = ['Minggu','Senin','Selasa','Rabu','Kamis',"Jum'at",'Sabtu'];
   const NAMA_BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
