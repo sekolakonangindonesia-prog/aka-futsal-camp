@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Isi Alamat — AKA Futsal Camp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#120e0c; --surface:#1d1613; --surface-2:#261c17; --line:#3a2b23;
+    --amber:#e8b923; --red:#c8272d; --chalk:#f5f1e8; --text-secondary:#a89586; --success:#34d399; --danger:#f26b6b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(circle at 50% 0%, rgba(245,166,35,0.08), transparent 55%), var(--bg);
+    color:var(--chalk);
+    font-family:'Manrope',sans-serif;
+    min-height:100vh;
+    padding:32px 16px 64px;
+  }
+  .wrap{max-width:480px;margin:0 auto;}
+  h1,h2{font-family:'Oswald',sans-serif;text-transform:uppercase;margin:0;}
+  .hero{text-align:center;margin-bottom:28px;}
+  .hero img{width:72px;height:auto;margin-bottom:12px;}
+  .hero .eyebrow{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--amber);text-transform:uppercase;display:block;margin-bottom:8px;}
+  .hero h1{font-size:clamp(22px,6vw,28px);letter-spacing:.5px;}
+  .hero .sub{color:var(--text-secondary);font-size:13px;margin-top:8px;line-height:1.5;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 20px;}
+  .field{margin-bottom:16px;}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:7px;}
+  textarea{
+    width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;
+    padding:12px 13px;color:var(--chalk);font-family:'Manrope',sans-serif;font-size:15px;outline:none;resize:vertical;
+  }
+  textarea:focus{border-color:var(--amber);}
+  .submit-btn{
+    width:100%;margin-top:6px;background:var(--amber);color:#1a1200;border:none;border-radius:8px;padding:14px;
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;
+  }
+  .submit-btn:disabled{opacity:.5;cursor:not-allowed;}
+  .status-line{text-align:center;font-size:12px;color:var(--text-secondary);margin-top:12px;font-family:'Space Mono',monospace;}
+  .info-box{text-align:center;padding:40px 20px;}
+  .info-badge{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;}
+  .info-badge.ok{background:rgba(52,211,153,0.12);border:1px solid var(--success);color:var(--success);}
+  .info-badge.err{background:rgba(242,107,107,0.12);border:1px solid var(--danger);color:var(--danger);}
+  .info-box h2{font-size:18px;margin-bottom:8px;}
+  .info-box p{color:var(--text-secondary);font-size:13px;line-height:1.6;margin:0;}
+  .loading{text-align:center;color:var(--text-secondary);font-size:13px;padding:60px 16px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <img src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
+    <span class="eyebrow">Data Pendaftaran</span>
+    <h1>Lengkapi Alamat</h1>
+  </div>
+  <div id="content"><div class="loading">Memuat...</div></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWg3d1qtHFEwsN-GLakSDIvb-Wjbo7cIQ",
+    authDomain: "aka-futsal-camp.firebaseapp.com",
+    projectId: "aka-futsal-camp",
+    storageBucket: "aka-futsal-camp.firebasestorage.app",
+    messagingSenderId: "721774551002",
+    appId: "1:721774551002:web:bcd2e47b06d61daf626ae3"
+  };
+  let db = null;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  } catch (err) {
+    console.error('Firebase gagal dimuat:', err);
+  }
+
+  const COLLECTION = 'futsal_siswa';
+  const params = new URLSearchParams(window.location.search);
+  const siswaId = params.get('id');
+  const token = params.get('t');
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  function tampilkanError(pesan) {
+    document.getElementById('content').innerHTML = `
+      <div class="card info-box">
+        <div class="info-badge err">✕</div>
+        <h2>Link tidak valid</h2>
+        <p>${escapeHtml(pesan)}</p>
+      </div>`;
+  }
+
+  function tampilkanSudahTerkunci(nama) {
+    document.getElementById('content').innerHTML = `
+      <div class="card info-box">
+        <div class="info-badge ok">✓</div>
+        <h2>Alamat sudah tersimpan</h2>
+        <p>Alamat ${nama ? escapeHtml(nama) : 'kamu'} sudah pernah diisi dan link ini terkunci. Kalau ada yang perlu diubah, hubungi admin/pelatih langsung ya.</p>
+      </div>`;
+  }
+
+  function tampilkanSukses() {
+    document.getElementById('content').innerHTML = `
+      <div class="card info-box">
+        <div class="info-badge ok">✓</div>
+        <h2>Tersimpan, makasih!</h2>
+        <p>Alamat kamu berhasil disimpan. Link ini sekarang terkunci dan nggak bisa dipakai untuk mengubah lagi — kalau ada koreksi, hubungi admin/pelatih ya.</p>
+      </div>`;
+  }
+
+  function tampilkanForm(nama) {
+    document.getElementById('content').innerHTML = `
+      <div class="card">
+        <div class="field">
+          <label>Halo, ${escapeHtml(nama)} 👋<br>Isi alamat lengkap tempat tinggal kamu</label>
+          <textarea id="alamatInput" rows="4" placeholder="cth. Jl. Melati No. 12, RT 02/RW 05, Kel. Sukabumi, Kec. Mayangan, Probolinggo"></textarea>
+        </div>
+        <button class="submit-btn" id="submitBtn">Simpan Alamat</button>
+        <div class="status-line" id="statusLine">Catatan: setelah disimpan, link ini otomatis terkunci dan nggak bisa diisi ulang.</div>
+      </div>`;
+
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const val = document.getElementById('alamatInput').value.trim();
+      const statusLine = document.getElementById('statusLine');
+      if (!val) { statusLine.textContent = 'Alamat wajib diisi dulu ya.'; return; }
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+      try {
+        await db.collection(COLLECTION).doc(siswaId).update({
+          alamat: val,
+          alamat_diisi_at: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        tampilkanSukses();
+      } catch (err) {
+        console.error(err);
+        statusLine.textContent = 'Gagal menyimpan, coba lagi ya.';
+        btn.disabled = false;
+        btn.textContent = 'Simpan Alamat';
+      }
+    });
+  }
+
+  async function init() {
+    if (!siswaId || !token) { tampilkanError('Link ini nggak lengkap. Minta link baru dari admin/pelatih.'); return; }
+    if (!db) { tampilkanError('Koneksi data tidak tersedia, coba refresh halaman.'); return; }
+    try {
+      const doc = await db.collection(COLLECTION).doc(siswaId).get();
+      if (!doc.exists) { tampilkanError('Data peserta nggak ditemukan.'); return; }
+      const s = doc.data();
+      if (!s.alamat_token || s.alamat_token !== token) {
+        tampilkanError('Link ini sudah nggak berlaku. Minta link baru dari admin/pelatih.');
+        return;
+      }
+      if (s.alamat) {
+        tampilkanSudahTerkunci(s.nama);
+        return;
+      }
+      tampilkanForm(s.nama || 'kamu');
+    } catch (err) {
+      console.error(err);
+      tampilkanError('Gagal memuat data: ' + err.message);
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>
