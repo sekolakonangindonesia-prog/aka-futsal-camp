@@ -2556,11 +2556,64 @@
   .rap-photo { width:80px; height:80px; border-radius:10px; object-fit:cover; border:2px solid #e8b923; margin-left:auto; }
   .rap-print-bar { text-align:center; margin-bottom:20px; }
   .rap-print-bar button { background:#c8272d; color:#fff; border:none; padding:12px 22px; border-radius:8px; font-family:'Oswald',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:1px; cursor:pointer; }
+  .surat-pengantar { page-break-after: always; }
+  .surat-tanggal { text-align:right; font-size:13px; margin-bottom:22px; }
+  .surat-nomor { font-size:13px; margin-bottom:22px; }
+  .surat-nomor div { margin-bottom:2px; }
+  .surat-tujuan { font-size:13px; margin-bottom:20px; line-height:1.5; }
+  .surat-perihal { font-size:13px; margin-bottom:18px; }
+  .surat-body { font-size:13px; line-height:1.8; text-align:justify; margin-bottom:8px; }
+  .surat-lampiran-info { background:#f7f2e7; border-radius:8px; padding:12px 16px; font-size:12.5px; margin:18px 0; }
+  .surat-lampiran-info div { margin-bottom:3px; }
+  .surat-lampiran-info b { color:#c8272d; }
   @media print { .rap-print-bar { display:none; } body { padding:0; } }
 </style>
 </head>
 <body>
   <div class="rap-print-bar"><button onclick="window.print()">Cetak / Simpan sebagai PDF</button></div>
+
+  <div class="surat-pengantar">
+    <div class="rap-header">
+      <img src="aka%20futsal%20camp.png" alt="">
+      <div class="titles">
+        <h1>AKA Futsal Camp</h1>
+        <p>Develop &middot; Inspire &middot; Excel</p>
+      </div>
+    </div>
+
+    <div class="surat-tanggal">Probolinggo, ${tanggalCetak}</div>
+
+    <div class="surat-nomor">
+      <div><b>Perihal:</b> Penyampaian Hasil Penilaian Peserta Seleksi</div>
+      <div><b>Lampiran:</b> 1 (satu) lembar rekap nilai</div>
+    </div>
+
+    <div class="surat-tujuan">
+      Kepada Yth.<br>
+      Orang Tua / Wali dari <b>${escapeHtml(s.nama)}</b><br>
+      di Tempat
+    </div>
+
+    <div class="surat-body">
+      <p style="margin:0 0 14px;">Dengan hormat,</p>
+      <p style="margin:0 0 14px;">Bersama surat ini, kami sampaikan hasil penilaian ananda <b>${escapeHtml(s.nama)}</b> dalam program seleksi AKA Futsal Camp untuk periode <b>${bulanLabelEkspor(terbaru.bulan)}</b>. Penilaian ini mencakup aspek fisik, teknik, taktik, dan kedisiplinan selama mengikuti sesi latihan, dan digunakan sebagai dasar pengelompokan serta pemantauan perkembangan peserta.</p>
+      <div class="surat-lampiran-info">
+        <div><b>Nama Peserta:</b> ${escapeHtml(s.nama)}</div>
+        <div><b>Peran:</b> ${peran === 'gk' ? 'Goalkeeper (GK)' : 'Pemain'}</div>
+        <div><b>Kelompok:</b> ${labelGolongan}</div>
+        <div><b>Total Poin:</b> ${typeof terbaru.total === 'number' ? terbaru.total : '-'}</div>
+      </div>
+      <p style="margin:0 0 14px;">Rincian lengkap penilaian per kategori terlampir pada halaman berikutnya. Kami berharap hasil ini dapat menjadi bahan evaluasi bersama untuk mendukung perkembangan ananda ke depannya. Apabila ada pertanyaan terkait hasil penilaian ini, Bapak/Ibu dapat menghubungi pelatih AKA Futsal Camp secara langsung.</p>
+      <p style="margin:0;">Demikian surat pengantar ini kami sampaikan. Atas perhatian dan kerja samanya, kami ucapkan terima kasih.</p>
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; margin-top:48px;">
+      <div class="sign">
+        <div>&nbsp;</div>
+        <div class="line">Pelatih AKA Futsal Camp</div>
+      </div>
+    </div>
+  </div>
 
   <div class="rap-header">
     <img src="aka%20futsal%20camp.png" alt="">
@@ -2572,7 +2625,7 @@
   </div>
 
   <div class="rap-title">
-    <h2>Raport Penilaian Peserta</h2>
+    <h2>Lampiran — Raport Penilaian Peserta</h2>
     <p>Periode ${bulanLabelEkspor(terbaru.bulan)}</p>
   </div>
 
