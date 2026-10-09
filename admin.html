@@ -2525,12 +2525,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  @page { size: A4; margin: 16mm 16mm 18mm; }
   * { box-sizing: border-box; }
-  body { font-family:'Manrope',sans-serif; color:#1a1310; margin:0; padding:32px; background:#fff; }
-  .rap-header { display:flex; align-items:center; gap:16px; border-bottom:3px solid #c8272d; padding-bottom:16px; margin-bottom:24px; }
-  .rap-header img { width:56px; }
-  .rap-header .titles h1 { font-family:'Oswald',sans-serif; font-size:20px; margin:0; letter-spacing:.5px; }
-  .rap-header .titles p { margin:2px 0 0; font-size:11px; color:#6b6058; letter-spacing:2px; text-transform:uppercase; }
+  body { font-family:'Manrope',sans-serif; color:#1a1310; margin:0; padding:0; background:#fff; }
+  table.print-wrap { width:100%; border-collapse:collapse; }
+  table.print-wrap > thead, table.print-wrap > tfoot { display: table-row-group; }
+  table.print-wrap thead.print-head { display: table-header-group; }
+  table.print-wrap tfoot.print-foot { display: table-footer-group; }
+  .kop-head { display:flex; align-items:center; gap:12px; border-bottom:3px solid #c8272d; padding-bottom:10px; margin-bottom:16px; }
+  .kop-head img { width:38px; }
+  .kop-head .titles h1 { font-family:'Oswald',sans-serif; font-size:15px; margin:0; letter-spacing:.5px; }
+  .kop-head .titles p { margin:1px 0 0; font-size:9px; color:#6b6058; letter-spacing:1.5px; text-transform:uppercase; }
+  .kop-foot { border-top:1px solid #e6e0d6; padding-top:8px; margin-top:12px; font-size:9px; color:#9a8d80; text-align:center; letter-spacing:.3px; }
   .rap-title { text-align:center; margin-bottom:24px; }
   .rap-title h2 { font-family:'Oswald',sans-serif; font-size:22px; margin:0; text-transform:uppercase; letter-spacing:1px; }
   .rap-title p { color:#6b6058; font-size:12px; margin:4px 0 0; }
@@ -2553,8 +2559,8 @@
   .rap-footer { display:flex; justify-content:space-between; margin-top:48px; font-size:12px; }
   .rap-footer .sign { text-align:center; width:200px; }
   .rap-footer .sign .line { margin-top:56px; border-top:1px solid #1a1310; padding-top:6px; }
-  .rap-photo { width:80px; height:80px; border-radius:10px; object-fit:cover; border:2px solid #e8b923; margin-left:auto; }
-  .rap-print-bar { text-align:center; margin-bottom:20px; }
+  .rap-photo { width:72px; height:72px; border-radius:10px; object-fit:cover; border:2px solid #e8b923; margin:0 auto 10px; display:block; }
+  .rap-print-bar { text-align:center; margin:16px 0; }
   .rap-print-bar button { background:#c8272d; color:#fff; border:none; padding:12px 22px; border-radius:8px; font-family:'Oswald',sans-serif; font-size:13px; text-transform:uppercase; letter-spacing:1px; cursor:pointer; }
   .surat-pengantar { page-break-after: always; }
   .surat-tanggal { text-align:right; font-size:13px; margin-bottom:22px; }
@@ -2566,21 +2572,28 @@
   .surat-lampiran-info { background:#f7f2e7; border-radius:8px; padding:12px 16px; font-size:12.5px; margin:18px 0; }
   .surat-lampiran-info div { margin-bottom:3px; }
   .surat-lampiran-info b { color:#c8272d; }
-  @media print { .rap-print-bar { display:none; } body { padding:0; } }
+  @media print { .rap-print-bar { display:none; } }
 </style>
 </head>
 <body>
   <div class="rap-print-bar"><button onclick="window.print()">Cetak / Simpan sebagai PDF</button></div>
 
-  <div class="surat-pengantar">
-    <div class="rap-header">
-      <img src="aka%20futsal%20camp.png" alt="">
-      <div class="titles">
-        <h1>AKA Futsal Camp</h1>
-        <p>Develop &middot; Inspire &middot; Excel</p>
+  <table class="print-wrap">
+    <thead class="print-head"><tr><td>
+      <div class="kop-head">
+        <img src="aka%20futsal%20camp.png" alt="">
+        <div class="titles">
+          <h1>AKA Futsal Camp</h1>
+          <p>Develop &middot; Inspire &middot; Excel</p>
+        </div>
       </div>
-    </div>
+    </td></tr></thead>
+    <tfoot class="print-foot"><tr><td>
+      <div class="kop-foot">AKA Futsal Camp &middot; Dokumen hasil penilaian peserta &middot; Dicetak otomatis dari sistem</div>
+    </td></tr></tfoot>
+    <tbody><tr><td>
 
+  <div class="surat-pengantar">
     <div class="surat-tanggal">Probolinggo, ${tanggalCetak}</div>
 
     <div class="surat-nomor">
@@ -2615,16 +2628,8 @@
     </div>
   </div>
 
-  <div class="rap-header">
-    <img src="aka%20futsal%20camp.png" alt="">
-    <div class="titles">
-      <h1>AKA Futsal Camp</h1>
-      <p>Develop &middot; Inspire &middot; Excel</p>
-    </div>
-    ${fotoUrl ? `<img class="rap-photo" src="${fotoUrl}" alt="">` : ''}
-  </div>
-
   <div class="rap-title">
+    ${fotoUrl ? `<img class="rap-photo" src="${fotoUrl}" alt="">` : ''}
     <h2>Lampiran — Raport Penilaian Peserta</h2>
     <p>Periode ${bulanLabelEkspor(terbaru.bulan)}</p>
   </div>
@@ -2665,6 +2670,9 @@
       <div class="line">Pelatih AKA Futsal Camp</div>
     </div>
   </div>
+
+    </td></tr></tbody>
+  </table>
 </body>
 </html>`;
 
