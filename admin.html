@@ -302,6 +302,20 @@
       <div class="head"><h2>Catatan per Sesi</h2></div>
       <div id="raportPerSesi"></div>
     </div>
+
+    <div class="session-card" style="margin-top:20px;">
+      <div class="head">
+        <h2>Rekap Kehadiran per Siswa</h2>
+        <button class="icon-btn" id="btnExportRekapHadir" style="font-size:11px;">⬇ Excel</button>
+      </div>
+      <p style="padding:12px 16px 0;margin:0;font-size:11.5px;color:var(--text-secondary);">Biar nggak perlu cek satu-satu. "Bulan Ini" ngikutin filter bulan di atas (kosongkan bulan + klik "Muat Raport" untuk lihat semua periode). "Akumulasi" selalu total dari awal gabung, buat lihat siswa paling rajin. Klik judul kolom buat urutkan, 🏆 nandain 3 besar paling rajin (akumulasi).</p>
+      <div style="padding:12px 16px 0;">
+        <input type="text" id="rekapHadirSearch" placeholder="Cari nama siswa...">
+      </div>
+      <div style="overflow-x:auto;padding:12px 16px 16px;">
+        <table id="rekapHadirTable" style="width:100%;border-collapse:collapse;font-size:12.5px;"></table>
+      </div>
+    </div>
   </div>
 
   <div class="tab-panel" id="laporanTab">
@@ -1570,6 +1584,8 @@
       filtered = kehadiranCache.filter(k => k.sesi_tanggal && k.sesi_tanggal.startsWith(bulan));
     }
 
+    renderRekapKehadiran();
+
     const perSesi = {};
     filtered.forEach(k => {
       if (!perSesi[k.sesi_label]) perSesi[k.sesi_label] = [];
@@ -1614,6 +1630,102 @@
       });
     });
   }
+
+  // ---------- REKAP KEHADIRAN PER SISWA ----------
+  let rekapHadirSort = { key: 'hadirTotal', dir: 'desc' };
+  let rekapHadirRowsCache = [];
+
+  function hitungRekapKehadiran() {
+    const bulan = document.getElementById('raportBulan').value;
+    const totalSesiBulan = bulan ? sesiCache.filter(se => se.selesai && se.tanggal && se.tanggal.startsWith(bulan)).length : null;
+
+    const rows = siswaCache.map(s => {
+      const hadirBulan = kehadiranCache.filter(k => k.siswa_id === s.id && (!bulan || (k.sesi_tanggal && k.sesi_tanggal.startsWith(bulan)))).length;
+      const hadirTotal = kehadiranCache.filter(k => k.siswa_id === s.id).length;
+      const persen = (totalSesiBulan && totalSesiBulan > 0) ? Math.round((hadirBulan / totalSesiBulan) * 100) : null;
+      return { id: s.id, nama: s.nama, peran: s.peran === 'gk' ? 'GK' : 'Pemain', hadirBulan, totalSesiBulan, persen, hadirTotal };
+    });
+    return { bulan, totalSesiBulan, rows };
+  }
+
+  function renderRekapKehadiran() {
+    const { bulan, totalSesiBulan, rows } = hitungRekapKehadiran();
+    const keyword = (document.getElementById('rekapHadirSearch').value || '').trim().toLowerCase();
+
+    // Ranking akumulasi (buat lencana 🏆) dihitung dari SEMUA siswa, sebelum difilter pencarian,
+    // supaya rankingnya tetap benar walaupun lagi nyari nama tertentu.
+    const rankingAkumulasi = [...rows].sort((a, b) => b.hadirTotal - a.hadirTotal).filter(r => r.hadirTotal > 0).map(r => r.id);
+
+    let filtered = keyword ? rows.filter(r => r.nama.toLowerCase().includes(keyword)) : rows.slice();
+
+    const { key, dir } = rekapHadirSort;
+    filtered.sort((a, b) => {
+      let va = a[key], vb = b[key];
+      if (va === null) va = -1;
+      if (vb === null) vb = -1;
+      if (typeof va === 'string') return dir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+      return dir === 'asc' ? va - vb : vb - va;
+    });
+
+    rekapHadirRowsCache = filtered;
+
+    const arrow = (k) => key === k ? (dir === 'asc' ? ' ▲' : ' ▼') : '';
+    const th = (k, label, align) => `<th data-sort="${k}" style="padding:9px 12px;text-align:${align || 'left'};background:var(--surface-2);cursor:pointer;white-space:nowrap;">${label}${arrow(k)}</th>`;
+
+    let head = '<tr>' + th('nama', 'Nama') + th('peran', 'Peran', 'center') +
+      th('hadirBulan', bulan ? 'Hadir Bulan Ini' : 'Hadir (periode ini kosong)', 'center') +
+      th('persen', '%', 'center') + th('hadirTotal', 'Akumulasi', 'center') + '</tr>';
+
+    const table = document.getElementById('rekapHadirTable');
+    if (filtered.length === 0) {
+      table.innerHTML = head + `<tr><td colspan="5" style="padding:16px;text-align:center;color:var(--text-secondary);">Tidak ada data</td></tr>`;
+    } else {
+      let body = '';
+      filtered.forEach(r => {
+        const rank = rankingAkumulasi.indexOf(r.id);
+        const medali = rank === 0 ? ' 🏆' : rank === 1 ? ' 🥈' : rank === 2 ? ' 🥉' : '';
+        const fullBulan = r.persen === 100;
+        body += `<tr style="border-top:1px solid var(--line);${fullBulan ? 'background:rgba(52,211,153,0.07);' : ''}">
+          <td style="padding:8px 12px;">${escapeHtml(r.nama)}</td>
+          <td style="padding:8px 12px;text-align:center;color:var(--text-secondary);">${r.peran}</td>
+          <td style="padding:8px 12px;text-align:center;">${bulan ? (r.hadirBulan + (r.totalSesiBulan !== null ? ' / ' + r.totalSesiBulan : '')) : r.hadirBulan}</td>
+          <td style="padding:8px 12px;text-align:center;${fullBulan ? 'color:var(--success);font-weight:700;' : ''}">${r.persen !== null ? r.persen + '%' : '-'}</td>
+          <td style="padding:8px 12px;text-align:center;font-weight:700;font-family:'Oswald',sans-serif;">${r.hadirTotal}${medali}</td>
+        </tr>`;
+      });
+      table.innerHTML = head + body;
+    }
+
+    table.querySelectorAll('th[data-sort]').forEach(h => {
+      h.addEventListener('click', () => {
+        const k = h.dataset.sort;
+        if (rekapHadirSort.key === k) {
+          rekapHadirSort.dir = rekapHadirSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          rekapHadirSort = { key: k, dir: k === 'nama' || k === 'peran' ? 'asc' : 'desc' };
+        }
+        renderRekapKehadiran();
+      });
+    });
+  }
+
+  document.getElementById('rekapHadirSearch').addEventListener('input', renderRekapKehadiran);
+
+  document.getElementById('btnExportRekapHadir').addEventListener('click', () => {
+    if (typeof XLSX === 'undefined') { alert('Library Excel belum siap, coba refresh halaman.'); return; }
+    const { bulan } = hitungRekapKehadiran();
+    const bulanLabel = bulan ? bulanLabelEkspor(bulan) : 'Semua Periode';
+    const aoa = [['Rekap Kehadiran per Siswa — AKA Futsal Camp'], ['Periode', bulanLabel], []];
+    aoa.push(['Nama', 'Peran', bulan ? 'Hadir Bulan Ini' : 'Hadir', 'Total Sesi Bulan Ini', 'Persentase (%)', 'Akumulasi (Semua Waktu)']);
+    rekapHadirRowsCache.forEach(r => {
+      aoa.push([r.nama, r.peran, r.hadirBulan, r.totalSesiBulan !== null ? r.totalSesiBulan : '-', r.persen !== null ? r.persen : '-', r.hadirTotal]);
+    });
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 26 }, { wch: 10 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 20 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Kehadiran');
+    XLSX.writeFile(wb, 'Rekap Kehadiran - ' + bulanLabel.replace(/[\\/:*?"<>|]+/g, '') + ' - AKA Futsal Camp.xlsx');
+  });
 
   async function muatLaporan() {
     const bulan = document.getElementById('laporanBulan').value; // format YYYY-MM
