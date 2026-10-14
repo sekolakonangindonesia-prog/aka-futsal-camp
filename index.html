@@ -177,9 +177,13 @@
  .sticky-cta .cta-btn{padding:11px 18px;font-size:13px;white-space:nowrap;flex-shrink:0;}
  @media(min-width:560px){.sticky-cta{display:none;}}
  @media(max-width:559px){body{padding-bottom:88px;}}
+
+ .admin-fab{position:fixed;top:14px;right:14px;z-index:60;width:38px;height:38px;border-radius:50%;background:rgba(29,22,19,0.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--text-secondary);text-decoration:none;font-size:16px;opacity:.55;transition:opacity .2s ease,color .2s ease;}
+ .admin-fab:hover{opacity:1;color:var(--amber);}
 </style>
 </head>
 <body>
+<a class="admin-fab" href="admin.html" title="Admin Panel">⚙</a>
 <div class="wrap">
  <div class="hero" id="hero">
  <img class="hero-mascot" id="heroMascotImg" src="" alt="Maskot AKA Futsal Camp">
