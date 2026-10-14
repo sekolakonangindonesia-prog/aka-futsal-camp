@@ -2068,6 +2068,18 @@
     'Lain-lain': 'Lain-lain'
   };
 
+  // Urutkan terbaru dulu: tanggal (field yang diisi manual) jadi patokan utama,
+  // kalau tanggalnya sama baru dibedakan pakai createdAt (kapan datanya disimpan) biar yang baru ditambahkan selalu di atas.
+  function urutkanTerbaru(list) {
+    return [...list].sort((a, b) => {
+      const tglCmp = (b.tanggal || '').localeCompare(a.tanggal || '');
+      if (tglCmp !== 0) return tglCmp;
+      const ma = (a.createdAt && a.createdAt.toMillis) ? a.createdAt.toMillis() : 0;
+      const mb = (b.createdAt && b.createdAt.toMillis) ? b.createdAt.toMillis() : 0;
+      return mb - ma;
+    });
+  }
+
   function renderPengeluaranList(list) {
     const el = document.getElementById('lapPengeluaranList');
     el.innerHTML = '';
@@ -2075,6 +2087,7 @@
       el.innerHTML = '<div class="empty-state">Belum ada pengeluaran dicatat di periode ini</div>';
       return;
     }
+    list = urutkanTerbaru(list);
     list.forEach(p => {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;';
@@ -2113,6 +2126,7 @@
       el.innerHTML = '<div class="empty-state">Belum ada pemasukan manual dicatat di periode ini</div>';
       return;
     }
+    list = urutkanTerbaru(list);
     list.forEach(p => {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;';
@@ -2926,7 +2940,7 @@
       opsEl.innerHTML = '<div class="empty-state">Belum ada pengeluaran operasional dicatat di periode ini</div>';
     } else {
       opsEl.innerHTML = '';
-      d.pengOps.sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || '')).forEach(p => {
+      urutkanTerbaru(d.pengOps).forEach(p => {
         const tglLabel = p.tanggal ? new Date(p.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;';
