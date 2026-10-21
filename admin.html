@@ -434,6 +434,7 @@
         <div class="stat-card"><div class="label">Pengeluaran Operasional</div><div class="value" id="mktPengeluaranTotal" style="font-size:18px;color:var(--red);">-</div></div>
         <div class="stat-card"><div class="label">Untung Bersih</div><div class="value" id="mktUntungBersih" style="font-size:20px;">-</div></div>
         <div class="stat-card"><div class="label">Pesanan Belum Lunas</div><div class="value" id="mktBelumLunas" style="font-size:18px;color:var(--amber);">-</div></div>
+        <div class="stat-card"><div class="label">Sisa DP Belum Lunas</div><div class="value" id="mktDpSisa" style="font-size:18px;color:var(--amber);">-</div></div>
       </div>
       <div class="session-card" style="margin-bottom:20px;">
         <div class="head"><h2>Penjualan per Produk</h2></div>
@@ -525,8 +526,9 @@
       <h2>Pesanan Masuk</h2>
       <button class="icon-btn" id="btnLihatQrisMarket" style="font-size:11px;">📷 Lihat/Unduh QRIS</button>
     </div>
-    <p style="font-size:11.5px;color:var(--text-secondary);margin:-10px 0 12px;">Tombol "Konfirmasi" di tiap pesanan yang belum bayar akan membuka WhatsApp ke nomor pemesan dengan teks rincian pesanan sudah terisi otomatis. Foto QRIS nggak bisa ikut terkirim otomatis (WhatsApp nggak izinkan itu dari link biasa) — simpan dulu ke galeri HP lewat tombol di atas, lalu lampirkan manual sebelum kirim.</p>
+    <p style="font-size:11.5px;color:var(--text-secondary);margin:-10px 0 12px;">Tombol "Konfirmasi" di tiap pesanan yang belum bayar akan membuka WhatsApp ke nomor pemesan dengan teks rincian pesanan sudah terisi otomatis. Status bayar "DP" dipakai kalau pembeli baru bayar sebagian dan sisanya dilunasi saat barang datang (tinggal ganti ke Cash/QRIS kalau sudah lunas semua). Kalau pesanan sudah "Selesai", tombol "🧾 Kirim Nota" bisa dipakai buat kirim nota pembayaran digital lewat WhatsApp — setelah terkirim, pesanan otomatis pindah ke riwayat di bawah biar daftar ini nggak kepanjangan. Foto QRIS maupun nota nggak bisa ikut terkirim otomatis sebagai file (WhatsApp nggak izinkan itu dari link biasa) — kalau perlu foto QRIS, simpan dulu ke galeri HP lewat tombol di atas, lalu lampirkan manual.</p>
     <div class="siswa-table" id="pesananTable"></div>
+    <div id="riwayatPesananSelesaiWrap" style="margin-top:12px;"></div>
   </div>
 
   <div class="foto-lightbox" id="fotoLightbox">
@@ -2068,49 +2070,50 @@
     });
 
     const el = document.getElementById('lapPerSesi');
-    el.innerHTML = '';
-    const keys = Object.keys(perSesi);
-    if (keys.length === 0) {
-      el.innerHTML = '<div class="empty-state">Tidak ada data di periode ini</div>';
-    } else {
-      const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar' };
-      keys.forEach(label => {
-        const row = document.createElement('div');
-        row.className = 'siswa-row laporan-row';
-        row.innerHTML = `<span class="nama">${escapeHtml(label)}</span><span style="color:var(--text-secondary);font-size:12px;">${perSesi[label].lunas}/${perSesi[label].total} lunas &#9662;</span>`;
+    const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar' };
+    const sesiItems = Object.keys(perSesi).map(label => {
+      const anggota = filtered.filter(k => k.sesi_label === label);
+      const tgl = anggota.map(k => k.sesi_tanggal || '').sort().pop() || '';
+      return { label, tanggal: tgl, anggota };
+    }).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 
-        const anggota = filtered.filter(k => k.sesi_label === label);
-        const detail = document.createElement('div');
-        detail.className = 'laporan-detail';
-        detail.innerHTML = anggota.map(k =>
-          `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;border-bottom:1px solid var(--line);">
-             <span>${escapeHtml(k.siswa_nama)}${k.walk_in ? ' <span style="color:var(--amber);">(dadakan)</span>' : ''}</span>
-             <span style="display:flex;align-items:center;gap:8px;">
-               <span style="color:var(--text-secondary);">${labelBayar[k.status_bayar] || 'Belum bayar'}</span>
-               <button class="icon-btn" data-hapus-hadir="${k.id}" style="padding:3px 8px;font-size:10px;">Hapus</button>
-             </span>
-           </div>`
-        ).join('');
-
-        row.addEventListener('click', () => detail.classList.toggle('open'));
-        el.appendChild(row);
-        el.appendChild(detail);
-        detail.querySelectorAll('[data-hapus-hadir]').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            if (!confirm('Hapus catatan kehadiran ini?')) return;
-            try {
-              await db.collection(HADIR_COL).doc(btn.dataset.hapusHadir).delete();
-              await loadAll();
-              muatLaporan();
-            } catch (err) {
-              console.error('Gagal menghapus kehadiran:', err);
-              alert('Gagal menghapus: ' + err.message);
-            }
-          });
+    const buildSesiRow = (it) => {
+      const label = it.label;
+      const box = document.createElement('div');
+      const row = document.createElement('div');
+      row.className = 'siswa-row laporan-row';
+      row.innerHTML = `<span class="nama">${escapeHtml(label)}</span><span style="color:var(--text-secondary);font-size:12px;">${perSesi[label].lunas}/${perSesi[label].total} lunas &#9662;</span>`;
+      const detail = document.createElement('div');
+      detail.className = 'laporan-detail';
+      detail.innerHTML = it.anggota.map(k =>
+        `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12px;border-bottom:1px solid var(--line);">
+           <span>${escapeHtml(k.siswa_nama)}${k.walk_in ? ' <span style="color:var(--amber);">(dadakan)</span>' : ''}</span>
+           <span style="display:flex;align-items:center;gap:8px;">
+             <span style="color:var(--text-secondary);">${labelBayar[k.status_bayar] || 'Belum bayar'}</span>
+             <button class="icon-btn" data-hapus-hadir="${k.id}" style="padding:3px 8px;font-size:10px;">Hapus</button>
+           </span>
+         </div>`
+      ).join('');
+      row.addEventListener('click', () => detail.classList.toggle('open'));
+      detail.querySelectorAll('[data-hapus-hadir]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('Hapus catatan kehadiran ini?')) return;
+          try {
+            await db.collection(HADIR_COL).doc(btn.dataset.hapusHadir).delete();
+            await loadAll();
+            muatLaporan();
+          } catch (err) {
+            console.error('Gagal menghapus kehadiran:', err);
+            alert('Gagal menghapus: ' + err.message);
+          }
         });
       });
-    }
+      box.appendChild(row);
+      box.appendChild(detail);
+      return box;
+    };
+    renderGrupBulan(el, sesiItems, buildSesiRow, 'Tidak ada data di periode ini');
   }
 
   // ---------- PENGELUARAN (Uang Keluar) ----------
@@ -2135,82 +2138,97 @@
     });
   }
 
-  function renderPengeluaranList(list) {
-    const el = document.getElementById('lapPengeluaranList');
-    el.innerHTML = '';
+  // Kelompokkan list (yang punya field `tanggal` YYYY-MM-DD) per bulan, bulan terbaru dulu.
+  function kelompokkanPerBulan(list) {
+    const map = {};
+    list.forEach(item => {
+      const key = (item.tanggal || '').slice(0, 7) || 'Lainnya';
+      (map[key] = map[key] || []).push(item);
+    });
+    return Object.keys(map).sort((a, b) => b.localeCompare(a)).map(key => ({
+      key, label: key === 'Lainnya' ? 'Tanpa tanggal' : bulanLabelEkspor(key), items: map[key]
+    }));
+  }
+
+  // Kalau data mencakup lebih dari 1 bulan -> dibagi per bulan, bulan terbaru terbuka otomatis, sisanya terlipat.
+  // Kalau cuma 1 bulan (mis. sudah difilter), tampil biasa tanpa lipatan.
+  function renderGrupBulan(container, list, buildItemFn, emptyMsg) {
+    container.innerHTML = '';
     if (list.length === 0) {
-      el.innerHTML = '<div class="empty-state">Belum ada pengeluaran dicatat di periode ini</div>';
+      container.innerHTML = `<div class="empty-state">${emptyMsg}</div>`;
       return;
     }
-    list = urutkanTerbaru(list);
-    list.forEach(p => {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;';
-      const tglLabel = p.tanggal ? new Date(p.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
-      row.innerHTML = `
-        <div style="min-width:0;flex:1;">
-          <div style="font-weight:600;">${escapeHtml(p.keterangan || '-')}</div>
-          <div style="color:var(--text-secondary);font-size:11.5px;margin-top:2px;">${escapeHtml(tglLabel)} &middot; ${escapeHtml(KATEGORI_LABEL_PENGELUARAN[p.kategori] || p.kategori || 'Lain-lain')}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-          <span style="color:var(--red);font-family:'Space Mono',monospace;font-weight:700;">Rp${(Number(p.jumlah) || 0).toLocaleString('id-ID')}</span>
-          <button class="icon-btn" data-hapus-pengeluaran="${p.id}" style="padding:5px 9px;font-size:10px;">Hapus</button>
-        </div>
-      `;
-      el.appendChild(row);
-    });
-    el.querySelectorAll('[data-hapus-pengeluaran]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!confirm('Hapus catatan pengeluaran ini?')) return;
-        try {
-          await db.collection(PENGELUARAN_COL).doc(btn.dataset.hapusPengeluaran).delete();
-          await loadAll();
-          muatLaporan();
-        } catch (err) {
-          console.error('Gagal menghapus pengeluaran:', err);
-          alert('Gagal menghapus: ' + err.message);
-        }
+    const grup = kelompokkanPerBulan(list);
+    if (grup.length <= 1) {
+      list.forEach(item => container.appendChild(buildItemFn(item)));
+      return;
+    }
+    grup.forEach((g, idx) => {
+      const punyaJumlah = g.items.some(it => it.jumlah !== undefined);
+      const total = g.items.reduce((sum, it) => sum + (Number(it.jumlah) || 0), 0);
+      const wrap = document.createElement('div');
+      wrap.className = 'toggle-wrap';
+      if (idx === 0) wrap.style.marginTop = '0';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'toggle-btn' + (idx === 0 ? ' open' : '');
+      btn.innerHTML = `<span>${escapeHtml(g.label)} · ${g.items.length} ${punyaJumlah ? 'catatan · Rp' + total.toLocaleString('id-ID') : 'sesi'}</span><span class="chev">▾</span>`;
+      const body = document.createElement('div');
+      body.className = 'toggle-body' + (idx === 0 ? ' open' : '');
+      g.items.forEach(item => body.appendChild(buildItemFn(item)));
+      btn.addEventListener('click', () => {
+        const isOpen = body.classList.toggle('open');
+        btn.classList.toggle('open', isOpen);
       });
+      wrap.appendChild(btn);
+      wrap.appendChild(body);
+      container.appendChild(wrap);
     });
+  }
+
+  function buildUangRow(p, opts) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;';
+    const tglLabel = p.tanggal ? new Date(p.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+    row.innerHTML = `
+      <div style="min-width:0;flex:1;">
+        <div style="font-weight:600;">${escapeHtml(p.keterangan || '-')}</div>
+        <div style="color:var(--text-secondary);font-size:11.5px;margin-top:2px;">${escapeHtml(tglLabel)} &middot; ${escapeHtml(opts.kategoriLabel(p))}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span style="color:${opts.warna};font-family:'Space Mono',monospace;font-weight:700;">Rp${(Number(p.jumlah) || 0).toLocaleString('id-ID')}</span>
+        <button class="icon-btn" data-hapus-uang style="padding:5px 9px;font-size:10px;">Hapus</button>
+      </div>
+    `;
+    row.querySelector('[data-hapus-uang]').addEventListener('click', async () => {
+      if (!confirm(opts.konfirmasi)) return;
+      try {
+        await db.collection(opts.koleksi).doc(p.id).delete();
+        await loadAll();
+        opts.onChange();
+      } catch (err) {
+        console.error('Gagal menghapus catatan:', err);
+        alert('Gagal menghapus: ' + err.message);
+      }
+    });
+    return row;
+  }
+
+  function renderPengeluaranList(list, containerId, onChange, emptyMsg) {
+    const el = document.getElementById(containerId || 'lapPengeluaranList');
+    const cb = onChange || muatLaporan;
+    renderGrupBulan(el, urutkanTerbaru(list), p => buildUangRow(p, {
+      warna: 'var(--red)', koleksi: PENGELUARAN_COL, konfirmasi: 'Hapus catatan pengeluaran ini?', onChange: cb,
+      kategoriLabel: x => KATEGORI_LABEL_PENGELUARAN[x.kategori] || x.kategori || 'Lain-lain'
+    }), emptyMsg || 'Belum ada pengeluaran dicatat di periode ini');
   }
 
   function renderPemasukanList(list, containerId, onChange) {
     const el = document.getElementById(containerId);
-    el.innerHTML = '';
-    if (list.length === 0) {
-      el.innerHTML = '<div class="empty-state">Belum ada pemasukan manual dicatat di periode ini</div>';
-      return;
-    }
-    list = urutkanTerbaru(list);
-    list.forEach(p => {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;';
-      const tglLabel = p.tanggal ? new Date(p.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
-      row.innerHTML = `
-        <div style="min-width:0;flex:1;">
-          <div style="font-weight:600;">${escapeHtml(p.keterangan || '-')}</div>
-          <div style="color:var(--text-secondary);font-size:11.5px;margin-top:2px;">${escapeHtml(tglLabel)} &middot; ${escapeHtml(p.kategori || 'Lain-lain')}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-          <span style="color:var(--success);font-family:'Space Mono',monospace;font-weight:700;">Rp${(Number(p.jumlah) || 0).toLocaleString('id-ID')}</span>
-          <button class="icon-btn" data-hapus-pemasukan="${p.id}" style="padding:5px 9px;font-size:10px;">Hapus</button>
-        </div>
-      `;
-      el.appendChild(row);
-    });
-    el.querySelectorAll('[data-hapus-pemasukan]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (!confirm('Hapus catatan pemasukan ini?')) return;
-        try {
-          await db.collection(PEMASUKAN_COL).doc(btn.dataset.hapusPemasukan).delete();
-          await loadAll();
-          onChange();
-        } catch (err) {
-          console.error('Gagal menghapus pemasukan:', err);
-          alert('Gagal menghapus: ' + err.message);
-        }
-      });
-    });
+    renderGrupBulan(el, urutkanTerbaru(list), p => buildUangRow(p, {
+      warna: 'var(--success)', koleksi: PEMASUKAN_COL, konfirmasi: 'Hapus catatan pemasukan ini?', onChange: onChange,
+      kategoriLabel: x => x.kategori || 'Lain-lain'
+    }), 'Belum ada pemasukan manual dicatat di periode ini');
   }
 
   document.getElementById('btnTambahPemasukan').addEventListener('click', async () => {
@@ -2829,55 +2847,173 @@
   }
 
   const STATUS_PESANAN_OPTIONS = `<option value="baru">Baru</option><option value="diproses">Diproses</option><option value="selesai">Selesai</option><option value="batal">Batal</option>`;
-  const STATUS_BAYAR_OPTIONS_MARKET = `<option value="belum_bayar">Belum bayar</option><option value="cash">Cash</option><option value="qris">QRIS</option>`;
+  const STATUS_BAYAR_OPTIONS_MARKET = `<option value="belum_bayar">Belum bayar</option><option value="dp">DP</option><option value="cash">Cash</option><option value="qris">QRIS</option>`;
+
+  function pesananMetaLine(o) {
+    let bayarInfo = '';
+    if (o.status_bayar === 'dp') {
+      const dp = Number(o.dp_jumlah) || 0;
+      const sisa = Math.max((Number(o.subtotal) || 0) - dp, 0);
+      bayarInfo = ` · DP Rp${dp.toLocaleString('id-ID')} (sisa Rp${sisa.toLocaleString('id-ID')})`;
+    }
+    return `${escapeHtml(o.nama_pemesan)} · ${escapeHtml(o.nomor_wa || '-')} · Rp${Number(o.subtotal || 0).toLocaleString('id-ID')}${bayarInfo}${o.catatan ? ' · "' + escapeHtml(o.catatan) + '"' : ''}`;
+  }
+
+  function buildPesananRow(o, isArsip) {
+    const row = document.createElement('div');
+    row.className = 'siswa-item';
+    row.style.flexWrap = 'wrap';
+    row.innerHTML = `
+      <div class="info" style="flex:1 1 100%;">
+        <div class="nama">${escapeHtml(o.produk_nama)}${o.ukuran ? ' (' + escapeHtml(o.ukuran) + ')' : ''} &times; ${o.jumlah}</div>
+        <div class="meta">${pesananMetaLine(o)}${o.nota_terkirim ? ' · <span style="color:var(--success);">🧾 Nota terkirim</span>' : ''}</div>
+      </div>
+      <select data-status-pesanan="${o.id}" style="width:auto;" ${isArsip ? 'disabled' : ''}>${STATUS_PESANAN_OPTIONS}</select>
+      <select data-bayar-pesanan="${o.id}" style="width:auto;" ${isArsip ? 'disabled' : ''}>${STATUS_BAYAR_OPTIONS_MARKET}</select>
+      ${(o.status_bayar || 'belum_bayar') === 'belum_bayar' ? `<button class="icon-btn" data-konfirmasi-pesanan="${o.id}" style="padding:7px 10px;font-size:11px;color:var(--amber);border-color:var(--amber);">💬 Konfirmasi</button>` : ''}
+      ${o.status === 'selesai' && !o.nota_terkirim ? `<button class="icon-btn" data-nota-pesanan="${o.id}" style="padding:7px 10px;font-size:11px;color:var(--success);border-color:var(--success);">🧾 Kirim Nota</button>` : ''}
+      ${o.nota_terkirim ? `<button class="icon-btn" data-ulang-nota-pesanan="${o.id}" style="padding:7px 10px;font-size:11px;">🧾 Kirim Ulang Nota</button><button class="icon-btn" data-batal-arsip-pesanan="${o.id}" style="padding:7px 10px;font-size:11px;">↩ Kembalikan ke Aktif</button>` : ''}
+      <button class="icon-btn" data-hapus-pesanan="${o.id}" style="padding:7px 10px;font-size:11px;">Hapus</button>
+    `;
+    row.querySelector('[data-status-pesanan]').value = o.status || 'baru';
+    row.querySelector('[data-bayar-pesanan]').value = o.status_bayar || 'belum_bayar';
+    row.querySelector('[data-status-pesanan]').addEventListener('change', async (e) => {
+      try { await db.collection(PESANAN_COL).doc(o.id).update({ status: e.target.value }); await loadAndRenderMarket(); }
+      catch (err) { alert('Gagal update status: ' + err.message); }
+    });
+    row.querySelector('[data-bayar-pesanan]').addEventListener('change', async (e) => {
+      const nilai = e.target.value;
+      try {
+        if (nilai === 'dp') {
+          const subtotal = Number(o.subtotal) || 0;
+          const input = prompt(`Berapa jumlah DP yang sudah dibayar untuk pesanan ini? (Total pesanan: Rp${subtotal.toLocaleString('id-ID')})`, o.dp_jumlah || '');
+          if (input === null) { e.target.value = o.status_bayar || 'belum_bayar'; return; }
+          const dpJumlah = Number(input.replace(/[^0-9]/g, '')) || 0;
+          if (dpJumlah <= 0) { alert('Jumlah DP harus lebih dari 0.'); e.target.value = o.status_bayar || 'belum_bayar'; return; }
+          await db.collection(PESANAN_COL).doc(o.id).update({ status_bayar: 'dp', dp_jumlah: dpJumlah });
+        } else {
+          await db.collection(PESANAN_COL).doc(o.id).update({ status_bayar: nilai });
+        }
+        await loadAndRenderMarket();
+      } catch (err) { alert('Gagal update status bayar: ' + err.message); }
+    });
+    const btnKonfirmasi = row.querySelector('[data-konfirmasi-pesanan]');
+    if (btnKonfirmasi) btnKonfirmasi.addEventListener('click', () => bukaKonfirmasiPesananWa(o));
+    const btnNota = row.querySelector('[data-nota-pesanan]');
+    if (btnNota) btnNota.addEventListener('click', () => kirimNotaPesanan(o));
+    const btnUlangNota = row.querySelector('[data-ulang-nota-pesanan]');
+    if (btnUlangNota) btnUlangNota.addEventListener('click', () => bukaNotaPesananWa(o));
+    const btnBatalArsip = row.querySelector('[data-batal-arsip-pesanan]');
+    if (btnBatalArsip) btnBatalArsip.addEventListener('click', async () => {
+      try {
+        await db.collection(PESANAN_COL).doc(o.id).update({ nota_terkirim: false, nota_terkirim_at: firebase.firestore.FieldValue.delete() });
+        await loadAndRenderMarket();
+      } catch (err) { alert('Gagal mengembalikan pesanan: ' + err.message); }
+    });
+    row.querySelector('[data-hapus-pesanan]').addEventListener('click', async () => {
+      if (!confirm(`Hapus pesanan "${o.produk_nama}" dari ${o.nama_pemesan}? Tindakan ini tidak bisa dibatalkan.`)) return;
+      try {
+        await db.collection(PESANAN_COL).doc(o.id).delete();
+        await loadAndRenderMarket();
+      } catch (err) {
+        console.error('Gagal menghapus pesanan:', err);
+        alert('Gagal menghapus pesanan: ' + err.message);
+      }
+    });
+    return row;
+  }
 
   function renderPesananTable() {
     const table = document.getElementById('pesananTable');
+    const riwayatWrap = document.getElementById('riwayatPesananSelesaiWrap');
     table.innerHTML = '';
-    if (pesananCache.length === 0) {
+    riwayatWrap.innerHTML = '';
+    const aktifList = pesananCache.filter(o => !o.nota_terkirim);
+    const arsipList = pesananCache.filter(o => o.nota_terkirim);
+
+    if (aktifList.length === 0) {
       table.innerHTML = '<div class="empty-state">Belum ada pesanan masuk</div>';
+    } else {
+      aktifList.forEach(o => table.appendChild(buildPesananRow(o, false)));
+    }
+
+    if (arsipList.length > 0) {
+      const wrap = document.createElement('div');
+      wrap.className = 'toggle-wrap';
+      const outerBtn = document.createElement('button');
+      outerBtn.type = 'button';
+      outerBtn.className = 'toggle-btn';
+      outerBtn.innerHTML = `<span>Riwayat Pesanan Selesai — nota sudah terkirim (${arsipList.length})</span><span class="chev">▾</span>`;
+      const outerBody = document.createElement('div');
+      outerBody.className = 'toggle-body';
+      arsipList.forEach(o => {
+        const tglNota = (o.nota_terkirim_at && o.nota_terkirim_at.toMillis) ? new Date(o.nota_terkirim_at.toMillis()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+        const collapsed = document.createElement('div');
+        collapsed.className = 'session-card-collapsed';
+        collapsed.innerHTML = `
+          <span class="label">${escapeHtml(o.nama_pemesan)} — ${escapeHtml(o.produk_nama)}</span>
+          <div class="meta">
+            <span class="count">Nota ${escapeHtml(tglNota)}</span>
+            <span class="chev">▾</span>
+          </div>
+        `;
+        const expandBody = document.createElement('div');
+        expandBody.className = 'session-card-expand-body';
+        collapsed.addEventListener('click', () => {
+          const isOpen = expandBody.classList.toggle('open');
+          collapsed.classList.toggle('open', isOpen);
+          if (isOpen && expandBody.children.length === 0) {
+            expandBody.appendChild(buildPesananRow(o, true));
+          }
+        });
+        outerBody.appendChild(collapsed);
+        outerBody.appendChild(expandBody);
+      });
+      outerBtn.addEventListener('click', () => {
+        const isOpen = outerBody.classList.toggle('open');
+        outerBtn.classList.toggle('open', isOpen);
+      });
+      wrap.appendChild(outerBtn);
+      wrap.appendChild(outerBody);
+      riwayatWrap.appendChild(wrap);
+    }
+  }
+
+  async function kirimNotaPesanan(o) {
+    bukaNotaPesananWa(o);
+    try {
+      await db.collection(PESANAN_COL).doc(o.id).update({ nota_terkirim: true, nota_terkirim_at: firebase.firestore.FieldValue.serverTimestamp() });
+      await loadAndRenderMarket();
+    } catch (err) {
+      console.error('Gagal menandai nota terkirim:', err);
+      alert('WA sudah terbuka, tapi gagal menyimpan status "nota terkirim": ' + err.message);
+    }
+  }
+
+  function bukaNotaPesananWa(o) {
+    const namaDepan = (o.nama_pemesan || '').trim().split(/\s+/)[0] || 'Kak';
+    const subtotal = Number(o.subtotal) || 0;
+    const sudahDibayar = o.status_bayar === 'dp' ? (Number(o.dp_jumlah) || 0) : subtotal;
+    const metodeLabel = { cash: 'Cash', qris: 'QRIS', dp: 'DP + Pelunasan', belum_bayar: 'Belum bayar' }[o.status_bayar] || '-';
+    const pesan = `🧾 *NOTA PEMBAYARAN DIGITAL*
+AKA Futsal Camp
+
+Halo ${namaDepan}, berikut nota pembayaran untuk pesanan Kakak yang sudah *selesai*:
+
+Produk: ${o.produk_nama}${o.ukuran ? ' (' + o.ukuran + ')' : ''}
+Jumlah: ${o.jumlah}
+${o.catatan ? 'Catatan: ' + o.catatan + '\n' : ''}Total Tagihan: Rp${subtotal.toLocaleString('id-ID')}
+Metode Bayar: ${metodeLabel}
+Dibayar: Rp${sudahDibayar.toLocaleString('id-ID')}
+Status: *LUNAS* ✅
+
+Terima kasih sudah berbelanja di AKA Futsal Camp! 🙏⚽`;
+    const nomorTujuan = normalisasiWa(o.nomor_wa);
+    if (!nomorTujuan) {
+      alert('Nomor WhatsApp pemesan ini kosong/tidak valid, jadi nggak bisa buka chat otomatis.');
       return;
     }
-    pesananCache.forEach(o => {
-      const row = document.createElement('div');
-      row.className = 'siswa-item';
-      row.style.flexWrap = 'wrap';
-      row.innerHTML = `
-        <div class="info" style="flex:1 1 100%;">
-          <div class="nama">${escapeHtml(o.produk_nama)}${o.ukuran ? ' (' + escapeHtml(o.ukuran) + ')' : ''} &times; ${o.jumlah}</div>
-          <div class="meta">${escapeHtml(o.nama_pemesan)} · ${escapeHtml(o.nomor_wa || '-')} · Rp${Number(o.subtotal || 0).toLocaleString('id-ID')}${o.catatan ? ' · "' + escapeHtml(o.catatan) + '"' : ''}</div>
-        </div>
-        <select data-status-pesanan="${o.id}" style="width:auto;">${STATUS_PESANAN_OPTIONS}</select>
-        <select data-bayar-pesanan="${o.id}" style="width:auto;">${STATUS_BAYAR_OPTIONS_MARKET}</select>
-        ${(o.status_bayar || 'belum_bayar') === 'belum_bayar' ? `<button class="icon-btn" data-konfirmasi-pesanan="${o.id}" style="padding:7px 10px;font-size:11px;color:var(--amber);border-color:var(--amber);">💬 Konfirmasi</button>` : ''}
-        <button class="icon-btn" data-hapus-pesanan="${o.id}" style="padding:7px 10px;font-size:11px;">Hapus</button>
-      `;
-      row.querySelector('[data-status-pesanan]').value = o.status || 'baru';
-      row.querySelector('[data-bayar-pesanan]').value = o.status_bayar || 'belum_bayar';
-      row.querySelector('[data-status-pesanan]').addEventListener('change', async (e) => {
-        try { await db.collection(PESANAN_COL).doc(o.id).update({ status: e.target.value }); }
-        catch (err) { alert('Gagal update status: ' + err.message); }
-      });
-      row.querySelector('[data-bayar-pesanan]').addEventListener('change', async (e) => {
-        try { await db.collection(PESANAN_COL).doc(o.id).update({ status_bayar: e.target.value }); }
-        catch (err) { alert('Gagal update status bayar: ' + err.message); }
-      });
-      const btnKonfirmasi = row.querySelector('[data-konfirmasi-pesanan]');
-      if (btnKonfirmasi) {
-        btnKonfirmasi.addEventListener('click', () => bukaKonfirmasiPesananWa(o));
-      }
-      row.querySelector('[data-hapus-pesanan]').addEventListener('click', async () => {
-        if (!confirm(`Hapus pesanan "${o.produk_nama}" dari ${o.nama_pemesan}? Tindakan ini tidak bisa dibatalkan.`)) return;
-        try {
-          await db.collection(PESANAN_COL).doc(o.id).delete();
-          await loadAndRenderMarket();
-        } catch (err) {
-          console.error('Gagal menghapus pesanan:', err);
-          alert('Gagal menghapus pesanan: ' + err.message);
-        }
-      });
-      table.appendChild(row);
-    });
+    window.open(`https://wa.me/${nomorTujuan}?text=${encodeURIComponent(pesan)}`, '_blank');
   }
 
   function bukaKonfirmasiPesananWa(o) {
@@ -2923,37 +3059,49 @@ Terima kasih! 🙏`;
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   }
 
+  // Uang yang benar-benar diterima dari satu pesanan: penuh kalau cash/qris, cuma sebesar DP kalau status "dp", 0 kalau belum bayar.
+  function uangDiterimaPesanan(o) {
+    if (o.status_bayar === 'cash' || o.status_bayar === 'qris') return Number(o.subtotal) || 0;
+    if (o.status_bayar === 'dp') return Number(o.dp_jumlah) || 0;
+    return 0;
+  }
+
   function hitungLaporanMarket(bulan) {
     const valid = pesananCache.filter(o => o.status !== 'batal' && (!bulan || bulanDariTimestamp(o.createdAt) === bulan));
     const lunas = valid.filter(o => o.status_bayar === 'cash' || o.status_bayar === 'qris');
-    const belumLunas = valid.filter(o => o.status_bayar !== 'cash' && o.status_bayar !== 'qris');
+    const dpList = valid.filter(o => o.status_bayar === 'dp');
+    const terjual = lunas.concat(dpList); // barang sudah committed/keluar, baik lunas penuh maupun baru DP
+    const belumLunas = valid.filter(o => o.status_bayar !== 'cash' && o.status_bayar !== 'qris' && o.status_bayar !== 'dp');
 
     const hargaBeliProduk = (produkId) => {
       const p = produkCache.find(x => x.id === produkId);
       return p && p.harga_beli ? Number(p.harga_beli) : 0;
     };
 
-    const pendapatanJual = lunas.reduce((sum, o) => sum + (Number(o.subtotal) || 0), 0);
+    // pendapatanJual = uang yang BENAR-BENAR sudah diterima (lunas penuh + bagian DP yang sudah masuk), bukan nilai barang.
+    const pendapatanJual = terjual.reduce((sum, o) => sum + uangDiterimaPesanan(o), 0);
     const pemasukanManualList = pemasukanMarket(bulan);
     const pendapatanManual = totalPemasukanManual(pemasukanManualList);
     const pendapatan = pendapatanJual + pendapatanManual; // total uang masuk market, termasuk modal awal/suntikan dana manual
-    const modal = lunas.reduce((sum, o) => sum + hargaBeliProduk(o.produk_id) * (Number(o.jumlah) || 0), 0);
+    // Modal (HPP) dihitung penuh untuk pesanan lunas maupun DP, karena barangnya sudah committed/keluar meski uangnya belum lunas semua.
+    const modal = terjual.reduce((sum, o) => sum + hargaBeliProduk(o.produk_id) * (Number(o.jumlah) || 0), 0);
     const untungKotor = pendapatanJual - modal; // murni margin dari jualan produk, nggak dicampur modal awal
     const pengOps = pengeluaranMarket(bulan);
     const totalPengOps = pengOps.reduce((sum, p) => sum + (Number(p.jumlah) || 0), 0);
     const untungBersih = pendapatan - modal - totalPengOps; // total uang masuk (termasuk manual) dikurangi semua uang keluar
+    const dpSisaTotal = dpList.reduce((sum, o) => sum + Math.max((Number(o.subtotal) || 0) - (Number(o.dp_jumlah) || 0), 0), 0);
 
     const perProduk = {};
-    lunas.forEach(o => {
+    terjual.forEach(o => {
       const key = o.produk_id || o.produk_nama;
       if (!perProduk[key]) perProduk[key] = { nama: o.produk_nama, qty: 0, pendapatan: 0, modal: 0 };
       perProduk[key].qty += Number(o.jumlah) || 0;
-      perProduk[key].pendapatan += Number(o.subtotal) || 0;
+      perProduk[key].pendapatan += uangDiterimaPesanan(o);
       perProduk[key].modal += hargaBeliProduk(o.produk_id) * (Number(o.jumlah) || 0);
     });
 
     const perPembeli = {};
-    lunas.forEach(o => {
+    terjual.forEach(o => {
       const waNorm = normalisasiWa(o.nomor_wa);
       const key = waNorm || ('nama:' + (o.nama_pemesan || '').toLowerCase());
       const siswaCocok = waNorm ? siswaCache.find(s => normalisasiWa(s.nomor_wa) === waNorm) : null;
@@ -2961,13 +3109,13 @@ Terima kasih! 🙏`;
         perPembeli[key] = { nama: o.nama_pemesan, wa: o.nomor_wa, siswa: siswaCocok ? siswaCocok.nama : null, jumlahPesanan: 0, totalBelanja: 0 };
       }
       perPembeli[key].jumlahPesanan += 1;
-      perPembeli[key].totalBelanja += Number(o.subtotal) || 0;
+      perPembeli[key].totalBelanja += uangDiterimaPesanan(o);
     });
     const pembeliList = Object.values(perPembeli).sort((a, b) => b.totalBelanja - a.totalBelanja);
     const siswaTotal = pembeliList.filter(p => p.siswa).reduce((s, p) => s + p.totalBelanja, 0);
     const nonSiswaTotal = pembeliList.filter(p => !p.siswa).reduce((s, p) => s + p.totalBelanja, 0);
 
-    return { bulan, pendapatan, pendapatanJual, pendapatanManual, pemasukanManualList, modal, untungKotor, totalPengOps, untungBersih, belumLunasCount: belumLunas.length,
+    return { bulan, pendapatan, pendapatanJual, pendapatanManual, pemasukanManualList, modal, untungKotor, totalPengOps, untungBersih, belumLunasCount: belumLunas.length, dpCount: dpList.length, dpSisaTotal,
       perProduk: Object.values(perProduk).sort((a, b) => b.pendapatan - a.pendapatan), pembeliList, siswaTotal, nonSiswaTotal, pengOps };
   }
 
@@ -2987,6 +3135,7 @@ Terima kasih! 🙏`;
     document.getElementById('mktUntungBersih').textContent = 'Rp' + d.untungBersih.toLocaleString('id-ID');
     document.getElementById('mktUntungBersih').style.color = d.untungBersih >= 0 ? 'var(--success)' : 'var(--red)';
     document.getElementById('mktBelumLunas').textContent = d.belumLunasCount;
+    document.getElementById('mktDpSisa').textContent = d.dpCount > 0 ? 'Rp' + d.dpSisaTotal.toLocaleString('id-ID') + ' (' + d.dpCount + ' pesanan)' : 'Rp0';
     document.getElementById('mktSiswaTotal').textContent = 'Rp' + d.siswaTotal.toLocaleString('id-ID');
     document.getElementById('mktNonSiswaTotal').textContent = 'Rp' + d.nonSiswaTotal.toLocaleString('id-ID');
 
@@ -3019,39 +3168,7 @@ Terima kasih! 🙏`;
       pembeliTable.innerHTML = head + body;
     }
 
-    const opsEl = document.getElementById('mktPengeluaranList');
-    if (d.pengOps.length === 0) {
-      opsEl.innerHTML = '<div class="empty-state">Belum ada pengeluaran operasional dicatat di periode ini</div>';
-    } else {
-      opsEl.innerHTML = '';
-      urutkanTerbaru(d.pengOps).forEach(p => {
-        const tglLabel = p.tanggal ? new Date(p.tanggal + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px;gap:10px;';
-        row.innerHTML = `
-          <div style="min-width:0;flex:1;">
-            <div style="font-weight:600;">${escapeHtml(p.keterangan || '-')}</div>
-            <div style="color:var(--text-secondary);font-size:11.5px;margin-top:2px;">${escapeHtml(tglLabel)} &middot; ${escapeHtml(p.kategori || 'Lain-lain')}</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-            <span style="color:var(--red);font-family:'Space Mono',monospace;font-weight:700;">Rp${(Number(p.jumlah) || 0).toLocaleString('id-ID')}</span>
-            <button class="icon-btn" data-hapus-peng-mkt="${p.id}" style="padding:5px 9px;font-size:10px;">Hapus</button>
-          </div>`;
-        opsEl.appendChild(row);
-      });
-      opsEl.querySelectorAll('[data-hapus-peng-mkt]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          if (!confirm('Hapus catatan pengeluaran ini?')) return;
-          try {
-            await db.collection(PENGELUARAN_COL).doc(btn.dataset.hapusPengMkt).delete();
-            await loadAll();
-            renderLaporanMarket();
-          } catch (err) {
-            alert('Gagal menghapus: ' + err.message);
-          }
-        });
-      });
-    }
+    renderPengeluaranList(d.pengOps, 'mktPengeluaranList', renderLaporanMarket, 'Belum ada pengeluaran operasional dicatat di periode ini');
   }
 
   document.getElementById('btnMuatLapMarket').addEventListener('click', async () => { await loadAndRenderMarket(); renderLaporanMarket(); });
@@ -3115,7 +3232,8 @@ Terima kasih! 🙏`;
       ['Laporan Keuangan Market — AKA Futsal Camp'], ['Periode', bulanLabel], [],
       ['Uang Masuk dari Penjualan', d.pendapatanJual], ['Uang Masuk Manual', d.pendapatanManual], ['Total Uang Masuk', d.pendapatan],
       ['Modal (HPP)', d.modal], ['Untung Kotor (dari penjualan)', d.untungKotor],
-      ['Pengeluaran Operasional', d.totalPengOps], ['Untung Bersih', d.untungBersih], ['Pesanan Belum Lunas', d.belumLunasCount]
+      ['Pengeluaran Operasional', d.totalPengOps], ['Untung Bersih', d.untungBersih], ['Pesanan Belum Lunas', d.belumLunasCount],
+      ['Pesanan DP (belum lunas sepenuhnya)', d.dpCount], ['Sisa DP Belum Dilunasi', d.dpSisaTotal]
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoaRingkasan), 'Ringkasan');
 
