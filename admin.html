@@ -1400,7 +1400,8 @@
       box.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px;';
       const info = document.createElement('div');
       info.style.cssText = 'font-size:12.5px;color:var(--chalk);';
-      info.innerHTML = `<b>${gr.label}</b> — ${lunas}/${gr.min} lunas · ` + (dibuka
+      const rincian = gr.keys.length > 1 ? ' <span style="color:var(--text-secondary);">(' + gr.keys.map(k => KELAS_NAMA[k] + ' ' + data[k].lunas).join(' · ') + ')</span>' : '';
+      info.innerHTML = `<b>${gr.label}</b> — ${lunas}/${gr.min} lunas${rincian} · ` + (dibuka
         ? `<span style="color:var(--success);">sudah dibuka</span>`
         : (siap ? '<span style="color:var(--success);">siap dibuka ✓</span>' : `<span style="color:var(--text-secondary);">kurang ${gr.min - lunas} lagi</span>`));
       box.appendChild(info);
@@ -1409,9 +1410,28 @@
       btn.style.cssText = 'font-size:12px;padding:8px 14px;';
       btn.textContent = dibuka ? 'Ubah Tanggal Buka' : 'Buka Kelas';
       btn.addEventListener('click', () => bukaKelasGrup(gr.keys, siap, dibuka));
-      box.appendChild(btn);
+      const aksi = document.createElement('div');
+      aksi.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;';
+      aksi.appendChild(btn);
+      if (gr.keys.length > 1) {
+        const pisah = document.createElement('button');
+        pisah.className = 'icon-btn';
+        pisah.style.cssText = 'font-size:12px;padding:8px 14px;';
+        pisah.textContent = 'Pisahkan jadi 2 kelas';
+        pisah.addEventListener('click', () => ubahGabungKelas(false));
+        aksi.appendChild(pisah);
+      }
+      box.appendChild(aksi);
       g.appendChild(box);
     });
+    if (!kelasConfig.gabung_aktif) {
+      const gabung = document.createElement('button');
+      gabung.className = 'icon-btn';
+      gabung.style.cssText = 'font-size:12px;padding:7px 12px;margin-top:2px;';
+      gabung.textContent = 'Gabungkan lagi Development + Advance';
+      gabung.addEventListener('click', () => ubahGabungKelas(true));
+      g.appendChild(gabung);
+    }
     if (kelasConfig.gabung_aktif) {
       const dev = data.development, adv = data.advance;
       if (kelasDibuka('development') && dev.lunas >= kelasConfig.kelas.development.min_buka && adv.lunas >= kelasConfig.kelas.advance.min_buka) {
@@ -1420,6 +1440,24 @@
         tip.textContent = 'Development dan Advance masing-masing sudah mencapai minimum — saatnya dipertimbangkan untuk dipisah jadwal/lapangan.';
         g.appendChild(tip);
       }
+    }
+  }
+
+  async function ubahGabungKelas(gabung) {
+    const pesan = gabung
+      ? 'Gabungkan lagi Development + Advance?\n\nKeduanya dihitung satu kelompok untuk syarat buka kelas. Sesi yang sudah ada tidak berubah.'
+      : 'Pisahkan Development dan Advance jadi 2 kelas sendiri-sendiri?\n\n• Masing-masing punya syarat minimum dan tombol Buka Kelas sendiri.\n• Kelas yang sudah dibuka tetap berjalan.\n• Sesi yang sudah dibuat untuk "Development + Advance" tidak berubah otomatis. Buat sesi baru per kelas (centang satu kelas saja), atau ubah sesi yang belum jalan lewat tombol "Kelas" di tab Jadwal Latihan.';
+    if (!confirm(pesan)) return;
+    try {
+      const cfg = JSON.parse(JSON.stringify(kelasConfig));
+      cfg.gabung_aktif = gabung;
+      await db.collection('pengaturan').doc('umum').set({ kelas_config: cfg }, { merge: true });
+      kelasConfig = mergeKelasConfig(cfg);
+      document.getElementById('cfgGabungAktif').checked = gabung;
+      renderSiswaTab();
+    } catch (err) {
+      console.error('Gagal mengubah penggabungan kelas:', err);
+      alert('Gagal menyimpan: ' + err.message);
     }
   }
 
