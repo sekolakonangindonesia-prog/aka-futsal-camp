@@ -193,11 +193,26 @@
       <div class="stat-card"><div class="label">Belum dijadwal</div><div class="value" id="statBelum">-</div></div>
     </div>
 
+    <div class="section-head"><h2>Ringkasan Kelas</h2></div>
+    <div class="stats-row" id="kelasRingkasan"></div>
+    <div id="kelasStatusGabung" style="font-size:12px;color:var(--text-secondary);margin:-10px 0 18px;"></div>
+
+    <div id="kelasPengisianWrap"></div>
+
     <div class="section-head">
       <h2>Daftar Siswa</h2>
       <button class="btn" id="btnTambahSiswa">+ Tambah Siswa</button>
     </div>
-    <input type="text" id="siswaSearch" placeholder="Cari nama siswa..." style="margin-bottom:14px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+      <input type="text" id="siswaSearch" placeholder="Cari nama siswa..." style="flex:2;min-width:180px;">
+      <select id="siswaFilterKelas" style="flex:1;min-width:150px;">
+        <option value="">Semua kelas</option>
+        <option value="fundamental">Fundamental</option>
+        <option value="development">Development</option>
+        <option value="advance">Advance</option>
+        <option value="_belum">Belum ada kelas</option>
+      </select>
+    </div>
     <div class="siswa-table" id="siswaTable"></div>
   </div>
 
@@ -587,6 +602,20 @@
       <div class="status-line" id="sosialStatus"></div>
     </div>
 
+    <div class="section-head"><h2>Kelas &amp; Iuran Bulanan</h2></div>
+    <div class="sesi-config">
+      <p style="font-size:12px;color:var(--text-secondary);margin-top:-6px;margin-bottom:12px;">Tarif dan jumlah pertemuan per paket ikut kelas. <b>Minimum buka</b> = jumlah siswa lunas supaya kelas mulai jalan (juga jadi patokan kapan Development &amp; Advance sebaiknya dipisah). Semua angka ini bebas diubah kapan saja — paket yang sudah dibayar menyimpan tarifnya sendiri, jadi nggak ikut berubah.</p>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;" id="kelasConfigTable"></table>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="cfgGabungAktif" style="width:auto;"> Development &amp; Advance digabung dulu (satu jadwal/lapangan)</label>
+      </div>
+      <div class="field"><label>Minimum buka untuk gabungan Development + Advance</label><input type="number" id="cfgGabungMin" min="1" style="max-width:140px;"></div>
+      <button class="btn" id="btnSimpanKelasConfig">Simpan Pengaturan Kelas</button>
+      <div class="status-line" id="kelasConfigStatus"></div>
+    </div>
+
     <div class="section-head"><h2>QRIS Pembayaran (Market)</h2></div>
     <div class="sesi-config">
       <p style="font-size:12px;color:var(--text-secondary);margin-top:-6px;margin-bottom:12px;">Upload foto QRIS di sini sekali — tersimpan di sistem, nggak perlu upload ke GitHub atau tempat lain. Nanti bisa dilihat/diunduh cepat dari tombol "📷 Lihat/Unduh QRIS" di tab Market, buat dilampirkan manual pas konfirmasi pesanan lewat WhatsApp.</p>
@@ -620,7 +649,16 @@
     <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="modalWa" placeholder="cth. 081234567890"></div>
     <div class="field"><label>Usia</label><input type="number" id="modalUsia" min="1"></div>
     <div class="field"><label>Tempat, tanggal lahir</label><input type="text" id="modalTtl"></div>
-    <div class="field"><label>Kelas (opsional)</label><input type="text" id="modalKelas"></div>
+    <div class="field"><label>Kelas di sekolah (opsional)</label><input type="text" id="modalKelas" placeholder="cth. 8B"></div>
+    <div class="field"><label>Kelas di AKA Futsal Camp</label>
+      <select id="modalKelasCamp">
+        <option value="">— belum ditentukan —</option>
+        <option value="fundamental">Fundamental (U-12 ke bawah)</option>
+        <option value="development">Development (U-13 – U-15)</option>
+        <option value="advance">Advance (U-16 – U-18)</option>
+      </select>
+      <p id="modalKelasCampHint" style="font-size:11px;color:var(--text-secondary);margin-top:5px;"></p>
+    </div>
     <div class="field"><label>Asal sekolah (opsional)</label><input type="text" id="modalSekolah"></div>
     <div class="field">
       <label>Alamat <span id="modalAlamatLockInfo" style="font-size:10px;color:var(--text-secondary);font-weight:400;"></span></label>
@@ -1040,12 +1078,170 @@
         document.getElementById('settingFb').value = s.facebook || '';
         document.getElementById('settingYt').value = s.youtube || '';
         document.getElementById('settingWaAdmin').value = s.wa_admin || '';
+        kelasConfig = mergeKelasConfig(s.kelas_config);
+        isiFormKelasConfig();
+        renderSiswaTab();
         qrisFotoBase64 = s.qris_foto || null;
         document.getElementById('qrisPhotoPreview').innerHTML = qrisFotoBase64 ? `<img src="${qrisFotoBase64}">` : 'Belum ada QRIS';
       }
     } catch (err) {
       console.error('Gagal memuat pengaturan:', err);
     }
+  }
+
+
+  // ===== KELAS CAMP (Fundamental / Development / Advance) & pengaturan iuran =====
+  // Catatan: field `kelas` di data siswa = kelas SEKOLAH (cth. "8B"). Kelas camp disimpan di `kelas_camp`.
+  const KELAS_KEYS = ['fundamental', 'development', 'advance'];
+  const KELAS_NAMA = { fundamental: 'Fundamental', development: 'Development', advance: 'Advance' };
+  const KELAS_DEFAULT = {
+    fundamental: { usia: 'U-12 ke bawah', tarif: 50000, jatah: 4, min_buka: 30 },
+    development: { usia: 'U-13 – U-15', tarif: 100000, jatah: 8, min_buka: 30 },
+    advance: { usia: 'U-16 – U-18', tarif: 80000, jatah: 8, min_buka: 30 }
+  };
+  let kelasConfig = mergeKelasConfig(null);
+
+  function mergeKelasConfig(saved) {
+    const out = { kelas: {}, gabung_aktif: true, gabung_min: 30 };
+    KELAS_KEYS.forEach(k => { out.kelas[k] = Object.assign({}, KELAS_DEFAULT[k], (saved && saved.kelas && saved.kelas[k]) || {}); });
+    if (saved) {
+      if (typeof saved.gabung_aktif === 'boolean') out.gabung_aktif = saved.gabung_aktif;
+      if (saved.gabung_min) out.gabung_min = Number(saved.gabung_min) || 30;
+    }
+    return out;
+  }
+
+  // Saran kelas dari usia — hanya petunjuk, pilihan tetap manual.
+  function saranKelasDariUsia(usia) {
+    const u = Number(usia);
+    if (!u) return null;
+    if (u <= 12) return 'fundamental';
+    if (u <= 15) return 'development';
+    if (u <= 18) return 'advance';
+    return null;
+  }
+
+  function updateKelasCampHint() {
+    const el = document.getElementById('modalKelasCampHint');
+    if (!el) return;
+    const saran = saranKelasDariUsia(document.getElementById('modalUsia').value);
+    el.textContent = saran
+      ? `Dari usia, biasanya masuk ${KELAS_NAMA[saran]} (${kelasConfig.kelas[saran].usia}). Ini cuma petunjuk — pilihan tetap Anda yang tentukan.`
+      : 'Pilih manual sesuai kebijakan Anda.';
+  }
+
+  function isiFormKelasConfig() {
+    const t = document.getElementById('kelasConfigTable');
+    const th = (l, a) => `<th style="padding:8px 10px;text-align:${a || 'left'};background:var(--surface-2);">${l}</th>`;
+    let html = '<tr>' + th('Kelas') + th('Usia') + th('Iuran / paket (Rp)', 'right') + th('Pertemuan / paket', 'right') + th('Minimum buka', 'right') + '</tr>';
+    KELAS_KEYS.forEach(k => {
+      const c = kelasConfig.kelas[k];
+      html += `<tr style="border-top:1px solid var(--line);">
+        <td style="padding:8px 10px;font-weight:700;">${KELAS_NAMA[k]}</td>
+        <td style="padding:8px 10px;"><input type="text" data-kcfg="${k}" data-f="usia" value="${escapeHtml(c.usia)}" style="min-width:110px;"></td>
+        <td style="padding:8px 10px;text-align:right;"><input type="number" min="0" data-kcfg="${k}" data-f="tarif" value="${c.tarif}" style="max-width:120px;text-align:right;"></td>
+        <td style="padding:8px 10px;text-align:right;"><input type="number" min="1" data-kcfg="${k}" data-f="jatah" value="${c.jatah}" style="max-width:80px;text-align:right;"></td>
+        <td style="padding:8px 10px;text-align:right;"><input type="number" min="1" data-kcfg="${k}" data-f="min_buka" value="${c.min_buka}" style="max-width:80px;text-align:right;"></td>
+      </tr>`;
+    });
+    t.innerHTML = html;
+    document.getElementById('cfgGabungAktif').checked = !!kelasConfig.gabung_aktif;
+    document.getElementById('cfgGabungMin').value = kelasConfig.gabung_min;
+  }
+
+  document.getElementById('btnSimpanKelasConfig').addEventListener('click', async () => {
+    const cfg = { kelas: {}, gabung_aktif: document.getElementById('cfgGabungAktif').checked, gabung_min: Number(document.getElementById('cfgGabungMin').value) || 30 };
+    KELAS_KEYS.forEach(k => {
+      const get = f => document.querySelector(`[data-kcfg="${k}"][data-f="${f}"]`).value;
+      cfg.kelas[k] = { usia: get('usia').trim(), tarif: Number(get('tarif')) || 0, jatah: Number(get('jatah')) || 1, min_buka: Number(get('min_buka')) || 1 };
+    });
+    const st = document.getElementById('kelasConfigStatus');
+    try {
+      await db.collection('pengaturan').doc('umum').set({ kelas_config: cfg }, { merge: true });
+      kelasConfig = mergeKelasConfig(cfg);
+      st.textContent = 'Tersimpan.';
+      renderSiswaTab();
+    } catch (err) {
+      console.error('Gagal menyimpan pengaturan kelas:', err);
+      st.textContent = 'Gagal menyimpan: ' + err.message;
+    }
+    setTimeout(() => st.textContent = '', 3000);
+  });
+
+  // Ringkasan jumlah siswa per kelas (tahap ini: baru jumlah terdaftar; status bayar menyusul di tahap paket).
+  function renderRingkasanKelas() {
+    const el = document.getElementById('kelasRingkasan');
+    if (!el) return;
+    const hitung = k => siswaCache.filter(s => s.kelas_camp === k).length;
+    const belum = siswaCache.filter(s => !s.kelas_camp).length;
+    let html = '';
+    KELAS_KEYS.forEach(k => {
+      const c = kelasConfig.kelas[k];
+      html += `<div class="stat-card"><div class="label">${KELAS_NAMA[k]}</div><div class="value">${hitung(k)}<span style="font-size:12px;color:var(--text-secondary);font-weight:400;"> / min ${c.min_buka}</span></div></div>`;
+    });
+    html += `<div class="stat-card"><div class="label">Belum ada kelas</div><div class="value" style="color:${belum ? 'var(--red)' : 'var(--success)'};">${belum}</div></div>`;
+    el.innerHTML = html;
+
+    const g = document.getElementById('kelasStatusGabung');
+    if (kelasConfig.gabung_aktif) {
+      const dev = hitung('development'), adv = hitung('advance');
+      g.textContent = `Development + Advance (digabung): ${dev + adv} terdaftar, minimum buka ${kelasConfig.gabung_min}.`;
+    } else {
+      g.textContent = 'Development dan Advance dijalankan terpisah.';
+    }
+  }
+
+  // Layar pengisian kelas: daftar siswa yang belum punya kelas camp. Pilihan awal kosong (manual).
+  let pengisianDraft = {};
+  function renderPengisianKelas() {
+    const wrap = document.getElementById('kelasPengisianWrap');
+    if (!wrap) return;
+    const belum = siswaCache.filter(s => !s.kelas_camp);
+    if (belum.length === 0) { wrap.innerHTML = ''; pengisianDraft = {}; return; }
+    wrap.innerHTML = `
+      <div class="session-card" style="margin-bottom:22px;">
+        <div class="head"><h2>Tentukan Kelas Siswa (${belum.length} belum ada kelas)</h2></div>
+        <p style="padding:12px 16px 0;margin:0;font-size:11.5px;color:var(--text-secondary);">Pilih kelas tiap siswa secara manual. Kolom "Saran" hanya petunjuk dari usia. Yang dibiarkan "—" tidak diubah. Setelah selesai klik Simpan; siswa yang belum diisi akan tetap muncul di sini.</p>
+        <div style="overflow-x:auto;padding:12px 16px 4px;"><table id="kelasPengisianTable" style="width:100%;border-collapse:collapse;font-size:12.5px;"></table></div>
+        <div style="padding:8px 16px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn" id="btnSimpanPengisianKelas">Simpan Kelas yang Dipilih</button>
+          <span class="status-line" id="pengisianKelasStatus"></span>
+        </div>
+      </div>`;
+    const t = document.getElementById('kelasPengisianTable');
+    const th = (l, a) => `<th style="padding:8px 10px;text-align:${a || 'left'};background:var(--surface-2);">${l}</th>`;
+    let html = '<tr>' + th('Nama') + th('Usia', 'center') + th('Saran', 'left') + th('Kelas') + '</tr>';
+    belum.forEach(s => {
+      const saran = saranKelasDariUsia(s.usia);
+      const pilih = pengisianDraft[s.id] || '';
+      html += `<tr style="border-top:1px solid var(--line);">
+        <td style="padding:8px 10px;">${escapeHtml(s.nama)}${s.peran === 'gk' ? ' <span style="color:var(--amber);">(GK)</span>' : ''}</td>
+        <td style="padding:8px 10px;text-align:center;">${s.usia || '-'}</td>
+        <td style="padding:8px 10px;color:var(--text-secondary);">${saran ? KELAS_NAMA[saran] : '-'}</td>
+        <td style="padding:8px 10px;"><select data-pilih-kelas="${s.id}" style="width:auto;">
+          <option value="">—</option>
+          ${KELAS_KEYS.map(k => `<option value="${k}" ${pilih === k ? 'selected' : ''}>${KELAS_NAMA[k]}</option>`).join('')}
+        </select></td></tr>`;
+    });
+    t.innerHTML = html;
+    t.querySelectorAll('[data-pilih-kelas]').forEach(sel => sel.addEventListener('change', () => { pengisianDraft[sel.dataset.pilihKelas] = sel.value; }));
+    document.getElementById('btnSimpanPengisianKelas').addEventListener('click', async () => {
+      const entries = Object.entries(pengisianDraft).filter(([, v]) => v);
+      const st = document.getElementById('pengisianKelasStatus');
+      if (entries.length === 0) { st.textContent = 'Belum ada kelas yang dipilih.'; return; }
+      try {
+        for (let i = 0; i < entries.length; i += 400) {
+          const batch = db.batch();
+          entries.slice(i, i + 400).forEach(([id, kelas]) => batch.update(db.collection(SISWA_COL).doc(id), { kelas_camp: kelas }));
+          await batch.commit();
+        }
+        pengisianDraft = {};
+        await loadAll();
+      } catch (err) {
+        console.error('Gagal menyimpan kelas siswa:', err);
+        st.textContent = 'Gagal menyimpan: ' + err.message;
+      }
+    });
   }
 
   document.getElementById('btnSimpanTentang').addEventListener('click', async () => {
@@ -1145,6 +1341,8 @@
   }
 
   function renderSiswaTab() {
+    renderRingkasanKelas();
+    renderPengisianKelas();
     const idsSudahDirencanakan = new Set(rencanaCache.map(r => r.siswa_id));
     const dijadwal = siswaCache.filter(s => idsSudahDirencanakan.has(s.id)).length;
     document.getElementById('statTotal').textContent = siswaCache.length;
@@ -1166,7 +1364,10 @@
       return (Date.now() - ms) <= 7 * 24 * 60 * 60 * 1000;
     };
     const terurut = [...siswaCache].sort((a, b) => millisDaftar(b) - millisDaftar(a));
-    const terfilter = keyword ? terurut.filter(s => (s.nama || '').toLowerCase().includes(keyword)) : terurut;
+    const filterKelas = document.getElementById('siswaFilterKelas').value;
+    let terfilter = keyword ? terurut.filter(s => (s.nama || '').toLowerCase().includes(keyword)) : terurut;
+    if (filterKelas === '_belum') terfilter = terfilter.filter(s => !s.kelas_camp);
+    else if (filterKelas) terfilter = terfilter.filter(s => s.kelas_camp === filterKelas);
 
     if (terfilter.length === 0) {
       table.innerHTML = '<div class="empty-state">Tidak ada siswa dengan nama itu</div>';
@@ -1180,7 +1381,7 @@
       row.innerHTML = `
         ${avatarHtml(s)}
         <div class="info">
-          <div class="nama">${escapeHtml(s.nama)}${isBaru(s) ? '<span class="badge-baru">Baru</span>' : ''}${s.peran === 'gk' ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--amber);border:1px solid var(--amber);">GK</span>' : ''}${s.alamat ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--success);border:1px solid var(--success);">Alamat ✓</span>' : ''}</div>
+          <div class="nama">${escapeHtml(s.nama)}${isBaru(s) ? '<span class="badge-baru">Baru</span>' : ''}${s.kelas_camp ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--chalk);border:1px solid var(--line);">' + escapeHtml(KELAS_NAMA[s.kelas_camp] || s.kelas_camp) + '</span>' : '<span class="badge-baru" style="background:rgba(255,80,80,0.08);color:var(--red);border:1px solid var(--red);">Belum ada kelas</span>'}${s.peran === 'gk' ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--amber);border:1px solid var(--amber);">GK</span>' : ''}${s.alamat ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--success);border:1px solid var(--success);">Alamat ✓</span>' : ''}</div>
           <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.nomor_wa ? ' · ' + escapeHtml(s.nomor_wa) : ''} · ${jumlahHadir} sesi tercatat</div>
         </div>
         <div class="actions">
@@ -1197,6 +1398,8 @@
   }
 
   document.getElementById('siswaSearch').addEventListener('input', renderSiswaTab);
+  document.getElementById('siswaFilterKelas').addEventListener('change', renderSiswaTab);
+  document.getElementById('modalUsia').addEventListener('input', updateKelasCampHint);
 
   const overlay = document.getElementById('siswaModalOverlay');
   let editingId = null;
@@ -1212,6 +1415,8 @@
     document.getElementById('modalNama').value = s ? s.nama || '' : '';
     document.getElementById('modalWa').value = s ? s.nomor_wa || '' : '';
     document.getElementById('modalUsia').value = s ? s.usia || '' : '';
+    document.getElementById('modalKelasCamp').value = s && s.kelas_camp ? s.kelas_camp : '';
+    updateKelasCampHint();
     document.getElementById('modalTtl').value = s ? s.tempat_tanggal_lahir || '' : '';
     document.getElementById('modalKelas').value = s ? s.kelas || '' : '';
     document.getElementById('modalSekolah').value = s ? s.sekolah || '' : '';
@@ -1303,6 +1508,7 @@
       usia: Number(document.getElementById('modalUsia').value) || null,
       tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
       kelas: document.getElementById('modalKelas').value.trim() || null,
+      kelas_camp: document.getElementById('modalKelasCamp').value || null,
       sekolah: document.getElementById('modalSekolah').value.trim() || null,
       alamat: document.getElementById('modalAlamat').value.trim() || null,
       peran: document.getElementById('modalPeran').value === 'gk' ? 'gk' : 'pemain',
