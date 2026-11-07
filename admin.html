@@ -212,6 +212,14 @@
         <option value="advance">Advance</option>
         <option value="_belum">Belum ada kelas</option>
       </select>
+      <select id="siswaFilterStatus" style="flex:1;min-width:150px;">
+        <option value="">Semua status paket</option>
+        <option value="belum_bayar">Menunggu bayar</option>
+        <option value="menunggu_kelas">Lunas, kelas belum dibuka</option>
+        <option value="aktif">Aktif</option>
+        <option value="habis">Paket habis</option>
+        <option value="waiting">Waiting list</option>
+      </select>
     </div>
     <div class="siswa-table" id="siswaTable"></div>
   </div>
@@ -683,6 +691,31 @@
   </div>
 </div>
 
+<div class="overlay" id="paketModalOverlay">
+  <div class="modal">
+    <h2 id="paketModalTitle">Pembayaran Paket</h2>
+    <div id="paketSiswaInfo" style="font-size:13px;margin-bottom:12px;"></div>
+    <div class="field"><label>Jumlah dibayar (Rp)</label><input type="number" id="paketJumlah" min="0"></div>
+    <div class="field"><label>Jumlah pertemuan dalam paket</label><input type="number" id="paketJatah" min="1"></div>
+    <div class="field"><label>Metode bayar</label>
+      <select id="paketMetode"><option value="cash">Cash</option><option value="qris">QRIS</option></select>
+    </div>
+    <div class="field"><label>Tanggal bayar</label><input type="date" id="paketTanggal"></div>
+    <div class="field"><label>Catatan (opsional)</label><input type="text" id="paketCatatan" placeholder="cth. dibayar orang tua"></div>
+    <div id="paketMulaiInfo" style="font-size:11.5px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;"></div>
+    <div class="field">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="paketWaiting" style="width:auto;"> Tandai sebagai waiting list (belum diterima latihan)</label>
+    </div>
+    <div class="field"><label>Riwayat paket siswa ini</label>
+      <div id="paketRiwayat" style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;max-height:170px;overflow-y:auto;font-size:12px;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnBatalPaket">Tutup</button>
+      <button class="btn" id="btnSimpanPaket">Catat Pembayaran</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="alamatLinkModalOverlay">
   <div class="modal">
     <h2>Link Isi Alamat — <span id="alamatLinkNama"></span></h2>
@@ -1064,6 +1097,15 @@
       pemasukanCache = [];
     }
 
+    try {
+      const paketSnap = await db.collection(PAKET_COL).get();
+      paketCache = paketSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.error('Gagal memuat paket siswa (cek rules Firestore untuk collection paket_siswa):', err);
+      paketCache = [];
+      showGlobalError('Gagal memuat paket siswa: ' + err.message + ' — cek security rules Firestore untuk koleksi "paket_siswa".');
+    }
+
     renderSiswaTab();
     renderJadwalTab();
 
@@ -1153,7 +1195,7 @@
     const cfg = { kelas: {}, gabung_aktif: document.getElementById('cfgGabungAktif').checked, gabung_min: Number(document.getElementById('cfgGabungMin').value) || 30 };
     KELAS_KEYS.forEach(k => {
       const get = f => document.querySelector(`[data-kcfg="${k}"][data-f="${f}"]`).value;
-      cfg.kelas[k] = { usia: get('usia').trim(), tarif: Number(get('tarif')) || 0, jatah: Number(get('jatah')) || 1, min_buka: Number(get('min_buka')) || 1 };
+      cfg.kelas[k] = { usia: get('usia').trim(), tarif: Number(get('tarif')) || 0, jatah: Number(get('jatah')) || 1, min_buka: Number(get('min_buka')) || 1, dibuka_tanggal: kelasConfig.kelas[k].dibuka_tanggal || null };
     });
     const st = document.getElementById('kelasConfigStatus');
     try {
@@ -1168,28 +1210,245 @@
     setTimeout(() => st.textContent = '', 3000);
   });
 
-  // Ringkasan jumlah siswa per kelas (tahap ini: baru jumlah terdaftar; status bayar menyusul di tahap paket).
+  // ===== PAKET BULANAN PER SISWA =====
+  // Satu dokumen `paket_siswa` = satu pembayaran paket (jatah pertemuan dibayar di awal). Sisa jatah dihitung otomatis dari sesi yang sudah SELESAI
+  // sejak `mulai_tanggal`, untuk kelas siswa itu — hadir maupun tidak, tetap terpakai (yang tidak hadir hangus).
+  const PAKET_COL = 'paket_siswa';
+  let paketCache = [];
+
+  function tanggalHariIni() { return new Date().toLocaleDateString('en-CA'); }
+  const millisDoc = (d) => (d && d.createdAt && d.createdAt.toMillis) ? d.createdAt.toMillis() : 0;
+  function labelTgl(str) {
+    if (!str) return '-';
+    return new Date(str + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function kelasDibuka(kelas) { return !!(kelas && kelasConfig.kelas[kelas] && kelasConfig.kelas[kelas].dibuka_tanggal); }
+
+  // Sesi yang dihitung untuk satu kelas. Sesi tanpa penanda kelas dihitung untuk semua kelas.
+  function sesiUntukKelas(kelas) {
+    return sesiCache.filter(se => se.selesai && se.tanggal && (!Array.isArray(se.kelas_list) || se.kelas_list.length === 0 || se.kelas_list.includes(kelas)))
+      .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+  }
+
+  // Menghitung setiap paket siswa. Paket yang diperpanjang sebelum habis disambung tepat setelah paket sebelumnya.
+  function hitungPaketSiswa(s) {
+    const list = paketCache.filter(p => p.siswa_id === s.id)
+      .sort((a, b) => (a.tanggal_bayar || '').localeCompare(b.tanggal_bayar || '') || millisDoc(a) - millisDoc(b));
+    const sesi = sesiUntukKelas(s.kelas_camp);
+    let cursor = 0;
+    return list.map(p => {
+      const jatah = Number(p.jatah) || 0;
+      if (!p.mulai_tanggal) return { p, jatah, terpakai: 0, sisa: jatah, status: 'menunggu_kelas', habisTanggal: null };
+      let startIdx = sesi.findIndex(se => se.tanggal >= p.mulai_tanggal);
+      if (startIdx < 0) startIdx = sesi.length;
+      const from = Math.max(cursor, startIdx);
+      const terpakai = Math.max(0, Math.min(jatah, sesi.length - from));
+      cursor = from + jatah;
+      const habis = terpakai >= jatah;
+      return { p, jatah, terpakai, sisa: jatah - terpakai, status: habis ? 'habis' : 'aktif', habisTanggal: habis ? sesi[from + jatah - 1].tanggal : null };
+    });
+  }
+
+  // Status ringkas siswa: belum_bayar | menunggu_kelas | aktif | habis (+ waiting)
+  function statusPaketSiswa(s) {
+    const paket = hitungPaketSiswa(s);
+    const berjalan = paket.find(x => x.status === 'aktif') || paket.find(x => x.status === 'menunggu_kelas');
+    let status, sisa = 0, total = 0;
+    if (paket.length === 0) status = 'belum_bayar';
+    else if (berjalan) { status = berjalan.status; }
+    else status = 'habis';
+    paket.forEach(x => { if (x.status !== 'habis') { sisa += x.sisa; total += x.jatah; } });
+    return { status, sisa, total, paket, waiting: !!s.waiting_list && status !== 'aktif' };
+  }
+
+  function badgeStatusPaket(st) {
+    const mk = (teks, warna) => `<span class="badge-baru" style="background:var(--surface-2);color:${warna};border:1px solid ${warna};">${teks}</span>`;
+    if (st.waiting) return mk('Waiting list', 'var(--amber)');
+    if (st.status === 'belum_bayar') return mk('Menunggu bayar', 'var(--red)');
+    if (st.status === 'menunggu_kelas') return mk('Lunas · kelas belum dibuka', 'var(--amber)');
+    if (st.status === 'aktif') return mk('Aktif · sisa ' + st.sisa + '/' + st.total, st.sisa <= 2 ? 'var(--amber)' : 'var(--success)');
+    return mk('Paket habis', 'var(--red)');
+  }
+
+  // Ringkasan jumlah siswa per kelas + tombol Buka Kelas
   function renderRingkasanKelas() {
     const el = document.getElementById('kelasRingkasan');
     if (!el) return;
-    const hitung = k => siswaCache.filter(s => s.kelas_camp === k).length;
+    const data = {};
+    KELAS_KEYS.forEach(k => {
+      const anggota = siswaCache.filter(s => s.kelas_camp === k);
+      const sts = anggota.map(statusPaketSiswa);
+      data[k] = {
+        terdaftar: anggota.length,
+        lunas: sts.filter(x => x.status === 'menunggu_kelas' || x.status === 'aktif').length,
+        aktif: sts.filter(x => x.status === 'aktif').length,
+        menunggu: sts.filter(x => x.status === 'belum_bayar' && !x.waiting).length,
+        waiting: sts.filter(x => x.waiting).length
+      };
+    });
     const belum = siswaCache.filter(s => !s.kelas_camp).length;
     let html = '';
     KELAS_KEYS.forEach(k => {
-      const c = kelasConfig.kelas[k];
-      html += `<div class="stat-card"><div class="label">${KELAS_NAMA[k]}</div><div class="value">${hitung(k)}<span style="font-size:12px;color:var(--text-secondary);font-weight:400;"> / min ${c.min_buka}</span></div></div>`;
+      const c = kelasConfig.kelas[k], d = data[k];
+      html += `<div class="stat-card"><div class="label">${KELAS_NAMA[k]}</div>
+        <div class="value">${d.lunas}<span style="font-size:12px;color:var(--text-secondary);font-weight:400;"> lunas / min ${c.min_buka}</span></div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;line-height:1.5;">${d.terdaftar} terdaftar · ${d.menunggu} menunggu bayar${d.waiting ? ' · ' + d.waiting + ' waiting list' : ''}<br>${kelasDibuka(k) ? '<span style="color:var(--success);">Dibuka sejak ' + labelTgl(c.dibuka_tanggal) + '</span>' : 'Belum dibuka'}</div></div>`;
     });
     html += `<div class="stat-card"><div class="label">Belum ada kelas</div><div class="value" style="color:${belum ? 'var(--red)' : 'var(--success)'};">${belum}</div></div>`;
     el.innerHTML = html;
 
+    // Panel buka kelas (grup: Fundamental sendiri; Development+Advance jika digabung)
+    const grup = [{ keys: ['fundamental'], min: kelasConfig.kelas.fundamental.min_buka, label: 'Fundamental' }];
+    if (kelasConfig.gabung_aktif) grup.push({ keys: ['development', 'advance'], min: kelasConfig.gabung_min, label: 'Development + Advance (digabung)' });
+    else { grup.push({ keys: ['development'], min: kelasConfig.kelas.development.min_buka, label: 'Development' }); grup.push({ keys: ['advance'], min: kelasConfig.kelas.advance.min_buka, label: 'Advance' }); }
+
     const g = document.getElementById('kelasStatusGabung');
+    g.innerHTML = '';
+    grup.forEach(gr => {
+      const lunas = gr.keys.reduce((n, k) => n + data[k].lunas, 0);
+      // Kelas tunggal yang sudah cukup juga boleh dibuka sendiri, walau gabungan belum (mis. Development 30 sendiri).
+      const dibuka = gr.keys.every(k => kelasDibuka(k));
+      const siap = lunas >= gr.min;
+      const box = document.createElement('div');
+      box.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px;';
+      const info = document.createElement('div');
+      info.style.cssText = 'font-size:12.5px;color:var(--chalk);';
+      info.innerHTML = `<b>${gr.label}</b> — ${lunas}/${gr.min} lunas · ` + (dibuka
+        ? `<span style="color:var(--success);">sudah dibuka</span>`
+        : (siap ? '<span style="color:var(--success);">siap dibuka ✓</span>' : `<span style="color:var(--text-secondary);">kurang ${gr.min - lunas} lagi</span>`));
+      box.appendChild(info);
+      const btn = document.createElement('button');
+      btn.className = 'btn' + (siap && !dibuka ? '' : ' btn-secondary');
+      btn.style.cssText = 'font-size:12px;padding:8px 14px;';
+      btn.textContent = dibuka ? 'Ubah Tanggal Buka' : 'Buka Kelas';
+      btn.addEventListener('click', () => bukaKelasGrup(gr.keys, siap, dibuka));
+      box.appendChild(btn);
+      g.appendChild(box);
+    });
     if (kelasConfig.gabung_aktif) {
-      const dev = hitung('development'), adv = hitung('advance');
-      g.textContent = `Development + Advance (digabung): ${dev + adv} terdaftar, minimum buka ${kelasConfig.gabung_min}.`;
-    } else {
-      g.textContent = 'Development dan Advance dijalankan terpisah.';
+      const dev = data.development, adv = data.advance;
+      if (kelasDibuka('development') && dev.lunas >= kelasConfig.kelas.development.min_buka && adv.lunas >= kelasConfig.kelas.advance.min_buka) {
+        const tip = document.createElement('div');
+        tip.style.cssText = 'font-size:12px;color:var(--amber);margin-top:4px;';
+        tip.textContent = 'Development dan Advance masing-masing sudah mencapai minimum — saatnya dipertimbangkan untuk dipisah jadwal/lapangan.';
+        g.appendChild(tip);
+      }
     }
   }
+
+  async function bukaKelasGrup(keys, siap, sudahDibuka) {
+    const namaGrup = keys.map(k => KELAS_NAMA[k]).join(' + ');
+    if (!sudahDibuka && !siap && !confirm(`${namaGrup} belum mencapai jumlah minimum siswa lunas. Tetap dibuka sekarang?`)) return;
+    const awal = sudahDibuka ? kelasConfig.kelas[keys[0]].dibuka_tanggal : tanggalHariIni();
+    const input = prompt(`Tanggal mulai ${namaGrup} (format TTTT-BB-HH). Paket siswa yang sudah lunas mulai dihitung dari tanggal ini:`, awal);
+    if (input === null) return;
+    const tgl = input.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tgl)) { alert('Format tanggal harus TTTT-BB-HH, contoh 2026-11-10.'); return; }
+    try {
+      const cfg = JSON.parse(JSON.stringify(kelasConfig));
+      keys.forEach(k => { cfg.kelas[k].dibuka_tanggal = tgl; });
+      await db.collection('pengaturan').doc('umum').set({ kelas_config: cfg }, { merge: true });
+      // Paket yang tadinya menunggu kelas dibuka → mulai di tanggal buka. Kalau tanggal diubah, yang tadinya ikut tanggal buka lama ikut digeser.
+      const idKelas = new Set(siswaCache.filter(s => keys.includes(s.kelas_camp)).map(s => s.id));
+      const lama = sudahDibuka ? kelasConfig.kelas[keys[0]].dibuka_tanggal : null;
+      const target = paketCache.filter(p => idKelas.has(p.siswa_id) && (!p.mulai_tanggal || (lama && p.mulai_tanggal === lama)));
+      for (let i = 0; i < target.length; i += 400) {
+        const batch = db.batch();
+        target.slice(i, i + 400).forEach(p => batch.update(db.collection(PAKET_COL).doc(p.id), { mulai_tanggal: tgl }));
+        await batch.commit();
+      }
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal membuka kelas:', err);
+      alert('Gagal membuka kelas: ' + err.message);
+    }
+  }
+
+  // ----- Modal pembayaran paket -----
+  let paketSiswaId = null;
+  function openPaketModal(siswaId) {
+    const s = siswaCache.find(x => x.id === siswaId);
+    if (!s) return;
+    if (!s.kelas_camp) { alert('Tentukan dulu kelas siswa ini (lewat Edit Siswa atau layar "Tentukan Kelas Siswa") supaya tarif dan jatahnya terisi.'); return; }
+    paketSiswaId = siswaId;
+    const c = kelasConfig.kelas[s.kelas_camp];
+    const st = statusPaketSiswa(s);
+    document.getElementById('paketModalTitle').textContent = st.paket.length ? 'Perpanjang / Bayar Paket' : 'Pembayaran Paket Pertama';
+    document.getElementById('paketSiswaInfo').innerHTML = `<b>${escapeHtml(s.nama)}</b> · Kelas ${KELAS_NAMA[s.kelas_camp]} · ${badgeStatusPaket(st)}`;
+    document.getElementById('paketJumlah').value = c.tarif;
+    document.getElementById('paketJatah').value = c.jatah;
+    document.getElementById('paketMetode').value = 'cash';
+    document.getElementById('paketTanggal').value = tanggalHariIni();
+    document.getElementById('paketCatatan').value = '';
+    document.getElementById('paketWaiting').checked = !!s.waiting_list;
+    updatePaketMulaiInfo();
+    renderPaketRiwayat(s, st);
+    document.getElementById('paketModalOverlay').classList.add('active');
+  }
+  function updatePaketMulaiInfo() {
+    const s = siswaCache.find(x => x.id === paketSiswaId);
+    if (!s) return;
+    const tgl = document.getElementById('paketTanggal').value;
+    const st = statusPaketSiswa(s);
+    let teks;
+    if (!kelasDibuka(s.kelas_camp)) teks = `Kelas ${KELAS_NAMA[s.kelas_camp]} belum dibuka. Paket ini langsung tercatat lunas, dan jatahnya baru mulai terhitung saat kelas dibuka — tidak ada yang hangus selama menunggu.`;
+    else if (st.status === 'aktif') teks = `Siswa ini masih punya paket aktif (sisa ${st.sisa}). Paket baru disambung otomatis setelah pertemuan terakhir paket yang sedang jalan.`;
+    else teks = `Jatah mulai dihitung dari sesi kelas ini pada atau setelah ${labelTgl(tgl)}.`;
+    document.getElementById('paketMulaiInfo').textContent = teks;
+  }
+  function renderPaketRiwayat(s, st) {
+    const el = document.getElementById('paketRiwayat');
+    if (st.paket.length === 0) { el.innerHTML = '<span style="color:var(--text-secondary);">Belum ada paket dibayar.</span>'; return; }
+    el.innerHTML = '';
+    [...st.paket].reverse().forEach(x => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);';
+      const ket = x.status === 'menunggu_kelas' ? 'menunggu kelas dibuka' : (x.status === 'habis' ? 'habis' + (x.habisTanggal ? ' ' + labelTgl(x.habisTanggal) : '') : 'terpakai ' + x.terpakai + '/' + x.jatah);
+      row.innerHTML = `<span>${labelTgl(x.p.tanggal_bayar)} · Rp${(Number(x.p.jumlah) || 0).toLocaleString('id-ID')} · ${escapeHtml((x.p.metode || '').toUpperCase())}<br><span style="color:var(--text-secondary);">${x.jatah}× — ${ket}${x.p.catatan ? ' · ' + escapeHtml(x.p.catatan) : ''}</span></span>
+        <button class="icon-btn" data-hapus-paket="${x.p.id}" style="padding:4px 8px;font-size:10px;">Hapus</button>`;
+      row.querySelector('[data-hapus-paket]').addEventListener('click', async () => {
+        if (!confirm('Hapus catatan pembayaran paket ini? Jatah & uang masuknya ikut hilang dari hitungan.')) return;
+        try {
+          await db.collection(PAKET_COL).doc(x.p.id).delete();
+          await loadAll();
+          const s2 = siswaCache.find(z => z.id === s.id);
+          renderPaketRiwayat(s2, statusPaketSiswa(s2));
+          document.getElementById('paketSiswaInfo').innerHTML = `<b>${escapeHtml(s2.nama)}</b> · Kelas ${KELAS_NAMA[s2.kelas_camp]} · ${badgeStatusPaket(statusPaketSiswa(s2))}`;
+        } catch (err) { alert('Gagal menghapus: ' + err.message); }
+      });
+      el.appendChild(row);
+    });
+  }
+  document.getElementById('paketTanggal').addEventListener('change', updatePaketMulaiInfo);
+  document.getElementById('btnBatalPaket').addEventListener('click', () => { document.getElementById('paketModalOverlay').classList.remove('active'); paketSiswaId = null; });
+  document.getElementById('btnSimpanPaket').addEventListener('click', async () => {
+    const s = siswaCache.find(x => x.id === paketSiswaId);
+    if (!s) return;
+    const jumlah = Number(document.getElementById('paketJumlah').value);
+    const jatah = Number(document.getElementById('paketJatah').value);
+    const tanggal = document.getElementById('paketTanggal').value;
+    if (!tanggal) { alert('Isi tanggal bayar dulu.'); return; }
+    if (!jumlah || jumlah <= 0) { alert('Isi jumlah yang dibayar.'); return; }
+    if (!jatah || jatah <= 0) { alert('Isi jumlah pertemuan dalam paket.'); return; }
+    const waiting = document.getElementById('paketWaiting').checked;
+    try {
+      if (waiting !== !!s.waiting_list) await db.collection(SISWA_COL).doc(s.id).update({ waiting_list: waiting });
+      await db.collection(PAKET_COL).add({
+        siswa_id: s.id, siswa_nama: s.nama, kelas: s.kelas_camp,
+        jumlah, jatah, metode: document.getElementById('paketMetode').value,
+        tanggal_bayar: tanggal, catatan: document.getElementById('paketCatatan').value.trim() || null,
+        mulai_tanggal: kelasDibuka(s.kelas_camp) ? tanggal : null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      document.getElementById('paketModalOverlay').classList.remove('active');
+      paketSiswaId = null;
+      await loadAll();
+    } catch (err) {
+      console.error('Gagal mencatat paket:', err);
+      alert('Gagal mencatat pembayaran: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "paket_siswa".');
+    }
+  });
 
   // Layar pengisian kelas: daftar siswa yang belum punya kelas camp. Pilihan awal kosong (manual).
   let pengisianDraft = {};
@@ -1368,6 +1627,11 @@
     let terfilter = keyword ? terurut.filter(s => (s.nama || '').toLowerCase().includes(keyword)) : terurut;
     if (filterKelas === '_belum') terfilter = terfilter.filter(s => !s.kelas_camp);
     else if (filterKelas) terfilter = terfilter.filter(s => s.kelas_camp === filterKelas);
+    const filterStatus = document.getElementById('siswaFilterStatus').value;
+    const statusMap = {};
+    siswaCache.forEach(s => { statusMap[s.id] = statusPaketSiswa(s); });
+    if (filterStatus === 'waiting') terfilter = terfilter.filter(s => statusMap[s.id].waiting);
+    else if (filterStatus) terfilter = terfilter.filter(s => !statusMap[s.id].waiting && statusMap[s.id].status === filterStatus);
 
     if (terfilter.length === 0) {
       table.innerHTML = '<div class="empty-state">Tidak ada siswa dengan nama itu</div>';
@@ -1382,9 +1646,11 @@
         ${avatarHtml(s)}
         <div class="info">
           <div class="nama">${escapeHtml(s.nama)}${isBaru(s) ? '<span class="badge-baru">Baru</span>' : ''}${s.kelas_camp ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--chalk);border:1px solid var(--line);">' + escapeHtml(KELAS_NAMA[s.kelas_camp] || s.kelas_camp) + '</span>' : '<span class="badge-baru" style="background:rgba(255,80,80,0.08);color:var(--red);border:1px solid var(--red);">Belum ada kelas</span>'}${s.peran === 'gk' ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--amber);border:1px solid var(--amber);">GK</span>' : ''}${s.alamat ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--success);border:1px solid var(--success);">Alamat ✓</span>' : ''}</div>
+          <div class="meta" style="margin-bottom:3px;">${badgeStatusPaket(statusMap[s.id])}</div>
           <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.nomor_wa ? ' · ' + escapeHtml(s.nomor_wa) : ''} · ${jumlahHadir} sesi tercatat</div>
         </div>
         <div class="actions">
+          <button class="icon-btn" data-bayar-paket="${s.id}" style="color:var(--success);border-color:var(--success);">💳 ${statusMap[s.id].paket.length ? 'Perpanjang' : 'Bayar'}</button>
           <button class="icon-btn" data-alamat="${s.id}">🔗 Alamat</button>
           <button class="icon-btn" data-edit="${s.id}">Edit</button>
           <button class="icon-btn" data-del="${s.id}">Hapus</button>
@@ -1394,11 +1660,13 @@
     });
     table.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => openSiswaModal(b.dataset.edit)));
     table.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => hapusSiswa(b.dataset.del)));
+    table.querySelectorAll('[data-bayar-paket]').forEach(b => b.addEventListener('click', () => openPaketModal(b.dataset.bayarPaket)));
     table.querySelectorAll('[data-alamat]').forEach(b => b.addEventListener('click', () => openAlamatLinkModal(b.dataset.alamat)));
   }
 
   document.getElementById('siswaSearch').addEventListener('input', renderSiswaTab);
   document.getElementById('siswaFilterKelas').addEventListener('change', renderSiswaTab);
+  document.getElementById('siswaFilterStatus').addEventListener('change', renderSiswaTab);
   document.getElementById('modalUsia').addEventListener('input', updateKelasCampHint);
 
   const overlay = document.getElementById('siswaModalOverlay');
