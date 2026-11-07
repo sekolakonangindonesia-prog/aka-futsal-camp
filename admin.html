@@ -233,9 +233,16 @@
       <div class="add-sesi-form">
         <input type="date" id="sesiTanggal">
         <input type="text" id="sesiKeterangan" placeholder="Keterangan (opsional, cth. Sore)">
-        <input type="number" id="sesiKapasitas" placeholder="Kapasitas" value="25" min="1">
+        <input type="number" id="sesiKapasitas" placeholder="Kapasitas" value="40" min="1">
         <button class="btn btn-secondary" id="btnTambahSesi">+ Tambah Sesi</button>
       </div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12.5px;margin-top:10px;">
+        <span style="color:var(--text-secondary);">Kelas yang ikut sesi ini:</span>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="sesi-kelas-cb" value="fundamental" style="width:auto;"> Fundamental</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="sesi-kelas-cb" value="development" style="width:auto;" checked> Development</label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" class="sesi-kelas-cb" value="advance" style="width:auto;" checked> Advance</label>
+      </div>
+      <p style="font-size:11px;color:var(--text-secondary);margin:6px 0 0;">Sesi yang ditandai kelas otomatis berisi semua siswa berpaket aktif di kelas itu (nggak perlu rencana jadwal manual), dan tiap sesi selesai mengurangi jatah paket mereka. Kosongkan semua centang untuk sesi gaya lama.</p>
       <div class="status-line" id="sesiPreview" style="text-align:left;margin-top:8px;"></div>
     </div>
 
@@ -691,6 +698,23 @@
   </div>
 </div>
 
+<div class="overlay" id="sesiKelasModalOverlay">
+  <div class="modal">
+    <h2>Kelas yang Ikut Sesi</h2>
+    <p id="sesiKelasModalLabel" style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;"></p>
+    <div class="field" style="display:flex;flex-direction:column;gap:8px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" class="esk-cb" value="fundamental" style="width:auto;"> Fundamental</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" class="esk-cb" value="development" style="width:auto;"> Development</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" class="esk-cb" value="advance" style="width:auto;"> Advance</label>
+    </div>
+    <p style="font-size:11px;color:var(--text-secondary);">Kosongkan semua untuk sesi gaya lama (bayar per sesi, rencana jadwal manual).</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="btnBatalSesiKelas">Batal</button>
+      <button class="btn" id="btnSimpanSesiKelas">Simpan</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="paketModalOverlay">
   <div class="modal">
     <h2 id="paketModalTitle">Pembayaran Paket</h2>
@@ -779,7 +803,7 @@
     if (user) {
       loginScreen.style.display = 'none';
       dashboard.style.display = 'block';
-      loadAll();
+      muatUlangDanSinkron();
     } else {
       loginScreen.style.display = 'flex';
       dashboard.style.display = 'none';
@@ -1213,6 +1237,68 @@
   // ===== PAKET BULANAN PER SISWA =====
   // Satu dokumen `paket_siswa` = satu pembayaran paket (jatah pertemuan dibayar di awal). Sisa jatah dihitung otomatis dari sesi yang sudah SELESAI
   // sejak `mulai_tanggal`, untuk kelas siswa itu — hadir maupun tidak, tetap terpakai (yang tidak hadir hangus).
+  // Sesi "berbasis kelas" = punya kelas_list. Isinya otomatis anggota berpaket aktif di kelas itu.
+  function sesiPakaiRoster(sesi) { return !!sesi && Array.isArray(sesi.kelas_list) && sesi.kelas_list.length > 0; }
+
+  // Samakan jadwal_rencana sesi berbasis kelas (yang belum selesai) dengan anggota berpaket aktif.
+  // jadwal_rencana inilah yang dibaca halaman publik index.html, jadi daftar di sana ikut otomatis.
+  async function sinkronRencanaKelas() {
+    const sesiRoster = sesiCache.filter(se => !se.selesai && sesiPakaiRoster(se));
+    if (sesiRoster.length === 0) return false;
+    const status = {};
+    siswaCache.forEach(s => { status[s.id] = statusPaketSiswa(s); });
+    const ops = [];
+    sesiRoster.forEach(se => {
+      const target = siswaCache.filter(s => s.kelas_camp && se.kelas_list.includes(s.kelas_camp) && status[s.id].status === 'aktif' && !status[s.id].waiting);
+      const targetIds = new Set(target.map(s => s.id));
+      const ada = rencanaCache.filter(r => r.sesi_id === se.id);
+      const adaIds = new Set(ada.map(r => r.siswa_id));
+      target.filter(s => !adaIds.has(s.id)).forEach(s => ops.push({ tipe: 'add', data: { siswa_id: s.id, siswa_nama: s.nama, sesi_id: se.id, sesi_label: se.label } }));
+      ada.filter(r => !targetIds.has(r.siswa_id)).forEach(r => ops.push({ tipe: 'del', id: r.id }));
+    });
+    if (ops.length === 0) return false;
+    for (let i = 0; i < ops.length; i += 400) {
+      const batch = db.batch();
+      ops.slice(i, i + 400).forEach(o => {
+        if (o.tipe === 'add') batch.set(db.collection(JADWAL_COL).doc(), o.data);
+        else batch.delete(db.collection(JADWAL_COL).doc(o.id));
+      });
+      await batch.commit();
+    }
+    return true;
+  }
+
+  async function muatUlangDanSinkron() {
+    await loadAll();
+    try {
+      if (await sinkronRencanaKelas()) await loadAll();
+    } catch (err) {
+      console.error('Gagal sinkron daftar peserta sesi kelas:', err);
+    }
+  }
+
+  // Modal ubah kelas sesi yang sudah ada
+  let sesiKelasEditId = null;
+  function bukaModalKelasSesi(id) {
+    const sesi = sesiCache.find(x => x.id === id);
+    if (!sesi) return;
+    sesiKelasEditId = id;
+    document.getElementById('sesiKelasModalLabel').textContent = sesi.label;
+    document.querySelectorAll('.esk-cb').forEach(cb => { cb.checked = sesiPakaiRoster(sesi) && sesi.kelas_list.includes(cb.value); });
+    document.getElementById('sesiKelasModalOverlay').classList.add('active');
+  }
+  document.getElementById('btnBatalSesiKelas').addEventListener('click', () => { document.getElementById('sesiKelasModalOverlay').classList.remove('active'); sesiKelasEditId = null; });
+  document.getElementById('btnSimpanSesiKelas').addEventListener('click', async () => {
+    if (!sesiKelasEditId) return;
+    const list = Array.from(document.querySelectorAll('.esk-cb:checked')).map(cb => cb.value);
+    try {
+      await db.collection(SESI_COL).doc(sesiKelasEditId).update({ kelas_list: list });
+      document.getElementById('sesiKelasModalOverlay').classList.remove('active');
+      sesiKelasEditId = null;
+      await muatUlangDanSinkron();
+    } catch (err) { alert('Gagal menyimpan kelas sesi: ' + err.message); }
+  });
+
   const PAKET_COL = 'paket_siswa';
   let paketCache = [];
 
@@ -1346,19 +1432,20 @@
     const tgl = input.trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(tgl)) { alert('Format tanggal harus TTTT-BB-HH, contoh 2026-11-10.'); return; }
     try {
+      const lama = sudahDibuka ? kelasConfig.kelas[keys[0]].dibuka_tanggal : null;
       const cfg = JSON.parse(JSON.stringify(kelasConfig));
       keys.forEach(k => { cfg.kelas[k].dibuka_tanggal = tgl; });
       await db.collection('pengaturan').doc('umum').set({ kelas_config: cfg }, { merge: true });
+      kelasConfig = mergeKelasConfig(cfg);
       // Paket yang tadinya menunggu kelas dibuka → mulai di tanggal buka. Kalau tanggal diubah, yang tadinya ikut tanggal buka lama ikut digeser.
       const idKelas = new Set(siswaCache.filter(s => keys.includes(s.kelas_camp)).map(s => s.id));
-      const lama = sudahDibuka ? kelasConfig.kelas[keys[0]].dibuka_tanggal : null;
       const target = paketCache.filter(p => idKelas.has(p.siswa_id) && (!p.mulai_tanggal || (lama && p.mulai_tanggal === lama)));
       for (let i = 0; i < target.length; i += 400) {
         const batch = db.batch();
         target.slice(i, i + 400).forEach(p => batch.update(db.collection(PAKET_COL).doc(p.id), { mulai_tanggal: tgl }));
         await batch.commit();
       }
-      await loadAll();
+      await muatUlangDanSinkron();
     } catch (err) {
       console.error('Gagal membuka kelas:', err);
       alert('Gagal membuka kelas: ' + err.message);
@@ -1411,7 +1498,7 @@
         if (!confirm('Hapus catatan pembayaran paket ini? Jatah & uang masuknya ikut hilang dari hitungan.')) return;
         try {
           await db.collection(PAKET_COL).doc(x.p.id).delete();
-          await loadAll();
+          await muatUlangDanSinkron();
           const s2 = siswaCache.find(z => z.id === s.id);
           renderPaketRiwayat(s2, statusPaketSiswa(s2));
           document.getElementById('paketSiswaInfo').innerHTML = `<b>${escapeHtml(s2.nama)}</b> · Kelas ${KELAS_NAMA[s2.kelas_camp]} · ${badgeStatusPaket(statusPaketSiswa(s2))}`;
@@ -1443,7 +1530,7 @@
       });
       document.getElementById('paketModalOverlay').classList.remove('active');
       paketSiswaId = null;
-      await loadAll();
+      await muatUlangDanSinkron();
     } catch (err) {
       console.error('Gagal mencatat paket:', err);
       alert('Gagal mencatat pembayaran: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "paket_siswa".');
@@ -1495,7 +1582,7 @@
           await batch.commit();
         }
         pengisianDraft = {};
-        await loadAll();
+        await muatUlangDanSinkron();
       } catch (err) {
         console.error('Gagal menyimpan kelas siswa:', err);
         st.textContent = 'Gagal menyimpan: ' + err.message;
@@ -1792,7 +1879,7 @@
         await db.collection(SISWA_COL).add(data);
       }
       closeSiswaModal();
-      await loadAll();
+      await muatUlangDanSinkron();
     } catch (err) {
       console.error('Gagal menyimpan siswa:', err);
       alert('Gagal menyimpan data siswa: ' + err.message);
@@ -1911,16 +1998,16 @@
   document.getElementById('btnTambahSesi').addEventListener('click', async () => {
     const tanggal = sesiTanggalInput.value;
     const ket = sesiKeteranganInput.value.trim();
-    const kap = Number(document.getElementById('sesiKapasitas').value) || 25;
+    const kap = Number(document.getElementById('sesiKapasitas').value) || 40;
     if (!tanggal) { alert('Pilih tanggal sesi dulu'); return; }
     const label = formatTanggalIndo(tanggal) + (ket ? ' (' + ket + ')' : '');
+    const kelasList = Array.from(document.querySelectorAll('.sesi-kelas-cb:checked')).map(cb => cb.value);
     try {
-      await db.collection(SESI_COL).add({ label, tanggal, kapasitas: kap, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await db.collection(SESI_COL).add({ label, tanggal, kapasitas: kap, kelas_list: kelasList, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       sesiTanggalInput.value = '';
       sesiKeteranganInput.value = '';
-      document.getElementById('sesiKapasitas').value = 25;
       sesiPreview.textContent = '';
-      await loadAll();
+      await muatUlangDanSinkron();
     } catch (err) {
       console.error('Gagal tambah sesi:', err);
       alert('Gagal menambah sesi: ' + err.message + '\n\nCek security rules Firestore untuk koleksi "sesi_latihan".');
@@ -1935,7 +2022,12 @@
     }
     const sesi = sesiCache.find(s => s.id === id);
     if (!confirm('Hapus sesi "' + (sesi ? sesi.label : '') + '"?')) return;
-    await db.collection(SESI_COL).doc(id).delete();
+    // bersihkan rencana jadwal sesi ini juga, supaya nggak jadi data yatim
+    const rencanaSesi = rencanaCache.filter(r => r.sesi_id === id);
+    const batch = db.batch();
+    rencanaSesi.forEach(r => batch.delete(db.collection(JADWAL_COL).doc(r.id)));
+    batch.delete(db.collection(SESI_COL).doc(id));
+    await batch.commit();
     await loadAll();
   }
 
@@ -1952,9 +2044,11 @@
         const terisi = rencanaCache.filter(r => r.sesi_id === sesi.id).length;
         const row = document.createElement('div');
         row.className = 'sesi-list-row';
+        const kelasLabel = sesiPakaiRoster(sesi) ? sesi.kelas_list.map(k => KELAS_NAMA[k] || k).join(' + ') : 'gaya lama';
         row.innerHTML = `
-          <span class="label">${escapeHtml(sesi.label)}${sesi.selesai ? ' <span class="badge-selesai" style="margin-left:6px;">Selesai</span>' : ''}</span>
-          <span class="kap">${terisi}/${sesi.kapasitas}</span>
+          <span class="label">${escapeHtml(sesi.label)}${sesi.selesai ? ' <span class="badge-selesai" style="margin-left:6px;">Selesai</span>' : ''}<span style="display:block;font-size:11px;color:var(--text-secondary);font-weight:400;">Kelas: ${escapeHtml(kelasLabel)}</span></span>
+          <span class="kap">${terisi}${sesiPakaiRoster(sesi) ? ' anggota' : '/' + sesi.kapasitas}</span>
+          <button class="icon-btn" data-ubah-kelas-sesi="${sesi.id}">Kelas</button>
           <button class="icon-btn" data-hapus-sesi="${sesi.id}">Hapus</button>
         `;
         return row;
@@ -1986,6 +2080,7 @@
       }
 
       sesiListEl.querySelectorAll('[data-hapus-sesi]').forEach(b => b.addEventListener('click', () => hapusSesi(b.dataset.hapusSesi)));
+      sesiListEl.querySelectorAll('[data-ubah-kelas-sesi]').forEach(b => b.addEventListener('click', () => bukaModalKelasSesi(b.dataset.ubahKelasSesi)));
     }
 
     renderRencanaTable();
@@ -1996,7 +2091,11 @@
   function renderRencanaTable() {
     const grid = document.getElementById('rencanaTable');
     grid.innerHTML = '';
-    const sesiAktif = sesiCache.filter(s => !s.selesai);
+    const sesiAktif = sesiCache.filter(s => !s.selesai && !sesiPakaiRoster(s));
+    if (sesiAktif.length === 0 && sesiCache.some(s => !s.selesai && sesiPakaiRoster(s))) {
+      grid.innerHTML = '<div class="empty-state">Sesi yang ditandai kelas otomatis berisi siswa berpaket aktif — nggak perlu rencana jadwal manual. Daftar hadirnya ada di bagian Kehadiran Hari-H di bawah, dan halaman publik ikut terisi otomatis.</div>';
+      return;
+    }
     if (sesiAktif.length === 0) {
       grid.innerHTML = '<div class="empty-state">Belum ada sesi aktif. Tambahkan sesi di atas, atau buka kembali sesi yang sudah ditandai selesai di tab Kehadiran Hari-H.</div>';
       return;
@@ -2045,8 +2144,8 @@
   document.getElementById('generateBtn').addEventListener('click', async () => {
     const btn = document.getElementById('generateBtn');
     const status = document.getElementById('generateStatus');
-    const sesiAktif = sesiCache.filter(s => !s.selesai);
-    if (sesiAktif.length === 0) { status.textContent = 'Tambahkan sesi aktif dulu (yang belum ditandai selesai).'; return; }
+    const sesiAktif = sesiCache.filter(s => !s.selesai && !sesiPakaiRoster(s));
+    if (sesiAktif.length === 0) { status.textContent = 'Nggak ada sesi gaya lama yang aktif. Sesi yang ditandai kelas otomatis terisi dari paket aktif.'; return; }
     btn.disabled = true; btn.textContent = 'Memproses...';
 
     const idsSudahDirencanakan = new Set(rencanaCache.map(r => r.siswa_id));
@@ -2111,10 +2210,10 @@
 
       const card = document.createElement('div');
       card.className = 'session-card' + (isSelesai ? ' selesai' : '');
-      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><div style="display:flex;align-items:center;gap:8px;">${isSelesai ? '<span class="badge-selesai">Selesai</span>' : ''}<span class="count">${sudahHadir.length}/${sesi.kapasitas}</span></div></div><div class="sesi-body"></div>`;
+      card.innerHTML = `<div class="head"><h2>${escapeHtml(sesi.label)}</h2><div style="display:flex;align-items:center;gap:8px;">${isSelesai ? '<span class="badge-selesai">Selesai</span>' : ''}<span class="count">${sudahHadir.length}/${sesiPakaiRoster(sesi) ? daftarSiswa.length : sesi.kapasitas}</span></div></div><div class="sesi-body"></div>`;
       const body = card.querySelector('.sesi-body');
       if (daftarSiswa.length === 0) {
-        body.innerHTML = '<div class="empty-state">Belum ada rencana untuk sesi ini</div>';
+        body.innerHTML = (sesiPakaiRoster(sesi) ? '<div class="empty-state">Belum ada siswa berpaket aktif di kelas ini. Catat pembayaran paket di tab Kelola Siswa, dan kalau kelasnya belum dibuka, klik Buka Kelas.</div>' : '<div class="empty-state">Belum ada rencana untuk sesi ini</div>');
       } else {
         daftarSiswa.forEach(s => body.appendChild(buildKehadiranRow(s, sesi, isSelesai)));
       }
@@ -2130,7 +2229,7 @@
       } else {
         const walkinBtn = document.createElement('button');
         walkinBtn.className = 'icon-btn';
-        walkinBtn.textContent = '+ Tambah Peserta Dadakan';
+        walkinBtn.textContent = sesiPakaiRoster(sesi) ? '+ Tambah Peserta Lain' : '+ Tambah Peserta Dadakan';
         walkinBtn.addEventListener('click', () => openWalkinModal(sesi));
         actionsRow.appendChild(walkinBtn);
 
@@ -2198,7 +2297,7 @@
     if (selesai && !confirm('Tandai sesi "' + sesi.label + '" selesai?\n\nKehadiran & status bayar yang sudah dicentang akan terkunci sebagai riwayat final (nggak bisa diubah lagi sampai kamu buka kembali).')) return;
     try {
       await db.collection(SESI_COL).doc(sesi.id).update({ selesai: selesai });
-      await loadAll();
+      await muatUlangDanSinkron();
     } catch (err) {
       console.error('Gagal update status sesi:', err);
       alert('Gagal menandai sesi: ' + err.message);
@@ -2213,11 +2312,13 @@
       <input type="checkbox" data-siswa="${s.id}" data-sesi="${sesi.id}" ${kehadiran ? 'checked' : ''} ${isSelesai ? 'disabled' : ''} style="width:auto;">
       ${avatarHtml(s)}
       <span class="nama">${escapeHtml(s.nama)}</span>
-      ${kehadiran ? `<select data-hadir-id="${kehadiran.id}" ${isSelesai ? 'disabled' : ''} style="width:auto;">${PAYMENT_OPTIONS}</select>` : ''}
+      ${sesiPakaiRoster(sesi) && !isSelesai ? badgeStatusPaket(statusPaketSiswa(s)) : ''}
+      ${kehadiran && !sesiPakaiRoster(sesi) ? `<select data-hadir-id="${kehadiran.id}" ${isSelesai ? 'disabled' : ''} style="width:auto;">${PAYMENT_OPTIONS}</select>` : ''}
       ${kehadiran ? `<button class="icon-btn btn-catatan-cepat" data-hadir-id="${kehadiran.id}" style="font-size:10px;padding:5px 8px;flex-shrink:0;">${kehadiran.catatan ? '📝 Catatan' : '+ Catatan'}</button>` : ''}
     `;
     if (kehadiran) {
-      row.querySelector('select').value = kehadiran.status_bayar || 'belum_bayar';
+      const selBayar = row.querySelector('select');
+      if (selBayar) selBayar.value = kehadiran.status_bayar || 'belum_bayar';
       row.querySelector('.btn-catatan-cepat').addEventListener('click', () => openCatatanPrompt(kehadiran.id, s.id).then(renderKehadiranGrid));
     }
     row.querySelector('input[type=checkbox]').addEventListener('change', async (e) => {
@@ -2227,7 +2328,7 @@
           await db.collection(HADIR_COL).add({
             siswa_id: s.id, siswa_nama: s.nama,
             sesi_id: sesi.id, sesi_label: sesi.label, sesi_tanggal: sesi.tanggal || null,
-            status_bayar: 'belum_bayar', walk_in: false,
+            status_bayar: sesiPakaiRoster(sesi) ? 'paket' : 'belum_bayar', walk_in: false,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
         } else {
@@ -2275,7 +2376,7 @@
     await db.collection(HADIR_COL).add({
       siswa_id: s.id, siswa_nama: s.nama,
       sesi_id: walkinSesi.id, sesi_label: walkinSesi.label, sesi_tanggal: walkinSesi.tanggal || null,
-      status_bayar: 'belum_bayar', walk_in: true,
+      status_bayar: sesiPakaiRoster(walkinSesi) ? 'paket' : 'belum_bayar', walk_in: true,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     walkinOverlay.classList.remove('active');
@@ -2544,7 +2645,7 @@
     });
 
     const el = document.getElementById('lapPerSesi');
-    const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar' };
+    const labelBayar = { cash: 'Cash', qris: 'QRIS', belum_bayar: 'Belum bayar', paket: 'Paket' };
     const sesiItems = Object.keys(perSesi).map(label => {
       const anggota = filtered.filter(k => k.sesi_label === label);
       const tgl = anggota.map(k => k.sesi_tanggal || '').sort().pop() || '';
