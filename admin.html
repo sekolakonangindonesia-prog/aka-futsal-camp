@@ -189,8 +189,8 @@
   <div class="tab-panel active" id="siswaTab">
     <div class="stats-row">
       <div class="stat-card"><div class="label">Total siswa</div><div class="value" id="statTotal">-</div></div>
-      <div class="stat-card"><div class="label">Sudah dijadwal</div><div class="value" id="statDijadwal">-</div></div>
-      <div class="stat-card"><div class="label">Belum dijadwal</div><div class="value" id="statBelum">-</div></div>
+      <div class="stat-card"><div class="label">Paket aktif</div><div class="value" id="statDijadwal">-</div></div>
+      <div class="stat-card"><div class="label">Menunggu bayar / paket habis</div><div class="value" id="statBelum">-</div></div>
     </div>
 
     <div class="section-head"><h2>Ringkasan Kelas</h2></div>
@@ -392,9 +392,14 @@
       </div>
       <div class="stats-row">
         <div class="stat-card"><div class="label">Total kehadiran</div><div class="value" id="lapTotal">-</div></div>
-        <div class="stat-card"><div class="label">Cash</div><div class="value" id="lapCash">-</div></div>
-        <div class="stat-card"><div class="label">QRIS</div><div class="value" id="lapQris">-</div></div>
-        <div class="stat-card"><div class="label">Belum bayar</div><div class="value" id="lapBelum">-</div></div>
+        <div class="stat-card"><div class="label">Cash (per sesi, lama)</div><div class="value" id="lapCash">-</div></div>
+        <div class="stat-card"><div class="label">QRIS (per sesi, lama)</div><div class="value" id="lapQris">-</div></div>
+        <div class="stat-card"><div class="label">Belum bayar (per sesi, lama)</div><div class="value" id="lapBelum">-</div></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="label">Paket dibayar</div><div class="value" id="lapPaketJumlah">-</div></div>
+        <div class="stat-card"><div class="label">Uang dari paket</div><div class="value" id="lapPaketUang" style="font-size:20px;color:var(--success);">-</div></div>
+        <div class="stat-card"><div class="label">Belum bayar / paket habis</div><div class="value" id="lapTunggakan" style="color:var(--amber);">-</div></div>
       </div>
       <div class="stats-row">
         <div class="stat-card"><div class="label">Uang Masuk</div><div class="value" id="lapPendapatan" style="font-size:20px;color:var(--success);">-</div></div>
@@ -402,7 +407,17 @@
         <div class="stat-card"><div class="label">Saldo Bersih</div><div class="value" id="lapSaldo" style="font-size:20px;">-</div></div>
       </div>
       <div class="session-card" style="margin-bottom:20px;">
-        <div class="head"><h2>Uang Masuk — Rekap per Sesi</h2></div>
+        <div class="head"><h2>Uang Masuk — Pembayaran Paket Bulanan</h2></div>
+        <p style="padding:12px 16px 0;margin:0;font-size:11.5px;color:var(--text-secondary);">Dicatat menurut tanggal siswa membayar. Catat pembayaran baru lewat tombol 💳 di tab Kelola Siswa.</p>
+        <div id="lapPaketList" style="padding:8px 16px 16px;"></div>
+      </div>
+      <div class="session-card" style="margin-bottom:20px;">
+        <div class="head"><h2>Belum Bayar &amp; Paket Habis</h2></div>
+        <p style="padding:12px 16px 0;margin:0;font-size:11.5px;color:var(--text-secondary);">Kondisi saat ini (tidak ikut filter bulan). Siswa waiting list tidak dihitung.</p>
+        <div id="lapTunggakanList" style="padding:8px 16px 16px;"></div>
+      </div>
+      <div class="session-card" style="margin-bottom:20px;">
+        <div class="head"><h2>Riwayat Kehadiran &amp; Bayar per Sesi (sistem lama)</h2></div>
         <div id="lapPerSesi"></div>
       </div>
       <div class="session-card" style="margin-bottom:20px;">
@@ -849,6 +864,13 @@
   }
   function pemasukanMarket(bulan) {
     return pemasukanCache.filter(p => p.sumber === 'market' && (!bulan || (p.tanggal && p.tanggal.startsWith(bulan))));
+  }
+  // Pembayaran paket bulanan siswa = uang masuk Latihan, dicatat menurut TANGGAL BAYAR (bukan tanggal latihan).
+  function paketLatihan(bulan) {
+    return paketCache.filter(p => !bulan || ((p.tanggal_bayar || '').startsWith(bulan)));
+  }
+  function totalPaket(list) {
+    return list.reduce((sum, p) => sum + (Number(p.jumlah) || 0), 0);
   }
   function totalPemasukanManual(list) {
     return list.reduce((sum, p) => sum + (Number(p.jumlah) || 0), 0);
@@ -1727,11 +1749,10 @@
   function renderSiswaTab() {
     renderRingkasanKelas();
     renderPengisianKelas();
-    const idsSudahDirencanakan = new Set(rencanaCache.map(r => r.siswa_id));
-    const dijadwal = siswaCache.filter(s => idsSudahDirencanakan.has(s.id)).length;
+    const stAll = siswaCache.map(statusPaketSiswa);
     document.getElementById('statTotal').textContent = siswaCache.length;
-    document.getElementById('statDijadwal').textContent = dijadwal;
-    document.getElementById('statBelum').textContent = siswaCache.length - dijadwal;
+    document.getElementById('statDijadwal').textContent = stAll.filter(x => x.status === 'aktif').length;
+    document.getElementById('statBelum').textContent = stAll.filter(x => !x.waiting && (x.status === 'belum_bayar' || x.status === 'habis')).length;
 
     const table = document.getElementById('siswaTable');
     table.innerHTML = '';
@@ -2644,6 +2665,35 @@
     XLSX.writeFile(wb, 'Rekap Kehadiran Per Bulan - AKA Futsal Camp.xlsx');
   });
 
+  function renderPaketList(paketList) {
+    const el = document.getElementById('lapPaketList');
+    const tampil = paketList.map(p => ({
+      id: p.id, tanggal: p.tanggal_bayar, jumlah: p.jumlah, metode: p.metode,
+      keterangan: (p.siswa_nama || '-') + ' — ' + (KELAS_NAMA[p.kelas] || p.kelas || '') + ' ' + (p.jatah || '') + '×' + (p.catatan ? ' (' + p.catatan + ')' : '')
+    }));
+    renderGrupBulan(el, urutkanTerbaru(tampil), p => buildUangRow(p, {
+      warna: 'var(--success)', koleksi: PAKET_COL, konfirmasi: 'Hapus catatan pembayaran paket ini? Jatah paket siswanya ikut hilang.',
+      onChange: async () => { try { if (await sinkronRencanaKelas()) await loadAll(); } catch (e) { console.error(e); } muatLaporan(); },
+      kategoriLabel: x => 'Paket · ' + String(x.metode || '').toUpperCase()
+    }), 'Belum ada pembayaran paket di periode ini');
+  }
+
+  function renderTunggakanList() {
+    const el = document.getElementById('lapTunggakan');
+    const list = document.getElementById('lapTunggakanList');
+    const daftar = siswaCache.filter(s => s.kelas_camp).map(s => ({ s, st: statusPaketSiswa(s) }))
+      .filter(x => !x.st.waiting && (x.st.status === 'belum_bayar' || x.st.status === 'habis'));
+    el.textContent = daftar.length;
+    if (daftar.length === 0) { list.innerHTML = '<div class="empty-state">Semua siswa berkelas sudah punya paket berjalan</div>'; return; }
+    list.innerHTML = '';
+    daftar.sort((a, b) => a.s.nama.localeCompare(b.s.nama)).forEach(x => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;';
+      row.innerHTML = `<span>${escapeHtml(x.s.nama)} <span style="color:var(--text-secondary);font-size:11.5px;">· ${KELAS_NAMA[x.s.kelas_camp]}</span></span>${badgeStatusPaket(x.st)}`;
+      list.appendChild(row);
+    });
+  }
+
   async function muatLaporan() {
     const bulan = document.getElementById('laporanBulan').value; // format YYYY-MM
     let filtered = kehadiranCache;
@@ -2652,7 +2702,7 @@
     }
     const cash = filtered.filter(k => k.status_bayar === 'cash');
     const qris = filtered.filter(k => k.status_bayar === 'qris');
-    const belum = filtered.filter(k => k.status_bayar !== 'cash' && k.status_bayar !== 'qris');
+    const belum = filtered.filter(k => k.status_bayar !== 'cash' && k.status_bayar !== 'qris' && k.status_bayar !== 'paket');
     const totalLunas = cash.length + qris.length;
 
     document.getElementById('lapTotal').textContent = filtered.length;
@@ -2662,7 +2712,13 @@
     const pendapatanSesi = totalLunas * 15000;
     const filteredPemasukan = pemasukanLatihan(bulan);
     const pendapatanManual = totalPemasukanManual(filteredPemasukan);
-    const totalPendapatan = pendapatanSesi + pendapatanManual;
+    const paketList = paketLatihan(bulan);
+    const pendapatanPaket = totalPaket(paketList);
+    document.getElementById('lapPaketJumlah').textContent = paketList.length;
+    document.getElementById('lapPaketUang').textContent = 'Rp' + pendapatanPaket.toLocaleString('id-ID');
+    renderPaketList(paketList);
+    renderTunggakanList();
+    const totalPendapatan = pendapatanSesi + pendapatanPaket + pendapatanManual;
     document.getElementById('lapPendapatan').textContent = 'Rp' + totalPendapatan.toLocaleString('id-ID');
     renderPemasukanList(filteredPemasukan, 'lapPemasukanList', muatLaporan);
 
@@ -2917,11 +2973,13 @@
 
     const pendapatanSesi = filteredHadir.filter(k => k.status_bayar === 'cash' || k.status_bayar === 'qris').length * 15000;
     const pendapatanManual = totalPemasukanManual(filteredPemasukan);
-    const totalPendapatan = pendapatanSesi + pendapatanManual;
+    const paketList = paketLatihan(bulan).slice().sort((a, b) => (a.tanggal_bayar || '').localeCompare(b.tanggal_bayar || ''));
+    const pendapatanPaket = totalPaket(paketList);
+    const totalPendapatan = pendapatanSesi + pendapatanPaket + pendapatanManual;
     const totalPengeluaran = filteredPengeluaran.reduce((sum, p) => sum + (Number(p.jumlah) || 0), 0);
     const saldo = totalPendapatan - totalPengeluaran;
 
-    return { bulan, bulanLabel, groupBulan, filteredPengeluaran, filteredPemasukan, pendapatanSesi, pendapatanManual, totalPendapatan, totalPengeluaran, saldo };
+    return { bulan, bulanLabel, groupBulan, filteredPengeluaran, filteredPemasukan, paketList, pendapatanPaket, pendapatanSesi, pendapatanManual, totalPendapatan, totalPengeluaran, saldo };
   }
 
   document.getElementById('btnExportLapExcel').addEventListener('click', () => {
@@ -2933,7 +2991,8 @@
       ['Periode', data.bulanLabel],
       ['Tanggal Cetak', new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })],
       [],
-      ['Uang Masuk dari Sesi Latihan', data.pendapatanSesi],
+      ['Uang Masuk dari Paket Bulanan', data.pendapatanPaket],
+      ['Uang Masuk dari Sesi Latihan (sistem lama)', data.pendapatanSesi],
       ['Uang Masuk Manual', data.pendapatanManual],
       ['Total Uang Masuk', data.totalPendapatan],
       ['Total Uang Keluar', data.totalPengeluaran],
@@ -2953,6 +3012,15 @@
     const wsMasuk = XLSX.utils.aoa_to_sheet(aoaMasuk);
     wsMasuk['!cols'] = [{ wch: 14 }, { wch: 26 }, { wch: 12 }, { wch: 10 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, wsMasuk, 'Uang Masuk');
+
+    const aoaPaket = [['Tanggal Bayar', 'Siswa', 'Kelas', 'Pertemuan', 'Metode', 'Catatan', 'Jumlah (Rp)']];
+    data.paketList.forEach(p => {
+      aoaPaket.push([p.tanggal_bayar || '-', p.siswa_nama || '-', KELAS_NAMA[p.kelas] || p.kelas || '-', Number(p.jatah) || 0, String(p.metode || '').toUpperCase(), p.catatan || '', Number(p.jumlah) || 0]);
+    });
+    aoaPaket.push(['', '', '', '', '', 'TOTAL', data.pendapatanPaket]);
+    const wsPaket = XLSX.utils.aoa_to_sheet(aoaPaket);
+    wsPaket['!cols'] = [{ wch: 13 }, { wch: 26 }, { wch: 13 }, { wch: 11 }, { wch: 9 }, { wch: 22 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, wsPaket, 'Paket Bulanan');
 
     const aoaMasukManual = [['Tanggal', 'Kategori', 'Keterangan', 'Jumlah (Rp)']];
     data.filteredPemasukan.forEach(p => {
@@ -3016,6 +3084,18 @@
     });
     tabelMasuk += '</table>';
 
+    let tabelPaketWord = '<table style="border-collapse:collapse;width:100%;margin-bottom:20px;">' + headerRow(['Tanggal Bayar', 'Siswa', 'Kelas', 'Pertemuan', 'Metode', 'Jumlah (Rp)']);
+    if (data.paketList.length === 0) {
+      tabelPaketWord += baris(['-', 'Tidak ada pembayaran paket di periode ini', '-', '-', '-', '-']);
+    } else {
+      data.paketList.forEach(p => {
+        const tglLabel = p.tanggal_bayar ? new Date(p.tanggal_bayar + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+        tabelPaketWord += baris([escapeHtml(tglLabel), escapeHtml(p.siswa_nama || '-'), escapeHtml(KELAS_NAMA[p.kelas] || p.kelas || '-'), Number(p.jatah) || 0, escapeHtml(String(p.metode || '').toUpperCase()), (Number(p.jumlah) || 0).toLocaleString('id-ID')]);
+      });
+      tabelPaketWord += baris(['', '', '', '', '<b>TOTAL</b>', '<b>' + data.pendapatanPaket.toLocaleString('id-ID') + '</b>']);
+    }
+    tabelPaketWord += '</table>';
+
     let tabelMasukManual = '<table style="border-collapse:collapse;width:100%;margin-bottom:20px;">' + headerRow(['Tanggal', 'Kategori', 'Keterangan', 'Jumlah (Rp)']);
     if (data.filteredPemasukan.length === 0) {
       tabelMasukManual += baris(['-', '-', 'Tidak ada pemasukan manual di periode ini', '-']);
@@ -3042,13 +3122,16 @@
       <body style="font-family:Calibri,Arial,sans-serif;color:#1a1310;">
         ${kopSuratWordHtml('Laporan Keuangan \u2014 Latihan', data.bulanLabel)}
         <table style="border-collapse:collapse;margin:0 0 20px;">
-          <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Uang Masuk dari Sesi Latihan</td><td style="padding:6px 0;">Rp${data.pendapatanSesi.toLocaleString('id-ID')}</td></tr>
+          <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Uang Masuk dari Paket Bulanan</td><td style="padding:6px 0;">Rp${data.pendapatanPaket.toLocaleString('id-ID')}</td></tr>
+          <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Uang Masuk dari Sesi Latihan (sistem lama)</td><td style="padding:6px 0;">Rp${data.pendapatanSesi.toLocaleString('id-ID')}</td></tr>
           <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Uang Masuk Manual</td><td style="padding:6px 0;">Rp${data.pendapatanManual.toLocaleString('id-ID')}</td></tr>
           <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Total Uang Masuk</td><td style="padding:6px 0;color:#0a7a4a;font-weight:bold;">Rp${data.totalPendapatan.toLocaleString('id-ID')}</td></tr>
           <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Total Uang Keluar</td><td style="padding:6px 0;color:#c8272d;font-weight:bold;">Rp${data.totalPengeluaran.toLocaleString('id-ID')}</td></tr>
           <tr><td style="padding:6px 14px 6px 0;font-weight:bold;">Saldo Bersih</td><td style="padding:6px 0;font-weight:bold;">Rp${data.saldo.toLocaleString('id-ID')}</td></tr>
         </table>
-        <h2 style="font-size:14px;border-bottom:2px solid #e8b923;padding-bottom:4px;">Uang Masuk per Sesi</h2>
+        <h2 style="font-size:14px;border-bottom:2px solid #e8b923;padding-bottom:4px;">Uang Masuk — Pembayaran Paket Bulanan</h2>
+        ${tabelPaketWord}
+        <h2 style="font-size:14px;border-bottom:2px solid #e8b923;padding-bottom:4px;">Uang Masuk per Sesi (sistem lama)</h2>
         ${tabelMasuk}
         <h2 style="font-size:14px;border-bottom:2px solid #e8b923;padding-bottom:4px;">Uang Masuk Manual</h2>
         ${tabelMasukManual}
@@ -3875,7 +3958,7 @@ Terima kasih! 🙏`;
     const filteredHadir = bulan ? kehadiranCache.filter(k => k.sesi_tanggal && k.sesi_tanggal.startsWith(bulan)) : kehadiranCache.slice();
     const lunasHadir = filteredHadir.filter(k => k.status_bayar === 'cash' || k.status_bayar === 'qris').length;
 
-    const latihanPendapatan = lunasHadir * 15000 + totalPemasukanManual(pemasukanLatihan(bulan));
+    const latihanPendapatan = lunasHadir * 15000 + totalPaket(paketLatihan(bulan)) + totalPemasukanManual(pemasukanLatihan(bulan));
     const latihanPengeluaran = pengeluaranLatihan(bulan).reduce((s, p) => s + (Number(p.jumlah) || 0), 0);
     const latihanSaldo = latihanPendapatan - latihanPengeluaran;
 
