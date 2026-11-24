@@ -239,6 +239,12 @@
       <div class="error-msg">Nomor WhatsApp wajib diisi</div>
     </div>
 
+    <div class="field" data-field="waOrtu">
+      <label>Nomor WhatsApp Orang Tua / Wali</label>
+      <input type="tel" id="waOrtu" placeholder="cth. 081234567890" inputmode="numeric" autocomplete="off">
+      <div class="error-msg">Nomor WhatsApp orang tua / wali wajib diisi (minimal 9 angka)</div>
+    </div>
+
     <div class="field" data-field="usia">
       <label>Usia</label>
       <input type="number" id="usia" placeholder="cth. 13" min="1" max="99">
@@ -360,6 +366,7 @@
   function validate() {
     const nama = document.getElementById('nama').value.trim();
     const wa = document.getElementById('wa').value.trim();
+    const waOrtu = document.getElementById('waOrtu').value.trim();
     const usia = document.getElementById('usia').value.trim();
     const ttl = document.getElementById('ttl').value.trim();
     const alamat = document.getElementById('alamat').value.trim();
@@ -367,6 +374,7 @@
     let valid = true;
     if (!nama) { setFieldError('nama', true); valid = false; } else clearFieldError('nama');
     if (!wa) { setFieldError('wa', true); valid = false; } else clearFieldError('wa');
+    if (waOrtu.replace(/[^0-9]/g, '').length < 9) { setFieldError('waOrtu', true); valid = false; } else clearFieldError('waOrtu');
     if (!usia) { setFieldError('usia', true); valid = false; } else clearFieldError('usia');
     if (!ttl) { setFieldError('ttl', true); valid = false; } else clearFieldError('ttl');
     if (!alamat) { setFieldError('alamat', true); valid = false; } else clearFieldError('alamat');
@@ -394,6 +402,7 @@
     const data = {
       nama: document.getElementById('nama').value.trim(),
       nomor_wa: document.getElementById('wa').value.trim(),
+      nomor_wa_ortu: document.getElementById('waOrtu').value.trim(),
       usia: Number(document.getElementById('usia').value.trim()),
       tempat_tanggal_lahir: document.getElementById('ttl').value.trim(),
       alamat: document.getElementById('alamat').value.trim(),
@@ -414,6 +423,7 @@
       if (waAdminNumber) {
         const pesanKeAdmin = `Halo Admin AKA Futsal Camp, saya sudah mendaftar dengan data berikut:\n` +
           `Nama: ${data.nama}\n` +
+          `WhatsApp Orang Tua/Wali: ${data.nomor_wa_ortu}\n` +
           `Usia: ${data.usia} Tahun\n` +
           `Tempat, Tanggal Lahir: ${data.tempat_tanggal_lahir}\n` +
           `Alamat: ${data.alamat}\n` +
@@ -428,6 +438,7 @@
         const pesanKeDiriSendiri = `Terima kasih sudah mendaftar di AKA Futsal Camp, ${data.nama}! 🎉\n\n` +
           `Ini rekap data pendaftaranmu:\n` +
           `Nama: ${data.nama}\n` +
+          `WhatsApp Orang Tua/Wali: ${data.nomor_wa_ortu}\n` +
           `Usia: ${data.usia} Tahun\n` +
           `Tempat, Tanggal Lahir: ${data.tempat_tanggal_lahir}\n` +
           `Alamat: ${data.alamat}\n` +
