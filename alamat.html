@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Isi Alamat — AKA Futsal Camp</title>
+<title>Lengkapi Data — AKA Futsal Camp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -55,7 +55,7 @@
   <div class="hero">
     <img src="aka%20futsal%20camp.png" alt="AKA Futsal Camp">
     <span class="eyebrow">Data Pendaftaran</span>
-    <h1>Lengkapi Alamat</h1>
+    <h1>Lengkapi Data</h1>
   </div>
   <div id="content"><div class="loading">Memuat...</div></div>
 </div>
@@ -103,8 +103,8 @@
     document.getElementById('content').innerHTML = `
       <div class="card info-box">
         <div class="info-badge ok">✓</div>
-        <h2>Alamat sudah tersimpan</h2>
-        <p>Alamat ${nama ? escapeHtml(nama) : 'kamu'} sudah pernah diisi dan link ini terkunci. Kalau ada yang perlu diubah, hubungi admin/pelatih langsung ya.</p>
+        <h2>Data sudah tersimpan</h2>
+        <p>Data ${nama ? escapeHtml(nama) : 'kamu'} sudah lengkap dan link ini terkunci. Kalau ada yang perlu diubah, hubungi admin/pelatih langsung ya.</p>
       </div>`;
   }
 
@@ -113,39 +113,58 @@
       <div class="card info-box">
         <div class="info-badge ok">✓</div>
         <h2>Tersimpan, makasih!</h2>
-        <p>Alamat kamu berhasil disimpan. Link ini sekarang terkunci dan nggak bisa dipakai untuk mengubah lagi — kalau ada koreksi, hubungi admin/pelatih ya.</p>
+        <p>Datanya berhasil disimpan. Link ini sekarang terkunci dan nggak bisa dipakai untuk mengubah lagi — kalau ada koreksi, hubungi admin/pelatih ya.</p>
       </div>`;
   }
 
-  function tampilkanForm(nama) {
+  // Hanya menampilkan isian yang MASIH KOSONG (alamat dan/atau nomor WA orang tua).
+  function tampilkanForm(s) {
+    const perluAlamat = !s.alamat;
+    const perluOrtu = !s.nomor_wa_ortu;
+    const nama = s.nama || 'kamu';
     document.getElementById('content').innerHTML = `
       <div class="card">
         <div class="field">
-          <label>Halo, ${escapeHtml(nama)} 👋<br>Isi alamat lengkap tempat tinggal kamu</label>
-          <textarea id="alamatInput" rows="4" placeholder="cth. Jl. Melati No. 12, RT 02/RW 05, Kel. Sukabumi, Kec. Mayangan, Probolinggo"></textarea>
+          <label>Halo, ${escapeHtml(nama)} 👋<br>Lengkapi data berikut ya</label>
         </div>
-        <button class="submit-btn" id="submitBtn">Simpan Alamat</button>
+        ${perluAlamat ? `<div class="field">
+          <label>Alamat lengkap tempat tinggal</label>
+          <textarea id="alamatInput" rows="4" placeholder="cth. Jl. Melati No. 12, RT 02/RW 05, Kel. Sukabumi, Kec. Mayangan, Probolinggo"></textarea>
+        </div>` : ''}
+        ${perluOrtu ? `<div class="field">
+          <label>Nomor WhatsApp Orang Tua / Wali</label>
+          <input type="tel" id="ortuInput" placeholder="cth. 081234567890" inputmode="numeric" autocomplete="off">
+        </div>` : ''}
+        <button class="submit-btn" id="submitBtn">Simpan</button>
         <div class="status-line" id="statusLine">Catatan: setelah disimpan, link ini otomatis terkunci dan nggak bisa diisi ulang.</div>
       </div>`;
 
     document.getElementById('submitBtn').addEventListener('click', async () => {
-      const val = document.getElementById('alamatInput').value.trim();
       const statusLine = document.getElementById('statusLine');
-      if (!val) { statusLine.textContent = 'Alamat wajib diisi dulu ya.'; return; }
+      const update = {};
+      if (perluAlamat) {
+        const val = document.getElementById('alamatInput').value.trim();
+        if (!val) { statusLine.textContent = 'Alamat wajib diisi dulu ya.'; return; }
+        update.alamat = val;
+        update.alamat_diisi_at = firebase.firestore.FieldValue.serverTimestamp();
+      }
+      if (perluOrtu) {
+        const val = document.getElementById('ortuInput').value.trim();
+        if (val.replace(/[^0-9]/g, '').length < 9) { statusLine.textContent = 'Nomor WhatsApp orang tua / wali wajib diisi (minimal 9 angka).'; return; }
+        update.nomor_wa_ortu = val;
+        update.ortu_diisi_at = firebase.firestore.FieldValue.serverTimestamp();
+      }
       const btn = document.getElementById('submitBtn');
       btn.disabled = true;
       btn.textContent = 'Menyimpan...';
       try {
-        await db.collection(COLLECTION).doc(siswaId).update({
-          alamat: val,
-          alamat_diisi_at: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        await db.collection(COLLECTION).doc(siswaId).update(update);
         tampilkanSukses();
       } catch (err) {
         console.error(err);
         statusLine.textContent = 'Gagal menyimpan, coba lagi ya.';
         btn.disabled = false;
-        btn.textContent = 'Simpan Alamat';
+        btn.textContent = 'Simpan';
       }
     });
   }
@@ -161,11 +180,11 @@
         tampilkanError('Link ini sudah nggak berlaku. Minta link baru dari admin/pelatih.');
         return;
       }
-      if (s.alamat) {
+      if (s.alamat && s.nomor_wa_ortu) {
         tampilkanSudahTerkunci(s.nama);
         return;
       }
-      tampilkanForm(s.nama || 'kamu');
+      tampilkanForm(s);
     } catch (err) {
       console.error(err);
       tampilkanError('Gagal memuat data: ' + err.message);
