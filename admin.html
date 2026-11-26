@@ -219,6 +219,7 @@
         <option value="aktif">Aktif</option>
         <option value="habis">Paket habis</option>
         <option value="waiting">Waiting list</option>
+        <option value="tanpa_ortu">Belum ada no. WA orang tua</option>
       </select>
     </div>
     <div class="siswa-table" id="siswaTable"></div>
@@ -677,6 +678,7 @@
     </div>
     <div class="field"><label>Nama lengkap</label><input type="text" id="modalNama"></div>
     <div class="field"><label>Nomor WhatsApp</label><input type="tel" id="modalWa" placeholder="cth. 081234567890"></div>
+    <div class="field"><label>Nomor WhatsApp Orang Tua / Wali</label><input type="tel" id="modalWaOrtu" placeholder="cth. 081234567890"></div>
     <div class="field"><label>Usia</label><input type="number" id="modalUsia" min="1"></div>
     <div class="field"><label>Tempat, tanggal lahir</label><input type="text" id="modalTtl"></div>
     <div class="field"><label>Kelas di sekolah (opsional)</label><input type="text" id="modalKelas" placeholder="cth. 8B"></div>
@@ -757,14 +759,14 @@
 
 <div class="overlay" id="alamatLinkModalOverlay">
   <div class="modal">
-    <h2>Link Isi Alamat — <span id="alamatLinkNama"></span></h2>
+    <h2>Link Isi Data — <span id="alamatLinkNama"></span></h2>
     <div id="alamatLinkSudahIsi" style="display:none;">
-      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Siswa ini sudah mengisi alamatnya sendiri (atau diisi admin), jadi link-nya otomatis terkunci kalau dibuka lagi — nggak bisa ditimpa oleh siswa.</p>
-      <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:13px;margin-top:6px;" id="alamatLinkIsiText"></div>
-      <p style="font-size:11px;color:var(--text-secondary);margin-top:10px;">Mau buka lagi link-nya biar siswa bisa isi ulang? Kosongkan field "Alamat" di menu Edit Siswa, lalu simpan.</p>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Alamat dan nomor WhatsApp orang tua siswa ini sudah terisi, jadi link-nya otomatis terkunci kalau dibuka lagi — nggak bisa ditimpa oleh siswa.</p>
+      <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:13px;margin-top:6px;line-height:1.6;" id="alamatLinkIsiText"></div>
+      <p style="font-size:11px;color:var(--text-secondary);margin-top:10px;">Mau buka lagi link-nya biar siswa bisa isi ulang? Kosongkan field yang bersangkutan di menu Edit Siswa, lalu simpan.</p>
     </div>
     <div id="alamatLinkBelumIsi" style="display:none;">
-      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Kirim link ini ke siswa (lewat WA) biar mereka isi alamatnya sendiri. Begitu disubmit, link otomatis terkunci — nggak bisa diisi ulang/diubah sama siswa.</p>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;"><span id="alamatLinkPenjelasan">Kirim link ini ke siswa (lewat WA) biar mereka isi datanya sendiri.</span> Begitu disubmit, link otomatis terkunci — nggak bisa diisi ulang/diubah sama siswa.</p>
       <div class="field" style="margin-top:10px;">
         <input type="text" id="alamatLinkUrl" readonly style="font-family:'Space Mono',monospace;font-size:12px;" onclick="this.select()">
       </div>
@@ -1776,7 +1778,8 @@
     const filterStatus = document.getElementById('siswaFilterStatus').value;
     const statusMap = {};
     siswaCache.forEach(s => { statusMap[s.id] = statusPaketSiswa(s); });
-    if (filterStatus === 'waiting') terfilter = terfilter.filter(s => statusMap[s.id].waiting);
+    if (filterStatus === 'tanpa_ortu') terfilter = terfilter.filter(s => !s.nomor_wa_ortu);
+    else if (filterStatus === 'waiting') terfilter = terfilter.filter(s => statusMap[s.id].waiting);
     else if (filterStatus) terfilter = terfilter.filter(s => !statusMap[s.id].waiting && statusMap[s.id].status === filterStatus);
 
     if (terfilter.length === 0) {
@@ -1793,11 +1796,11 @@
         <div class="info">
           <div class="nama">${escapeHtml(s.nama)}${isBaru(s) ? '<span class="badge-baru">Baru</span>' : ''}${s.kelas_camp ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--chalk);border:1px solid var(--line);">' + escapeHtml(KELAS_NAMA[s.kelas_camp] || s.kelas_camp) + '</span>' : '<span class="badge-baru" style="background:rgba(255,80,80,0.08);color:var(--red);border:1px solid var(--red);">Belum ada kelas</span>'}${s.peran === 'gk' ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--amber);border:1px solid var(--amber);">GK</span>' : ''}${s.alamat ? '<span class="badge-baru" style="background:var(--surface-2);color:var(--success);border:1px solid var(--success);">Alamat ✓</span>' : ''}</div>
           <div class="meta" style="margin-bottom:3px;">${badgeStatusPaket(statusMap[s.id])}</div>
-          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.nomor_wa ? ' · ' + escapeHtml(s.nomor_wa) : ''} · ${jumlahHadir} sesi tercatat</div>
+          <div class="meta">${s.usia ? s.usia + ' th' : ''}${s.kelas ? ' · ' + escapeHtml(s.kelas) : ''}${s.nomor_wa ? ' · ' + escapeHtml(s.nomor_wa) : ''}${s.nomor_wa_ortu ? ' · Ortu: ' + escapeHtml(s.nomor_wa_ortu) : ' · <span style="color:var(--amber);">no. ortu belum ada</span>'} · ${jumlahHadir} sesi tercatat</div>
         </div>
         <div class="actions">
           <button class="icon-btn" data-bayar-paket="${s.id}" style="color:var(--success);border-color:var(--success);">💳 ${statusMap[s.id].paket.length ? 'Perpanjang' : 'Bayar'}</button>
-          <button class="icon-btn" data-alamat="${s.id}">🔗 Alamat</button>
+          <button class="icon-btn" data-alamat="${s.id}">🔗 Link Data</button>
           <button class="icon-btn" data-edit="${s.id}">Edit</button>
           <button class="icon-btn" data-del="${s.id}">Hapus</button>
         </div>
@@ -1828,6 +1831,7 @@
     document.getElementById('siswaModalTitle').textContent = id ? 'Edit Siswa' : 'Tambah Siswa';
     document.getElementById('modalNama').value = s ? s.nama || '' : '';
     document.getElementById('modalWa').value = s ? s.nomor_wa || '' : '';
+    document.getElementById('modalWaOrtu').value = s ? s.nomor_wa_ortu || '' : '';
     document.getElementById('modalUsia').value = s ? s.usia || '' : '';
     document.getElementById('modalKelasCamp').value = s && s.kelas_camp ? s.kelas_camp : '';
     updateKelasCampHint();
@@ -1919,6 +1923,7 @@
     const data = {
       nama: document.getElementById('modalNama').value.trim(),
       nomor_wa: document.getElementById('modalWa').value.trim() || null,
+      nomor_wa_ortu: document.getElementById('modalWaOrtu').value.trim() || null,
       usia: Number(document.getElementById('modalUsia').value) || null,
       tempat_tanggal_lahir: document.getElementById('modalTtl').value.trim(),
       kelas: document.getElementById('modalKelas').value.trim() || null,
@@ -1977,10 +1982,11 @@
     const sudahIsiEl = document.getElementById('alamatLinkSudahIsi');
     const belumIsiEl = document.getElementById('alamatLinkBelumIsi');
 
-    if (s.alamat) {
+    if (s.alamat && s.nomor_wa_ortu) {
       sudahIsiEl.style.display = 'block';
       belumIsiEl.style.display = 'none';
-      document.getElementById('alamatLinkIsiText').textContent = s.alamat;
+      document.getElementById('alamatLinkIsiText').textContent = 'Alamat: ' + s.alamat + '\nWA orang tua: ' + s.nomor_wa_ortu;
+      document.getElementById('alamatLinkIsiText').style.whiteSpace = 'pre-line';
       overlay.classList.add('active');
       return;
     }
@@ -2006,7 +2012,9 @@
     const link = base + 'alamat.html?id=' + encodeURIComponent(id) + '&t=' + encodeURIComponent(token);
     document.getElementById('alamatLinkUrl').value = link;
 
-    const pesanWa = `Halo ${s.nama}! Mohon lengkapi alamat tempat tinggal kamu untuk data pendaftaran AKA Futsal Camp lewat link berikut ya:\n${link}\n\nTerima kasih!`;
+    const yangDiminta = (!s.alamat && !s.nomor_wa_ortu) ? 'alamat tempat tinggal dan nomor WhatsApp orang tua/wali' : (!s.alamat ? 'alamat tempat tinggal' : 'nomor WhatsApp orang tua/wali');
+    document.getElementById('alamatLinkPenjelasan').textContent = `Kirim link ini ke siswa (lewat WA) biar mereka isi ${yangDiminta} sendiri.`;
+    const pesanWa = `Halo ${s.nama}! Mohon lengkapi ${yangDiminta} untuk data pendaftaran AKA Futsal Camp lewat link berikut ya:\n${link}\n\nTerima kasih!`;
     const nomorTujuan = (s.nomor_wa || '').replace(/[^0-9]/g, '').replace(/^0/, '62');
     document.getElementById('btnWaAlamatLink').href = nomorTujuan
       ? `https://wa.me/${nomorTujuan}?text=${encodeURIComponent(pesanWa)}`
@@ -4140,6 +4148,7 @@ Terima kasih! 🙏`;
       ['Kelas', s.kelas || '-'],
       ['Sekolah', s.sekolah || '-'],
       ['Nomor WhatsApp', s.nomor_wa || '-'],
+      ['Nomor WhatsApp Orang Tua / Wali', s.nomor_wa_ortu || '-'],
       [],
     ];
     const totals = milikSiswa.filter(p => typeof p.total === 'number').map(p => p.total);
